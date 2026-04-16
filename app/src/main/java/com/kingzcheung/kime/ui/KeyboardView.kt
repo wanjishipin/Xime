@@ -60,6 +60,9 @@ fun KeyboardView(
     onHideKeyboard: (() -> Unit)? = null,
     onSwitchKeyboard: (() -> Unit)? = null,
     onCommitImage: ((String) -> Unit)? = null,
+    isVoiceMode: Boolean = false,
+    onVoiceUndo: (() -> Unit)? = null,
+    onVoiceSearch: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var isShifted by remember { mutableStateOf(false) }
@@ -132,6 +135,16 @@ onHideKeyboard = {
             
             // 显示菜单、剪切板、候选词页面或键盘
             when {
+                isVoiceMode -> {
+                    VoiceKeyboardLayout(
+                        keyBackgroundColor = keyBgColor,
+                        keyTextColor = keyTextColor,
+                        specialKeyBackgroundColor = specialKeyBgColor,
+                        modifier = Modifier.weight(1f),
+                        onUndo = onVoiceUndo,
+                        onSearch = onVoiceSearch
+                    )
+                }
                 showMenu -> {
                     MenuBar(
                         isVisible = true,

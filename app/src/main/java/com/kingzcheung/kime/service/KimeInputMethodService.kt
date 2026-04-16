@@ -18,13 +18,18 @@ import android.os.VibratorManager
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.View.OnTouchListener
+import android.view.MotionEvent
 import android.view.inputmethod.EditorInfo
+import android.view.GestureDetector
+import android.widget.FrameLayout
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.unit.dp
@@ -66,7 +71,8 @@ data class InputUIState(
     val themeId: String = "ocean_blue",
     val showBottomButtons: Boolean = false,
     val associationCandidates: Array<String> = emptyArray(),
-    val associationEnabled: Boolean = false
+    val associationEnabled: Boolean = false,
+    val isVoiceMode: Boolean = false
 )
 
 /**
@@ -108,6 +114,15 @@ class KimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private val uiState = mutableStateOf(InputUIState())
     private val clipboardItemsState = mutableStateOf<List<com.kingzcheung.kime.clipboard.ClipboardItem>>(emptyList())
     private val quickSendItemsState = mutableStateOf<List<com.kingzcheung.kime.clipboard.ClipboardItem>>(emptyList())
+    
+    // 语音模式长按检测
+    private var voiceLongPressTriggered = false
+    private val voiceLongPressHandler = Handler(Looper.getMainLooper())
+    private val voiceLongPressRunnable = Runnable {
+        voiceLongPressTriggered = true
+        uiState.value = uiState.value.copy(isVoiceMode = true)
+        performVibration()
+    }
     
     // 最近上屏的文本（用于联想）
     private var lastCommittedText = ""
@@ -336,7 +351,11 @@ private fun getPredictionFromPlugin(contextText: String) {
     }
 
     override fun onCreateInputView(): View {
-        return ComposeView(this).apply {
+        // 创建自定义 FrameLayout 处理全局触摸事件
+        val container = VoiceKeyboardContainer(this)
+        
+        // 创建 ComposeView
+        val composeView = ComposeView(this).apply {
             setContent {
                 val state = uiState.value
                 val isDarkTheme = isDarkTheme()
@@ -360,6 +379,7 @@ private fun getPredictionFromPlugin(contextText: String) {
                             clipboardItems = clipboardItemsState.value,
                             quickSendItems = quickSendItemsState.value,
                             candidateComments = state.candidateComments,
+                            isVoiceMode = state.isVoiceMode,
                             onKeyPress = { key, isShifted ->
                                 handleKeyPress(key, isShifted)
                             },
@@ -368,6 +388,17 @@ private fun getPredictionFromPlugin(contextText: String) {
                             },
                             onCandidateSelect = { index ->
                                 selectCandidate(index)
+                            },
+                            onVoiceUndo = {
+                                // 撤回最近输入
+                                sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                            },
+                            onVoiceSearch = {
+                                // 触发搜索
+                                val action = currentInputEditorInfo?.imeOptions ?: 0
+                                if ((action and EditorInfo.IME_MASK_ACTION) == EditorInfo.IME_ACTION_SEARCH) {
+                                    sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
+                                }
                             },
                             onToggleDarkMode = {
                                 toggleDarkMode()
@@ -424,7 +455,7 @@ private fun getPredictionFromPlugin(contextText: String) {
                                 if (index >= 0 && index < state.associationCandidates.size) {
                                     val text = state.associationCandidates[index]
                                     commitText(text)
-                                    updateUI()  // 更新 UI 以获取新的联想候选词
+                                    updateUI()
                                 }
                             },
                             onCommitImage = { imagePath ->
@@ -442,6 +473,88 @@ private fun getPredictionFromPlugin(contextText: String) {
                     }
                 }
             }
+        }
+        
+        container.addView(composeView)
+        
+        return container
+    }
+    
+    /**
+     * 自定义容器 View，在 View 层级处理触摸事件
+     * 这样切换界面不会中断手势监听
+     */
+    private inner class VoiceKeyboardContainer(context: android.content.Context) : FrameLayout(context) {
+        private var isLongPressWaiting = false
+        private var isPressing = false
+        
+        override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
+            ev?.let {
+                when (it.action) {
+                    MotionEvent.ACTION_DOWN -> {
+                        val isVoiceMode = uiState.value.isVoiceMode
+                        
+                        if (isVoiceMode) {
+                            // 语音键盘：检测弧形按钮区域（底部约 40% 区域）
+                            val yThreshold = height * 0.6f
+                            
+                            if (it.y > yThreshold) {
+                                isPressing = true
+                                isLongPressWaiting = true
+                                voiceLongPressTriggered = false
+                                voiceLongPressHandler.postDelayed(voiceLongPressRunnable, 400)
+                            }
+                        } else {
+                            // 普通键盘：检测空格键区域（底部控制行中间）
+                            val yThreshold = height * 0.75f
+                            val xStart = width * 0.18f
+                            val xEnd = width * 0.82f
+                            
+                            if (it.y > yThreshold && it.x > xStart && it.x < xEnd) {
+                                isPressing = true
+                                isLongPressWaiting = true
+                                voiceLongPressTriggered = false
+                                voiceLongPressHandler.postDelayed(voiceLongPressRunnable, 400)
+                            }
+                        }
+                    }
+                    MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                        voiceLongPressHandler.removeCallbacks(voiceLongPressRunnable)
+                        if (voiceLongPressTriggered) {
+                            voiceLongPressTriggered = false
+                            uiState.value = uiState.value.copy(isVoiceMode = false)
+                        }
+                        isPressing = false
+                        isLongPressWaiting = false
+                    }
+                    MotionEvent.ACTION_MOVE -> {
+                        if (isLongPressWaiting) {
+                            val isVoiceMode = uiState.value.isVoiceMode
+                            
+                            if (isVoiceMode) {
+                                // 语音键盘：检测是否移出弧形按钮区域
+                                val yThreshold = height * 0.6f
+                                
+                                if (it.y < yThreshold) {
+                                    voiceLongPressHandler.removeCallbacks(voiceLongPressRunnable)
+                                    isLongPressWaiting = false
+                                }
+                            } else {
+                                // 普通键盘：检测是否移出空格键区域
+                                val yThreshold = height * 0.75f
+                                val xStart = width * 0.18f
+                                val xEnd = width * 0.82f
+                                
+                                if (it.y < yThreshold || it.x < xStart || it.x > xEnd) {
+                                    voiceLongPressHandler.removeCallbacks(voiceLongPressRunnable)
+                                    isLongPressWaiting = false
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            return super.dispatchTouchEvent(ev)
         }
     }
     
