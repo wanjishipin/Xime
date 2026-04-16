@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,17 +26,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.sqrt
-import kotlin.math.atan2
-import kotlin.math.PI
 
 @Composable
 fun VoiceKeyboardLayout(
@@ -99,153 +101,103 @@ fun VoiceKeyboardLayout(
             }
         }
         
-        // 中间：左右弯曲圆角矩形按钮（白色背景）
-        Box(
+// 中间：左右两个等边三角形按钮（中间角是大圆角）
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp)
+                .height(100.dp)
         ) {
-            Canvas(
-                modifier = Modifier.fillMaxSize()
+            // 左按钮：等边三角形，左侧垂直边贴合左边缘，中间角大圆角
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
             ) {
-                val canvasWidth = size.width
-                val canvasHeight = size.height
-                
-                val centerX = canvasWidth / 2f
-                val gap = canvasWidth * 0.08f
-                
-                // 弧形弯曲程度（和底部按钮一致）
-                val arcHeight = canvasHeight * 0.5f
-                
-                // 中间半圆半径
-                val cornerRadius = canvasHeight / 2f
-                
-                // 左按钮终点 X（半圆圆心位置）
-                val leftEndX = centerX - gap / 2
-                val leftWidth = leftEndX
-                
-                // 左按钮路径（逆时针）：
-                // 左上角 → 上边弧 → 右上角半圆 → 右边 → 右下角半圆 → 下边弧 → 左下角 → 左边闭合
-                val leftPath = Path().apply {
-                    // 起点：左上角
-                    moveTo(0f, 0f)
+                Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasHeight = size.height
+                    val sideLength = canvasHeight
                     
-                    // 上边弧：向上凸（弯曲）
-                    quadraticBezierTo(
-                        leftWidth / 2, -arcHeight,
-                        leftEndX - cornerRadius, 0f
-                    )
+                    // 等边三角形顶点
+                    val Ax = 0f
+                    val Ay = 0f
+                    val Bx = 0f
+                    val By = sideLength
+                    val Cx = sideLength * sqrt(3f) / 2f
+                    val Cy = sideLength / 2f
                     
-                    // 右上角半圆（向左弯曲，逆时针从右到左）
-                    arcTo(
-                        Rect(
-                            left = leftEndX - cornerRadius * 2,
-                            top = 0f,
-                            right = leftEndX,
-                            bottom = cornerRadius * 2
-                        ),
-                        startAngleDegrees = 0f,
-                        sweepAngleDegrees = -180f,
-                        forceMoveTo = false
-                    )
+                    // 圆角半径
+                    val cornerRadius = sideLength * 0.25f
                     
-                    // 右边：从半圆底部向下到底部
-                    lineTo(leftEndX - cornerRadius * 2, canvasHeight - cornerRadius)
+                    // 计算从A到C方向偏移cornerRadius的点
+                    val ACx = Ax + (Cx - Ax) * cornerRadius / sideLength
+                    val ACy = Ay + (Cy - Ay) * cornerRadius / sideLength
                     
-                    // 右下角半圆（向左弯曲，顺时针从右到左）
-                    arcTo(
-                        Rect(
-                            left = leftEndX - cornerRadius * 2,
-                            top = canvasHeight - cornerRadius * 2,
-                            right = leftEndX,
-                            bottom = canvasHeight
-                        ),
-                        startAngleDegrees = 0f,
-                        sweepAngleDegrees = 180f,
-                        forceMoveTo = false
-                    )
+                    // 计算从B到C方向偏移cornerRadius的点
+                    val BCx = Bx + (Cx - Bx) * cornerRadius / sideLength
+                    val BCy = By + (Cy - By) * cornerRadius / sideLength
                     
-                    // 下边弧：向上凸（弯曲）
-                    quadraticBezierTo(
-                        leftWidth / 2, canvasHeight + arcHeight,
-                        0f, canvasHeight
-                    )
-                    
-                    // 左边向上闭合
-                    lineTo(0f, 0f)
-                    
-                    close()
+                    val path = Path().apply {
+                        moveTo(Ax, Ay)
+                        lineTo(ACx, ACy)
+                        // 用二次贝塞尔曲线画圆角
+                        quadraticBezierTo(Cx, Cy, BCx, BCy)
+                        lineTo(Bx, By)
+                        close()
+                    }
+                    drawPath(path = path, color = Color.White)
                 }
-                
-                drawPath(path = leftPath, color = Color.White)
-                
-                // 右按钮起点 X（半圆圆心位置）
-                val rightStartX = centerX + gap / 2
-                val rightWidth = canvasWidth - rightStartX
-                
-                // 右按钮路径（顺时针）：
-                // 右上角 → 上边弧 → 左上角半圆 → 左边 → 左下角半圆 → 下边弧 → 右下角 → 右边闭合
-                val rightPath = Path().apply {
-                    // 起点：右上角
-                    moveTo(canvasWidth, 0f)
+            }
+            
+            // 右按钮：等边三角形，右侧垂直边贴合右边缘，中间角大圆角
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            ) {
+                Canvas(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    val canvasWidth = size.width
+                    val canvasHeight = size.height
+                    val sideLength = canvasHeight
                     
-                    // 上边弧：向上凸（弯曲）
-                    quadraticBezierTo(
-                        rightStartX + rightWidth / 2, -arcHeight,
-                        rightStartX + cornerRadius, 0f
-                    )
+                    // 等边三角形顶点
+                    val Ax = canvasWidth
+                    val Ay = 0f
+                    val Bx = canvasWidth
+                    val By = sideLength
+                    val Cx = canvasWidth - sideLength * sqrt(3f) / 2f
+                    val Cy = sideLength / 2f
                     
-                    // 左上角半圆（向右弯曲，顺时针从左到右）
-                    arcTo(
-                        Rect(
-                            left = rightStartX,
-                            top = 0f,
-                            right = rightStartX + cornerRadius * 2,
-                            bottom = cornerRadius * 2
-                        ),
-                        startAngleDegrees = 180f,
-                        sweepAngleDegrees = 180f,
-                        forceMoveTo = false
-                    )
+                    // 圆角半径
+                    val cornerRadius = sideLength * 0.25f
                     
-                    // 左边：从半圆底部向下到底部
-                    lineTo(rightStartX + cornerRadius * 2, canvasHeight - cornerRadius)
+                    // 计算偏移点
+                    val ACx = Ax + (Cx - Ax) * cornerRadius / sideLength
+                    val ACy = Ay + (Cy - Ay) * cornerRadius / sideLength
                     
-                    // 左下角半圆（向右弯曲，逆时针从左到右）
-                    arcTo(
-                        Rect(
-                            left = rightStartX,
-                            top = canvasHeight - cornerRadius * 2,
-                            right = rightStartX + cornerRadius * 2,
-                            bottom = canvasHeight
-                        ),
-                        startAngleDegrees = 180f,
-                        sweepAngleDegrees = -180f,
-                        forceMoveTo = false
-                    )
+                    val BCx = Bx + (Cx - Bx) * cornerRadius / sideLength
+                    val BCy = By + (Cy - By) * cornerRadius / sideLength
                     
-                    // 下边弧：向上凸（弯曲）
-                    quadraticBezierTo(
-                        rightStartX + rightWidth / 2, canvasHeight + arcHeight,
-                        canvasWidth, canvasHeight
-                    )
-                    
-                    // 右边向上闭合
-                    lineTo(canvasWidth, 0f)
-                    
-                    close()
+                    val path = Path().apply {
+                        moveTo(Ax, Ay)
+                        lineTo(ACx, ACy)
+                        quadraticBezierTo(Cx, Cy, BCx, BCy)
+                        lineTo(Bx, By)
+                        close()
+                    }
+                    drawPath(path = path, color = Color.White)
                 }
-                
-                drawPath(path = rightPath, color = Color.White)
             }
         }
         
-        // 底部：向上凸的半圆弧按压区域（拱形）
+        // 底部按钮 Canvas（独立）
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp),
-            contentAlignment = Alignment.Center
+                .height(80.dp)
         ) {
             Canvas(
                 modifier = Modifier.fillMaxSize()
@@ -253,47 +205,27 @@ fun VoiceKeyboardLayout(
                 val canvasWidth = size.width
                 val canvasHeight = size.height
                 
-                // 用更大的半径 + 圆心在 Canvas 下方，产生轻微向上凸的弧
-                val arcRadius = canvasWidth * 1.2f
                 val centerX = canvasWidth / 2f
-                val centerY = arcRadius + canvasHeight * 0.15f
+                val baseRadius = canvasWidth * 1.2f
+                val centerY = baseRadius + canvasHeight * 0.15f
                 
-                val path = Path().apply {
-                    // 从左下角开始
+                val bottomPath = Path().apply {
                     moveTo(0f, canvasHeight)
-                    
-                    // 底边到右下角
                     lineTo(canvasWidth, canvasHeight)
-                    
-                    // 右边向上到顶部
                     lineTo(canvasWidth, 0f)
-                    
-                    // 绘制轻微向上凸的弧（拱形）
                     arcTo(
-                        rect = Rect(
-                            left = centerX - arcRadius,
-                            top = centerY - arcRadius,
-                            right = centerX + arcRadius,
-                            bottom = centerY + arcRadius
-                        ),
+                        Rect(centerX - baseRadius, centerY - baseRadius, centerX + baseRadius, centerY + baseRadius),
                         startAngleDegrees = 0f,
                         sweepAngleDegrees = -180f,
                         forceMoveTo = false
                     )
-                    
-                    // 左边向下闭合
                     lineTo(0f, canvasHeight)
-                    
                     close()
                 }
-                
                 drawPath(
-                    path = path,
+                    path = bottomPath,
                     brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.White.copy(alpha = 0.95f),
-                            keyBackgroundColor
-                        )
+                        colors = listOf(Color.White.copy(alpha = 0.95f), Color(0xFFE0E0E0))
                     )
                 )
             }
@@ -304,7 +236,9 @@ fun VoiceKeyboardLayout(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.padding(top = 8.dp)
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .padding(top = 8.dp)
             )
         }
     }
