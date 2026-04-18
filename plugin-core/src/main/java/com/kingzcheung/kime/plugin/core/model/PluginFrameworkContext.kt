@@ -7,6 +7,7 @@ import com.kingzcheung.kime.plugin.core.runtime.installer.XmlManager
 import com.kingzcheung.kime.plugin.core.runtime.lifecycle.PluginLifecycleManager
 import com.kingzcheung.kime.plugin.core.runtime.loader.DependencyManager
 import com.kingzcheung.kime.plugin.core.runtime.loader.LoadedPluginInfo
+import com.kingzcheung.kime.plugin.core.runtime.proxy.ProxyManager
 import com.kingzcheung.kime.plugin.core.runtime.resource.PluginResourcesManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ internal class PluginFrameworkContext(val application: Application) {
     val installerManager = InstallerManager(application, xmlManager)
     val resourcesManager = PluginResourcesManager(application)
     val dependencyManager = DependencyManager(this)
+    val proxyManager = ProxyManager(application)
 
     val classIndex = ConcurrentHashMap<String, String>()
     val loadedPlugins = ConcurrentHashMap<String, LoadedPluginInfo>()
@@ -38,6 +40,7 @@ internal class PluginFrameworkContext(val application: Application) {
             xmlManager = xmlManager,
             installerManager = installerManager,
             dependencyManager = dependencyManager,
+            proxyManager = proxyManager,
             classIndex = classIndex,
             loadedPlugins = loadedPlugins,
             pluginInstances = pluginInstances

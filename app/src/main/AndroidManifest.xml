@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:sharedUserId="com.kingzcheung.kime.shared">
 
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.INTERNET" />
@@ -41,6 +42,12 @@
             </intent-filter>
         </activity>
         
+        <!-- 插件 Activity 代理 -->
+        <activity
+            android:name=".ui.HostProxyActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Kime" />
+        
         <!-- 输入法服务 -->
         <service
             android:name=".service.KimeInputMethodService"
@@ -64,6 +71,12 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/filepaths" />
         </provider>
+        
+        <!-- 插件 ContentProvider 代理 -->
+        <provider
+            android:name=".provider.HostProvider"
+            android:authorities="com.kingzcheung.kime.plugin.proxy"
+            android:exported="true" />
         
     </application>
 

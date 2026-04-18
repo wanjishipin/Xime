@@ -7,6 +7,11 @@
 - 构建： `./gradlew assembleDebug --quiet`
 - 测试： `./gradlew test`
 
+## 插件开发
+- 清除插件数据： `./gradlew clearPlugins`
+- 完全卸载主应用： `./gradlew uninstallApp`
+- [插件开发指南](docs/plugins/PLUGIN_DEVELOPMENT_GUIDE.md) - 开发插件时必读
+
 ## 硬性规则（必须遵守，CI 会验证）
 
 ## 工作规则
@@ -14,9 +19,6 @@
 - 当前功能点端到端验证通过后，才能开始下一个
 - 不要在实现功能 A 时"顺便"重构功能 B
 
-
-## 专题文档
-<!-- - [插件开发指南](docs/plugins/PLUGIN_DEVELOPMENT_GUIDE.md) - 开发插件时必读 -->
 
 ## 每次会话开始时（上班打卡）
 1. 读 PROGRESS.md 了解当前状态

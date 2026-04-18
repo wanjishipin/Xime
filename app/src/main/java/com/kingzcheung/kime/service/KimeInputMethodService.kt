@@ -127,37 +127,9 @@ class KimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private val clipboardItemsState = mutableStateOf<List<com.kingzcheung.kime.clipboard.ClipboardItem>>(emptyList())
     private val quickSendItemsState = mutableStateOf<List<com.kingzcheung.kime.clipboard.ClipboardItem>>(emptyList())
     
-    // 语音模式长按检测
-    private var voiceLongPressTriggered = false
-    private var isTrackingVoiceButtons = false  // 是否在跟踪语音按钮状态
-    private var voiceRecordingStarted = false   // 录音是否已开始
-    private val voiceLongPressHandler = Handler(Looper.getMainLooper())
-    private val voiceLongPressRunnable = Runnable {
-        voiceLongPressTriggered = true
-        Log.d("VoiceButtons", "Space key long press triggered!")
-        
-        // 进入语音模式，开始录音
-        uiState.value = uiState.value.copy(
-            isVoiceMode = true,
-            voiceButtonState = VoiceButtonState(),
-            voiceRecognizedText = ""
-        )
-        performVibration()
-        
-        // 开始录音
-        if (::speechRecognitionManager.isInitialized) {
-            val started = speechRecognitionManager.startRecognition()
-            Log.d("VoiceButtons", "Speech recognition started: $started")
-            voiceRecordingStarted = started
-            if (!started) {
-                Log.e(TAG, "Failed to start speech recognition")
-                uiState.value = uiState.value.copy(
-                    isVoiceMode = false,
-                    voiceRecognitionState = RecognitionState.ERROR
-                )
-            }
-        }
-    }
+    // 语音模式状态
+    private var isTrackingVoiceButtons = false
+    private var voiceRecordingStarted = false
     
     // 最近上屏的文本（用于联想）
     private var lastCommittedText = ""
@@ -640,7 +612,6 @@ private fun getPredictionFromPlugin(contextText: String) {
                             }
                             
                             voiceRecordingStarted = false
-                            voiceLongPressTriggered = false
                             
                             // 处理按钮操作
                             val state = uiState.value.voiceButtonState

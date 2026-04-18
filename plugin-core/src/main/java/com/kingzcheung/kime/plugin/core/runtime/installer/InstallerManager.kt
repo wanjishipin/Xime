@@ -1,9 +1,13 @@
 package com.kingzcheung.kime.plugin.core.runtime.installer
 
 import android.app.Application
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ProviderInfo as AndroidProviderInfo
 import android.os.Build
+import android.util.Log
 import com.kingzcheung.kime.plugin.core.model.PluginInfo
+import com.kingzcheung.kime.plugin.core.model.ProviderInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import com.android.tools.smali.dexlib2.DexFileFactory
@@ -49,14 +53,18 @@ class InstallerManager(
         val pluginDir = getPluginDirectory(pluginId)
 
         val existingPlugin = xmlManager.getPluginById(pluginId)
-        if (!forceOverwrite && existingPlugin != null) {
-            if (pluginConfig.versionCode <= existingPlugin.versionCode) {
-                fixExistingPluginPermissions(pluginDir)
-                return@withContext InstallResult.Success(existingPlugin)
-            }
+        
+        // 强制覆盖或版本更新时重新安装
+        val needsReinstall = forceOverwrite || 
+            (existingPlugin != null && pluginConfig.versionCode > existingPlugin.versionCode) ||
+            (existingPlugin != null && existingPlugin.providers.isEmpty() && pluginConfig.providers.isNotEmpty())
+
+        if (!needsReinstall && existingPlugin != null) {
+            fixExistingPluginPermissions(pluginDir)
+            return@withContext InstallResult.Success(existingPlugin)
         }
 
-        if (forceOverwrite && pluginDir.exists()) {
+        if (pluginDir.exists()) {
             pluginDir.deleteRecursively()
         }
 
@@ -79,7 +87,8 @@ class InstallerManager(
                 type = pluginConfig.type,
                 enabled = existingPlugin?.enabled ?: true,
                 installTime = existingPlugin?.installTime ?: System.currentTimeMillis(),
-                nativeLibPath = nativeLibPath
+                nativeLibPath = nativeLibPath,
+                providers = pluginConfig.providers
             )
 
             if (existingPlugin != null) {
@@ -130,6 +139,56 @@ class InstallerManager(
         }
     }
 
+    suspend fun scanAndInstallSystemPlugins(): Int = withContext(Dispatchers.IO) {
+        Log.d("InstallerManager", "Scanning system installed plugins...")
+        
+        val intent = Intent("com.kingzcheung.kime.plugin.EXTENSION")
+        val resolveInfos = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.queryIntentActivities(
+                intent,
+                PackageManager.ResolveInfoFlags.of(PackageManager.GET_META_DATA.toLong())
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.queryIntentActivities(intent, PackageManager.GET_META_DATA)
+        }
+        
+        Log.d("InstallerManager", "Found ${resolveInfos.size} potential plugin apps")
+        
+        var installedCount = 0
+        for (resolveInfo in resolveInfos) {
+            val packageName = resolveInfo.activityInfo.packageName
+            if (packageName == context.packageName) continue
+            
+            Log.d("InstallerManager", "Processing plugin: $packageName")
+            
+            try {
+                val apkPath = resolveInfo.activityInfo.applicationInfo.publicSourceDir
+                    ?: resolveInfo.activityInfo.applicationInfo.sourceDir
+                if (apkPath == null) {
+                    Log.w("InstallerManager", "No APK path for $packageName")
+                    continue
+                }
+                
+                val apkFile = File(apkPath)
+                // 强制更新以确保 providers 信息正确
+                val result = installPlugin(apkFile, forceOverwrite = true)
+                
+                if (result is InstallResult.Success) {
+                    installedCount++
+                    Log.d("InstallerManager", "Successfully installed: ${result.pluginInfo.id}, providers: ${result.pluginInfo.providers.size}")
+                } else if (result is InstallResult.Failure) {
+                    Log.w("InstallerManager", "Failed to install $packageName: ${result.reason}")
+                }
+            } catch (e: Exception) {
+                Log.e("InstallerManager", "Error installing $packageName", e)
+            }
+        }
+        
+        Log.d("InstallerManager", "Total installed from system: $installedCount")
+        installedCount
+    }
+    
     private data class PluginConfig(
         val id: String,
         val name: String,
@@ -138,7 +197,8 @@ class InstallerManager(
         val versionName: String,
         val entryClass: String,
         val description: String,
-        val type: String
+        val type: String,
+        val providers: List<ProviderInfo>
     )
 
     @Suppress("DEPRECATION")
@@ -147,7 +207,7 @@ class InstallerManager(
             val pm = context.packageManager
             val packageInfo = pm.getPackageArchiveInfo(
                 pluginApkFile.absolutePath,
-                PackageManager.GET_META_DATA
+                PackageManager.GET_META_DATA or PackageManager.GET_PROVIDERS
             )
 
             if (packageInfo == null) return null
@@ -170,6 +230,8 @@ class InstallerManager(
             val description = metaData.getString(META_PLUGIN_DESCRIPTION) ?: ""
             val type = metaData.getString(META_PLUGIN_TYPE) ?: "unknown"
 
+            val providers = parseProviders(packageInfo.providers)
+
             PluginConfig(
                 id = pluginId,
                 name = name,
@@ -178,10 +240,25 @@ class InstallerManager(
                 versionName = versionName,
                 entryClass = entryClass,
                 description = description,
-                type = type
+                type = type,
+                providers = providers
             )
         } catch (e: Exception) {
+            Log.e("InstallerManager", "parsePluginConfig failed", e)
             null
+        }
+    }
+
+    private fun parseProviders(androidProviders: Array<AndroidProviderInfo>?): List<ProviderInfo> {
+        if (androidProviders == null || androidProviders.isEmpty()) return emptyList()
+        
+        return androidProviders.map { provider ->
+            ProviderInfo(
+                className = provider.name,
+                authorities = provider.authority?.split(";")?.filter { it.isNotBlank() } ?: emptyList(),
+                exported = provider.exported,
+                enabled = provider.isEnabled
+            )
         }
     }
 

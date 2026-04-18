@@ -20,7 +20,8 @@ data class PluginInfo(
     val type: String = "unknown",
     val enabled: Boolean = true,
     val installTime: Long = System.currentTimeMillis(),
-    val nativeLibPath: String? = null
+    val nativeLibPath: String? = null,
+    val providers: List<ProviderInfo> = emptyList()
 ) {
     val version: String get() = versionName
 }

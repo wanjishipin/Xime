@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sharedUserId="com.kingzcheung.kime.shared">
     
     <uses-permission android:name="android.permission.INTERNET" />
+    
+    <!-- 查询宿主应用 -->
+    <queries>
+        <package android:name="com.kingzcheung.kime" />
+    </queries>
     
     <application
         android:allowBackup="false"

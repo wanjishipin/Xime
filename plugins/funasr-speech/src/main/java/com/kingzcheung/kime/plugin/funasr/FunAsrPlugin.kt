@@ -24,12 +24,10 @@ class FunAsrPlugin : SpeechPlugin {
         this.context = context
         Log.d(TAG, "Plugin loaded: ${context.pluginInfo.id}")
         
-        try {
-            apiKey = FunAsrPreferences(context.application).getApiKey()
-            Log.d(TAG, "API key length: ${apiKey.length}")
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to read preferences", e)
-        }
+        val prefsName = "plugin_funasr_config"
+        apiKey = context.application.getSharedPreferences(prefsName, Context.MODE_PRIVATE)
+            .getString("api_key", "") ?: ""
+        Log.d(TAG, "API key from host SharedPreferences: length=${apiKey.length}")
         
         if (apiKey.isEmpty()) {
             Log.w(TAG, "API key not configured")
@@ -48,7 +46,7 @@ class FunAsrPlugin : SpeechPlugin {
     override fun startRecognition(config: AudioConfig, onResult: (SpeechResult) -> Unit): Boolean {
         if (apiKey.isEmpty()) {
             context?.application?.let { ctx ->
-                apiKey = FunAsrPreferences(ctx).getApiKey()
+                apiKey = FunAsrPreferences.forHost(ctx).getApiKey()
             }
         }
         

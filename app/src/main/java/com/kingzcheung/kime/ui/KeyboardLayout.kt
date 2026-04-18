@@ -65,6 +65,7 @@ fun KeyboardLayout(
     onHideKeyboard: (() -> Unit)? = null,
     onSwitchKeyboard: (() -> Unit)? = null,
     onVoiceModeChange: ((Boolean) -> Unit)? = null,
+    isVoiceMode: Boolean = false,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null
 ) {
@@ -77,9 +78,6 @@ fun KeyboardLayout(
     var swipeState by remember { mutableStateOf(SwipeState()) }
     var keyboardBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
     var lastKeyBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
-    
-    // 语音模式状态
-    var isVoiceMode by remember { mutableStateOf(false) }
     
     fun processSwipeState(state: SwipeState, bounds: Rect) {
         val newState = if (state.isSwipeDown && state.swipeText != null) {
@@ -279,8 +277,7 @@ fun KeyboardLayout(
                                         Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
                                         PermissionHelper.requestRecordAudioPermission(context)
                                     } else {
-                                        // 进入语音模式，VoiceKeyboardContainer 会处理录音
-                                        isVoiceMode = true
+                                        // 触发语音模式切换，外部状态变化后会显示 VoiceKeyboardLayout
                                         onVoiceModeChange?.invoke(true)
                                     }
                                 }

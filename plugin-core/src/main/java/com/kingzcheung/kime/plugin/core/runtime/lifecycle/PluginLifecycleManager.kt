@@ -11,6 +11,7 @@ import com.kingzcheung.kime.plugin.core.runtime.installer.XmlManager
 import com.kingzcheung.kime.plugin.core.runtime.loader.DependencyManager
 import com.kingzcheung.kime.plugin.core.runtime.loader.LoadedPluginInfo
 import com.kingzcheung.kime.plugin.core.runtime.loader.PluginClassLoader
+import com.kingzcheung.kime.plugin.core.runtime.proxy.ProxyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -21,6 +22,7 @@ class PluginLifecycleManager(
     private val xmlManager: XmlManager,
     private val installerManager: InstallerManager,
     private val dependencyManager: DependencyManager,
+    private val proxyManager: ProxyManager,
     private val classIndex: ConcurrentHashMap<String, String>,
     private val loadedPlugins: ConcurrentHashMap<String, LoadedPluginInfo>,
     private val pluginInstances: ConcurrentHashMap<String, IPluginEntryClass>
@@ -54,6 +56,8 @@ class PluginLifecycleManager(
                 e.printStackTrace()
             }
         }
+
+        proxyManager.unregisterProviders(pluginId)
 
         loadedPlugins.remove(pluginId)
         pluginInstances.remove(pluginId)
@@ -93,10 +97,15 @@ class PluginLifecycleManager(
             return false
         }
         Log.d(TAG, "Plugin info: path=${pluginInfo.path}, entryClass=${pluginInfo.entryClass}")
+        Log.d(TAG, "Plugin providers: ${pluginInfo.providers.map { it.className + ":" + it.authorities }}")
+
+        proxyManager.registerProviders(pluginId, pluginInfo.providers)
+        Log.d(TAG, "Providers registered for $pluginId")
 
         val loadedPlugin = loadPlugin(pluginInfo)
         if (loadedPlugin == null) {
             Log.w(TAG, "Failed to load plugin APK: $pluginId")
+            proxyManager.unregisterProviders(pluginId)
             return false
         }
         loadedPlugins[pluginId] = loadedPlugin

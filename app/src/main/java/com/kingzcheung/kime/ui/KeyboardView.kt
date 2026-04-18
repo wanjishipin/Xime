@@ -268,6 +268,7 @@ onHideKeyboard = {
                                 },
                                 onSwitchKeyboard = onSwitchKeyboard,
                                 onVoiceModeChange = onVoiceModeChange,
+                                isVoiceMode = isVoiceMode,
                                 onKeyPressDown = onKeyPressDown
                             )
                         }

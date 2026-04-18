@@ -7,6 +7,7 @@ import com.kingzcheung.kime.plugin.core.model.InitState
 import com.kingzcheung.kime.plugin.core.model.PluginFrameworkContext
 import com.kingzcheung.kime.plugin.core.model.PluginInfo
 import com.kingzcheung.kime.plugin.core.runtime.loader.LoadedPluginInfo
+import com.kingzcheung.kime.plugin.core.runtime.proxy.ProxyManager
 import com.kingzcheung.kime.plugin.core.security.crash.PluginCrashHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +44,9 @@ object PluginManager {
     val resourcesManager: com.kingzcheung.kime.plugin.core.runtime.resource.PluginResourcesManager
         get() = requireContext().resourcesManager
 
+    val proxyManager: ProxyManager
+        get() = requireContext().proxyManager
+
     internal fun getClassIndex(): Map<String, String> = requireContext().classIndex
 
     private val managerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -53,7 +57,11 @@ object PluginManager {
     }
 
     @Synchronized
-    fun initialize(context: Application, onSetup: (suspend () -> Unit)? = null) {
+    fun initialize(
+        context: Application,
+        hostProviderAuthority: String? = null,
+        onSetup: (suspend () -> Unit)? = null
+    ) {
         if (frameworkContext != null && frameworkContext?.initState?.value != InitState.NOT_INITIALIZED) {
             Log.d(TAG, "Already initialized, skipping")
             return
@@ -62,6 +70,11 @@ object PluginManager {
         Log.d(TAG, "Starting initialization...")
         PluginCrashHandler.initialize(context)
         frameworkContext = PluginFrameworkContext(context)
+        
+        hostProviderAuthority?.let {
+            requireContext().proxyManager.setHostProviderAuthority(it)
+        }
+        
         requireContext().initState.value = InitState.INITIALIZING
 
         requireContext().initializeLifecycleManager()
@@ -210,5 +223,10 @@ object PluginManager {
 
         Log.d(TAG, "Total installed: $installedCount")
         return installedCount
+    }
+    
+    suspend fun scanAndInstallSystemPlugins(): Int {
+        Log.d(TAG, "scanAndInstallSystemPlugins")
+        return installerManager.scanAndInstallSystemPlugins()
     }
 }

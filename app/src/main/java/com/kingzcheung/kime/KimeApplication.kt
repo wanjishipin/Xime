@@ -9,18 +9,23 @@ class KimeApplication : Application() {
     
     companion object {
         private const val TAG = "KimeApplication"
+        const val HOST_PROVIDER_AUTHORITY = "com.kingzcheung.kime.plugin.proxy"
     }
     
     override fun onCreate() {
         super.onCreate()
         
         Log.d(TAG, "Initializing PluginManager...")
-        PluginManager.initialize(this) {
+        PluginManager.initialize(this, HOST_PROVIDER_AUTHORITY) {
             Log.d(TAG, "PluginManager onSetup callback executing...")
             
+            Log.d(TAG, "Scanning system installed plugins...")
+            val systemInstalled = PluginManager.scanAndInstallSystemPlugins()
+            Log.d(TAG, "Installed $systemInstalled plugins from system")
+            
             if (BuildConfig.DEBUG) {
-                val installed = PluginManager.installPluginsFromAssetsForDebug("plugins")
-                Log.d(TAG, "Installed $installed plugins from assets (run ./gradlew copyPluginsToAssets first)")
+                val assetInstalled = PluginManager.installPluginsFromAssetsForDebug("plugins")
+                Log.d(TAG, "Installed $assetInstalled plugins from assets")
             }
             
             Log.d(TAG, "Loading enabled plugins...")

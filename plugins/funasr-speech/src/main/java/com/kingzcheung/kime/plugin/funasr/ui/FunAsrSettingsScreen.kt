@@ -1,6 +1,5 @@
 package com.kingzcheung.kime.plugin.funasr.ui
 
-import android.content.Context
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -20,19 +19,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import com.kingzcheung.kime.plugin.funasr.FunAsrPreferences
 import com.kingzcheung.kime.plugin.funasr.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FunAsrSettingsScreen(
-    context: Context,
+    initialApiKey: String,
+    onSaveApiKey: (String) -> Unit,
     onNavigateBack: () -> Unit
 ) {
-    val prefs = remember { FunAsrPreferences(context) }
-    var apiKey by remember { mutableStateOf(prefs.getApiKey()) }
+    val context = LocalContext.current
+    
+    var apiKey by remember { mutableStateOf(initialApiKey) }
     var showApiKey by remember { mutableStateOf(false) }
-    var showSaveSuccess by remember { mutableStateOf(false) }
     
     Scaffold(
         topBar = {
@@ -104,8 +103,7 @@ fun FunAsrSettingsScreen(
                                     Toast.LENGTH_SHORT
                                 ).show()
                             } else {
-                                prefs.saveApiKey(apiKey)
-                                showSaveSuccess = true
+                                onSaveApiKey(apiKey)
                                 Toast.makeText(
                                     context,
                                     context.getString(R.string.api_key_saved),
