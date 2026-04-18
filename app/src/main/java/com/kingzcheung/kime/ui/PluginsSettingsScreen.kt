@@ -3,6 +3,7 @@ package com.kingzcheung.kime.ui
 import android.content.Intent
 import android.net.Uri
 import android.util.Log
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,9 +20,11 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.kingzcheung.kime.plugin.core.model.PluginInfo
 import com.kingzcheung.kime.plugin.core.runtime.PluginManager
@@ -107,8 +110,8 @@ fun PluginsSettingsContent(
                 .fillMaxSize()
                 .padding(padding)
                 .background(MaterialTheme.colorScheme.background),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            contentPadding = PaddingValues(16.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
         ) {
             if (isLoading) {
                 item {
@@ -127,14 +130,6 @@ fun PluginsSettingsContent(
                     )
                 }
             } else {
-                item {
-                    Text(
-                        text = "已安装插件 (${extensions.size})",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                }
-                
                 if (extensions.isEmpty()) {
                     item {
                         Box(
@@ -168,24 +163,22 @@ fun PluginsSettingsContent(
                     }
                 } else {
                     item {
-                        SettingsSection(title = "插件列表", content = {
-                            extensions.forEachIndexed { index, extension ->
-                                val isRunning = loadedPlugins.containsKey(extension.id)
-                                ExtensionItem(
-                                    extension = extension,
-                                    pluginInstance = PluginManager.getPluginInstance(extension.id),
-                                    isRunning = isRunning,
-                                    onClick = { onNavigateToPluginSettings(extension.id) }
-                                )
-                                if (index < extensions.size - 1) {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(start = 56.dp),
-                                        thickness = 0.5.dp,
-                                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                                    )
-                                }
-                            }
-                        })
+                        Text(
+                            text = "已安装插件 (${extensions.size})",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    
+                    items(extensions, key = { it.id }) { extension ->
+                        val isRunning = loadedPlugins.containsKey(extension.id)
+                        ExtensionItem(
+                            extension = extension,
+                            pluginInstance = PluginManager.getPluginInstance(extension.id),
+                            isRunning = isRunning,
+                            onClick = { onNavigateToPluginSettings(extension.id) }
+                        )
                     }
                 }
                 
@@ -215,6 +208,7 @@ private fun ExtensionItem(
     val scope = rememberCoroutineScope()
     var isEnabled by remember { mutableStateOf(SettingsPreferences.isPluginEnabled(context, extension.id)) }
     var showErrorDialog by remember { mutableStateOf(false) }
+    var isExpanded by remember { mutableStateOf(false) }
     
     val errors = PluginErrorLog.getErrors(extension.id)
     val hasErrors = errors.isNotEmpty()
@@ -241,164 +235,194 @@ private fun ExtensionItem(
         )
     }
     
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { if (hasSettings) onClick() }
-            .padding(16.dp)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        shape = RoundedCornerShape(12.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(12.dp)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            // 第一行：标题 + 状态指示器
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = extension.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                
+                // 状态指示器（固定在右侧）
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = extension.name,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Medium
-                    )
-                    
-                    // 运行状态指示器
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(6.dp)
-                                .background(
-                                    if (isRunning) MaterialTheme.colorScheme.primary 
-                                    else MaterialTheme.colorScheme.outline,
-                                    shape = RoundedCornerShape(3.dp)
-                                )
-                        )
-                        Text(
-                            text = if (isRunning) "运行中" else "未运行",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isRunning) MaterialTheme.colorScheme.primary 
-                                   else MaterialTheme.colorScheme.outline
-                        )
-                    }
-                    
-                    // 错误指示器
-                    if (hasErrors) {
-                        IconButton(
-                            onClick = { showErrorDialog = true },
-                            modifier = Modifier.size(20.dp)
-                        ) {
-                            Icon(
-                                Icons.Default.Warning,
-                                contentDescription = "有错误",
-                                tint = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.size(16.dp)
+                    val runningColor = Color(0xFF4CAF50)  // 绿色
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(
+                                if (isRunning) runningColor 
+                                else MaterialTheme.colorScheme.outline,
+                                shape = RoundedCornerShape(3.dp)
                             )
-                        }
-                    }
+                    )
+                    Text(
+                        text = if (isRunning) "运行中" else "未运行",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (isRunning) runningColor 
+                               else MaterialTheme.colorScheme.outline
+                    )
                     
-                    if (hasSettings) {
+                    if (hasErrors) {
                         Icon(
-                            Icons.Default.ChevronRight,
-                            contentDescription = "点击查看设置",
-                            modifier = Modifier.size(16.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            Icons.Default.Warning,
+                            contentDescription = "有错误",
+                            tint = MaterialTheme.colorScheme.error,
+                            modifier = Modifier.size(14.dp)
                         )
                     }
-                }
-                
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Text(
-                        text = getTypeName(extension.type),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "•",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                    )
-                    Text(
-                        text = "v${extension.versionName}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                if (extension.description.isNotEmpty()) {
-                    Text(
-                        text = extension.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    
+                    // 展开指示器
+                    Icon(
+                        if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = if (isExpanded) "收起" else "展开",
+                        modifier = Modifier.size(18.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                     )
                 }
             }
             
+            // 第二行：类型 + 版本
             Row(
+                modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Switch(
-                    checked = isEnabled,
-                    onCheckedChange = { enabled ->
-                        isEnabled = enabled
-                        
-                        // 同时更新 SettingsPreferences 和 PluginManager
-                        SettingsPreferences.setPluginEnabled(context, extension.id, enabled)
-                        
-                        scope.launch {
-                            try {
-                                // 更新 PluginInfo.enabled
-                                PluginManager.setPluginEnabled(extension.id, enabled)
-                                
-                                if (enabled) {
-                                    PluginManager.launchPlugin(extension.id)
-                                    Log.d("PluginsSettings", "Plugin ${extension.id} loaded")
-                                } else {
-                                    PluginManager.unloadPlugin(extension.id)
-                                    Log.d("PluginsSettings", "Plugin ${extension.id} unloaded")
-                                }
-                            } catch (e: Exception) {
-                                Log.e("PluginsSettings", "Failed to toggle plugin", e)
-                            }
-                        }
-                    },
-                    colors = SwitchDefaults.colors(
-                        checkedThumbColor = MaterialTheme.colorScheme.primary,
-                        checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                Text(
+                    text = getTypeName(extension.type),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (isEnabled) MaterialTheme.colorScheme.primary 
+                           else MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text("•", style = MaterialTheme.typography.bodySmall, 
+                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                Text(
+                    text = "v${extension.versionName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 
-                IconButton(
-                    onClick = {
-                        try {
-                            val packageName = when (extension.id) {
-                                "plugin_prediction_onnx" -> "com.kingzcheung.kime.plugin.prediction"
-                                "kaomoji_plugin" -> "com.kingzcheung.kime.plugin.kaomoji"
-                                "emoji_sticker_plugin" -> "com.kingzcheung.kime.plugin.emoji"
-                                else -> extension.id
+                if (hasSettings) {
+                    Text("•", style = MaterialTheme.typography.bodySmall, 
+                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                    Text(
+                        text = "可配置",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    )
+                }
+            }
+            
+            // 展开详情
+            AnimatedVisibility(visible = isExpanded) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                    
+                    if (extension.description.isNotEmpty()) {
+                        Text(
+                            text = extension.description,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                        )
+                    }
+                    
+                    // 操作按钮行
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // 启用开关
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = "启用",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Switch(
+                                checked = isEnabled,
+                                onCheckedChange = { enabled ->
+                                    isEnabled = enabled
+                                    SettingsPreferences.setPluginEnabled(context, extension.id, enabled)
+                                    
+                                    scope.launch {
+                                        try {
+                                            PluginManager.setPluginEnabled(extension.id, enabled)
+                                            if (enabled) {
+                                                PluginManager.launchPlugin(extension.id)
+                                            } else {
+                                                PluginManager.unloadPlugin(extension.id)
+                                            }
+                                        } catch (e: Exception) {
+                                            Log.e("PluginsSettings", "Failed to toggle plugin", e)
+                                        }
+                                    }
+                                },
+                                colors = SwitchDefaults.colors(
+                                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                    checkedTrackColor = MaterialTheme.colorScheme.primaryContainer
+                                )
+                            )
+                        }
+                        
+                        Spacer(modifier = Modifier.weight(1f))
+                        
+                        // 设置按钮
+                        if (hasSettings) {
+                            OutlinedButton(
+                                onClick = onClick,
+                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                            ) {
+                                Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("设置", style = MaterialTheme.typography.labelMedium)
                             }
-                            
-                            val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-                            intent.data = Uri.parse("package:$packageName")
-                            context.startActivity(intent)
-                            
-                            android.widget.Toast.makeText(context, "请在应用信息页面卸载插件", android.widget.Toast.LENGTH_LONG).show()
-                        } catch (e: Exception) {
-                            android.widget.Toast.makeText(context, "无法打开应用详情: ${e.message}", android.widget.Toast.LENGTH_LONG).show()
+                        }
+                        
+                        // 删除按钮
+                        IconButton(
+                            onClick = {
+                                try {
+                                    val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                                    intent.data = Uri.parse("package:${extension.id}")
+                                    context.startActivity(intent)
+                                    android.widget.Toast.makeText(context, "请在应用信息页面卸载", android.widget.Toast.LENGTH_SHORT).show()
+                                } catch (e: Exception) {
+                                    android.widget.Toast.makeText(context, "无法打开: ${e.message}", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Default.Delete, contentDescription = "卸载", 
+                                 tint = MaterialTheme.colorScheme.error)
                         }
                     }
-                ) {
-                    Icon(
-                        Icons.Default.Delete,
-                        contentDescription = "卸载插件",
-                        tint = MaterialTheme.colorScheme.error
-                    )
                 }
             }
         }

@@ -85,8 +85,7 @@ fun SettingsScreen(
                 onNavigateToKeyEffect = { navController.navigate(SettingsRoutes.KeyEffect) },
                 onNavigateToDictionary = { navController.navigate(SettingsRoutes.Dictionary) },
                 onNavigateToPlugins = { navController.navigate(SettingsRoutes.Plugins) },
-                onNavigateToAbout = { navController.navigate(SettingsRoutes.About) },
-                onNavigateToLogViewer = { navController.navigate(SettingsRoutes.LogViewer) }
+                onNavigateToAbout = { navController.navigate(SettingsRoutes.About) }
             )
         }
         composable(SettingsRoutes.Schema) {
@@ -128,11 +127,12 @@ fun SettingsScreen(
                 onBack = { navController.popBackStack() }
             )
         }
-composable(SettingsRoutes.About) {
+        composable(SettingsRoutes.About) {
             AboutContent(
                 onBack = { navController.popBackStack() },
                 onNavigateToPrivacy = { navController.navigate(SettingsRoutes.Privacy) },
-                onNavigateToLicenses = { navController.navigate(SettingsRoutes.Licenses) }
+                onNavigateToLicenses = { navController.navigate(SettingsRoutes.Licenses) },
+                onNavigateToLogViewer = { navController.navigate(SettingsRoutes.LogViewer) }
             )
         }
         composable(SettingsRoutes.LogViewer) {
@@ -161,8 +161,7 @@ fun SettingsMainContent(
     onNavigateToKeyEffect: () -> Unit,
     onNavigateToDictionary: () -> Unit,
     onNavigateToPlugins: () -> Unit,
-    onNavigateToAbout: () -> Unit,
-    onNavigateToLogViewer: () -> Unit
+    onNavigateToAbout: () -> Unit
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -345,24 +344,12 @@ fun SettingsMainContent(
             }
             
             item {
-SettingsSection(title = "关于", content = {
+                SettingsSection(title = "关于", content = {
                     SettingsItem(
                         icon = Icons.Outlined.Info,
                         title = "关于 Kime",
                         subtitle = "版本信息、开发者、联系方式",
                         onClick = onNavigateToAbout,
-                        showArrow = true
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 56.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    SettingsItem(
-                        icon = Icons.Outlined.Description,
-                        title = "日志查看器",
-                        subtitle = "查看应用运行日志，便于排查问题",
-                        onClick = onNavigateToLogViewer,
                         showArrow = true
                     )
                 })
@@ -552,12 +539,12 @@ fun ThemeSettingsContent(
             }
             
             item {
-                Text(
-                    text = "选择特殊按键（Shift、中英切换、确定等）的配色",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
+Text(
+                        text = "选择特殊按键及设置页面的配色",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
             }
             
             item {
@@ -575,6 +562,7 @@ fun ThemeSettingsContent(
                                 onClick = {
                                     currentColorTheme = theme.id
                                     SettingsPreferences.setKeyboardTheme(context, theme.id)
+                                    onThemeChanged()
                                 },
                                 modifier = Modifier.weight(1f)
                             )
@@ -590,7 +578,7 @@ fun ThemeSettingsContent(
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "提示: 切换主题后，请重启输入法生效",
+                    text = "提示: 配色切换后设置页面立即生效，键盘需重启输入法",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.6f),
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)

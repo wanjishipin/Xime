@@ -6,94 +6,62 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.kingzcheung.kime.settings.SettingsPreferences
 
-// ========== 键盘主题 ==========
-
-private val KeyboardDarkColorScheme = darkColorScheme(
-    primary = AccentColorDark,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = KeyboardBackgroundDark,
-    surface = KeyboardBackgroundDark,
-    onPrimary = KeyTextColorDark,
-    onSecondary = KeyTextColorDark,
-    onTertiary = KeyTextColorDark,
-    onBackground = KeyTextColorDark,
-    onSurface = KeyTextColorDark
-)
-
-private val KeyboardLightColorScheme = lightColorScheme(
-    primary = AccentColor,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = KeyboardBackground,
-    surface = KeyboardBackground,
-    onPrimary = KeyTextColor,
-    onSecondary = KeyTextColor,
-    onTertiary = KeyTextColor,
-    onBackground = KeyTextColor,
-    onSurface = KeyTextColor
-)
+// ========== 统一主题系统 ==========
 
 @Composable
 fun KimeTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = false,
+    themeId: String? = null,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) KeyboardDarkColorScheme else KeyboardLightColorScheme
-        }
-        darkTheme -> KeyboardDarkColorScheme
-        else -> KeyboardLightColorScheme
-    }
-
-    MaterialTheme(
-        colorScheme = colorScheme,
-        content = content
+    val context = LocalContext.current
+    val currentThemeId = themeId ?: SettingsPreferences.getKeyboardTheme(context)
+    val theme = KeyboardThemes.getThemeById(currentThemeId)
+    
+    val lightScheme = lightColorScheme(
+        primary = theme.primaryLight,
+        onPrimary = Color.White,
+        primaryContainer = theme.primaryContainerLight,
+        onPrimaryContainer = Color(0xFF21005D),
+        secondary = theme.primaryContainerLight,
+        onSecondary = Color(0xFF21005D),
+        tertiary = theme.primaryContainerLight,
+        onTertiary = Color(0xFF21005D),
+        background = Color.White,
+        onBackground = Color(0xFF1C1B1F),
+        surface = theme.surfaceLight,
+        onSurface = Color(0xFF1C1B1F),
+        surfaceVariant = theme.primaryContainerLight.copy(alpha = 0.5f),
+        onSurfaceVariant = Color(0xFF49454F),
+        outline = Color(0xFF79747E),
+        outlineVariant = Color(0xFFCAC4D0)
     )
-}
-
-// ========== 设置页面主题 ==========
-
-private val SettingsDarkColorScheme = darkColorScheme(
-    primary = SettingsPrimaryDark,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = SettingsBackgroundDark,
-    surface = SettingsSurfaceDark,
-    onPrimary = SettingsOnBackgroundDark,
-    onSecondary = SettingsOnBackgroundDark,
-    onTertiary = SettingsOnBackgroundDark,
-    onBackground = SettingsOnBackgroundDark,
-    onSurface = SettingsOnBackgroundDark
-)
-
-private val SettingsLightColorScheme = lightColorScheme(
-    primary = SettingsPrimary,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-    background = SettingsBackground,
-    surface = SettingsSurface,
-    onPrimary = SettingsOnBackground,
-    onSecondary = SettingsOnBackground,
-    onTertiary = SettingsOnBackground,
-    onBackground = SettingsOnBackground,
-    onSurface = SettingsOnBackground
-)
-
-@Composable
-fun SettingsTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit
-) {
-    val colorScheme = if (darkTheme) SettingsDarkColorScheme else SettingsLightColorScheme
+    
+    val darkScheme = darkColorScheme(
+        primary = theme.primaryDark,
+        onPrimary = Color(0xFF381E72),
+        primaryContainer = theme.primaryContainerDark,
+        onPrimaryContainer = Color(0xFFEADDFF),
+        secondary = theme.primaryContainerDark,
+        onSecondary = Color(0xFFEADDFF),
+        tertiary = theme.primaryContainerDark,
+        onTertiary = Color(0xFFEADDFF),
+        background = Color(0xFF1C1B1F),
+        onBackground = Color(0xFFE6E1E5),
+        surface = theme.surfaceDark,
+        onSurface = Color(0xFFE6E1E5),
+        surfaceVariant = theme.primaryContainerDark.copy(alpha = 0.5f),
+        onSurfaceVariant = Color(0xFFCAC4D0),
+        outline = Color(0xFF938F99),
+        outlineVariant = Color(0xFF49454F)
+    )
 
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = if (darkTheme) darkScheme else lightScheme,
         content = content
     )
 }

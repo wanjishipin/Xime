@@ -37,20 +37,52 @@ val DividerColorDark = Color(0xFF3C4043)
 val AccentColor = Color(0xFF1A73E8)
 val AccentColorDark = Color(0xFF8AB4F8)
 
-// ========== 设置页面专用颜色 ==========
+// ========== 设置页面专用颜色（基于 #8F73E2 Material Design 3） ==========
 
-// 设置页面背景色
-val SettingsBackground = Color(0xFFF5F5F5)
-val SettingsBackgroundDark = Color(0xFF1C1C1C)
+// 主色 #8F73E2
+val SettingsPrimary = Color(0xFF8F73E2)
+val SettingsPrimaryDark = Color(0xFFD0BCFF)
 
-// 设置页面 Surface 颜色（卡片背景）
-val SettingsSurface = Color(0xFFFFFFFF)
-val SettingsSurfaceDark = Color(0xFF2D2D2D)
+// 主色上的文字颜色
+val SettingsOnPrimary = Color(0xFFFFFFFF)
+val SettingsOnPrimaryDark = Color(0xFF381E72)
+
+// 主色容器（浅紫色调）
+val SettingsPrimaryContainer = Color(0xFFEADDFF)
+val SettingsPrimaryContainerDark = Color(0xFF4F378B)
+
+// 主色容器上的文字颜色
+val SettingsOnPrimaryContainer = Color(0xFF21005D)
+val SettingsOnPrimaryContainerDark = Color(0xFFEADDFF)
+
+// 设置页面背景色（纯白色）
+val SettingsBackground = Color(0xFFFFFFFF)
+val SettingsBackgroundDark = Color(0xFF1C1B1F)
+
+// 设置页面 Surface 颜色（面板背景 - 从主色衍生的浅紫灰色）
+val SettingsSurface = Color(0xFFFAF8FC)
+val SettingsSurfaceDark = Color(0xFF2B2930)
+
+// Surface 变体（次级面板背景）
+val SettingsSurfaceVariant = Color(0xFFF5F2F8)
+val SettingsSurfaceVariantDark = Color(0xFF49454F)
 
 // 设置页面文字颜色
-val SettingsOnBackground = Color(0xFF1C1C1C)
-val SettingsOnBackgroundDark = Color(0xFFE8EAED)
+val SettingsOnBackground = Color(0xFF1C1B1F)
+val SettingsOnBackgroundDark = Color(0xFFE6E1E5)
 
-// 设置页面主色
-val SettingsPrimary = Color(0xFF1A73E8)
-val SettingsPrimaryDark = Color(0xFF8AB4F8)
+// Surface 上的文字颜色
+val SettingsOnSurface = Color(0xFF1C1B1F)
+val SettingsOnSurfaceDark = Color(0xFFE6E1E5)
+
+// SurfaceVariant 上的文字颜色
+val SettingsOnSurfaceVariant = Color(0xFF49454F)
+val SettingsOnSurfaceVariantDark = Color(0xFFCAC4D0)
+
+// 轮廓线颜色
+val SettingsOutline = Color(0xFF79747E)
+val SettingsOutlineDark = Color(0xFF938F99)
+
+// 轮廓线变体颜色
+val SettingsOutlineVariant = Color(0xFFCAC4D0)
+val SettingsOutlineVariantDark = Color(0xFF49454F)

@@ -59,7 +59,7 @@ class SettingsPreferencesTest {
 
     @Test
     fun `keyboard theme and bottom buttons persist`() {
-        assertEquals("ocean_blue", SettingsPreferences.getKeyboardTheme(context))
+        assertEquals("lavender_purple", SettingsPreferences.getKeyboardTheme(context))
         assertFalse(SettingsPreferences.showBottomButtons(context))
 
         SettingsPreferences.setKeyboardTheme(context, "sunset")

@@ -427,7 +427,7 @@ private fun getPredictionFromPlugin(contextText: String) {
             setContent {
                 val state = uiState.value
                 val isDarkTheme = isDarkTheme()
-                KimeTheme(darkTheme = isDarkTheme) {
+                KimeTheme(darkTheme = isDarkTheme, themeId = state.themeId) {
                     Surface(
                         modifier = Modifier
                             .fillMaxWidth()

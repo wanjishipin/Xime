@@ -12,12 +12,13 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.kingzcheung.kime.settings.SettingsPreferences
 import com.kingzcheung.kime.ui.SettingsScreen
-import com.kingzcheung.kime.ui.theme.SettingsTheme
+import com.kingzcheung.kime.ui.theme.KimeTheme
 import com.kingzcheung.kime.util.PermissionHelper
 
 class MainActivity : ComponentActivity() {
@@ -52,8 +53,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = this
             var darkMode by remember { mutableIntStateOf(SettingsPreferences.getDarkMode(context)) }
+            var keyboardTheme by remember { mutableStateOf(SettingsPreferences.getKeyboardTheme(context)) }
             
-            SettingsTheme(darkTheme = darkMode == 1) {
+            KimeTheme(darkTheme = darkMode == 1, themeId = keyboardTheme) {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     Surface(
                         modifier = Modifier
@@ -63,7 +65,10 @@ class MainActivity : ComponentActivity() {
                     ) {
                         SettingsScreen(
                             initialRoute = openFragment,
-                            onThemeChanged = { darkMode = SettingsPreferences.getDarkMode(context) }
+                            onThemeChanged = {
+                                darkMode = SettingsPreferences.getDarkMode(context)
+                                keyboardTheme = SettingsPreferences.getKeyboardTheme(context)
+                            }
                         )
                     }
                 }

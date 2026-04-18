@@ -69,7 +69,7 @@ object SettingsPreferences {
     }
     
     fun getKeyboardTheme(context: Context): String {
-        return getPrefs(context).getString(KEY_KEYBOARD_THEME, "ocean_blue") ?: "ocean_blue"
+        return getPrefs(context).getString(KEY_KEYBOARD_THEME, "lavender_purple") ?: "lavender_purple"
     }
     
     fun setKeyboardTheme(context: Context, themeId: String) {
