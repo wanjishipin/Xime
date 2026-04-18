@@ -36,10 +36,9 @@ object ExtensionManager {
         
         kotlinx.coroutines.GlobalScope.launch(Dispatchers.IO) {
             PluginManager.pluginInstancesFlow.collect { instances ->
-                if (instances.isNotEmpty()) {
-                    Log.d(TAG, "Plugin instances changed, preloading emoji data")
-                    loadEmojiDataFromPlugins(context)
-                }
+                Log.d(TAG, "Plugin instances changed: ${instances.size} instances")
+                // 无论是增加还是减少，都重新加载表情数据
+                loadEmojiDataFromPlugins(context)
             }
         }
     }

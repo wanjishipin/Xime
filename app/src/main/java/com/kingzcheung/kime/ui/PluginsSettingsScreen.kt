@@ -8,21 +8,24 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.kingzcheung.kime.plugin.ExtensionManager
 import com.kingzcheung.kime.plugin.core.model.PluginInfo
 import com.kingzcheung.kime.plugin.core.runtime.PluginManager
+import com.kingzcheung.kime.plugin.core.security.PluginErrorLog
 import com.kingzcheung.kime.settings.SettingsPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -41,18 +44,21 @@ fun PluginsSettingsContent(
     var isLoading by remember { mutableStateOf(true) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
     
+    // 收集已加载插件的状态（运行中）
+    val loadedPlugins by PluginManager.loadedPluginsFlow.collectAsState()
+    
     fun refreshPlugins() {
         isLoading = true
         errorMsg = null
         scope.launch {
             try {
-                kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                withContext(Dispatchers.IO) {
                     val scanned = PluginManager.scanAndInstallSystemPlugins()
                     Log.d("PluginsSettings", "Scanned $scanned new plugins")
                     val loaded = PluginManager.loadEnabledPlugins()
                     Log.d("PluginsSettings", "Loaded $loaded plugins")
                 }
-                extensions = ExtensionManager.getAllInstalledPlugins()
+                extensions = PluginManager.getAllInstallPlugins()
                 Log.d("PluginsSettings", "Loaded ${extensions.size} plugins: ${extensions.map { it.id }}")
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -164,9 +170,11 @@ fun PluginsSettingsContent(
                     item {
                         SettingsSection(title = "插件列表", content = {
                             extensions.forEachIndexed { index, extension ->
+                                val isRunning = loadedPlugins.containsKey(extension.id)
                                 ExtensionItem(
                                     extension = extension,
-                                    pluginInstance = ExtensionManager.getPluginById(extension.id),
+                                    pluginInstance = PluginManager.getPluginInstance(extension.id),
+                                    isRunning = isRunning,
                                     onClick = { onNavigateToPluginSettings(extension.id) }
                                 )
                                 if (index < extensions.size - 1) {
@@ -200,10 +208,16 @@ fun PluginsSettingsContent(
 private fun ExtensionItem(
     extension: PluginInfo,
     pluginInstance: Any?,
+    isRunning: Boolean,
     onClick: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var isEnabled by remember { mutableStateOf(SettingsPreferences.isPluginEnabled(context, extension.id)) }
+    var showErrorDialog by remember { mutableStateOf(false) }
+    
+    val errors = PluginErrorLog.getErrors(extension.id)
+    val hasErrors = errors.isNotEmpty()
     
     val hasSettings = pluginInstance?.let { 
         when (it) {
@@ -213,6 +227,19 @@ private fun ExtensionItem(
             else -> false
         }
     } ?: false
+    
+    if (showErrorDialog && hasErrors) {
+        PluginErrorDialog(
+            pluginId = extension.id,
+            pluginName = extension.name,
+            errors = errors,
+            onDismiss = { showErrorDialog = false },
+            onClear = { 
+                PluginErrorLog.clearErrors(extension.id)
+                showErrorDialog = false
+            }
+        )
+    }
     
     Column(
         modifier = Modifier
@@ -234,6 +261,43 @@ private fun ExtensionItem(
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium
                     )
+                    
+                    // 运行状态指示器
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .background(
+                                    if (isRunning) MaterialTheme.colorScheme.primary 
+                                    else MaterialTheme.colorScheme.outline,
+                                    shape = RoundedCornerShape(3.dp)
+                                )
+                        )
+                        Text(
+                            text = if (isRunning) "运行中" else "未运行",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (isRunning) MaterialTheme.colorScheme.primary 
+                                   else MaterialTheme.colorScheme.outline
+                        )
+                    }
+                    
+                    // 错误指示器
+                    if (hasErrors) {
+                        IconButton(
+                            onClick = { showErrorDialog = true },
+                            modifier = Modifier.size(20.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.Warning,
+                                contentDescription = "有错误",
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
                     
                     if (hasSettings) {
                         Icon(
@@ -283,7 +347,26 @@ private fun ExtensionItem(
                     checked = isEnabled,
                     onCheckedChange = { enabled ->
                         isEnabled = enabled
+                        
+                        // 同时更新 SettingsPreferences 和 PluginManager
                         SettingsPreferences.setPluginEnabled(context, extension.id, enabled)
+                        
+                        scope.launch {
+                            try {
+                                // 更新 PluginInfo.enabled
+                                PluginManager.setPluginEnabled(extension.id, enabled)
+                                
+                                if (enabled) {
+                                    PluginManager.launchPlugin(extension.id)
+                                    Log.d("PluginsSettings", "Plugin ${extension.id} loaded")
+                                } else {
+                                    PluginManager.unloadPlugin(extension.id)
+                                    Log.d("PluginsSettings", "Plugin ${extension.id} unloaded")
+                                }
+                            } catch (e: Exception) {
+                                Log.e("PluginsSettings", "Failed to toggle plugin", e)
+                            }
+                        }
                     },
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = MaterialTheme.colorScheme.primary,
@@ -338,4 +421,77 @@ private fun getTypeIcon(type: String): ImageVector {
         "emoji" -> Icons.Default.Face
         else -> Icons.Default.Extension
     }
+}
+
+@Composable
+private fun PluginErrorDialog(
+    pluginId: String,
+    pluginName: String,
+    errors: List<PluginErrorLog.PluginError>,
+    onDismiss: () -> Unit,
+    onClear: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("$pluginName 错误日志")
+            }
+        },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(300.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                errors.forEachIndexed { index, error ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(8.dp)) {
+                            Text(
+                                text = "#${index + 1} ${error.operation}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            Text(
+                                text = error.message,
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            val stackTraceText = error.stackTrace
+                            if (stackTraceText != null && stackTraceText.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(
+                                    text = stackTraceText.take(200) + "...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onClear) {
+                Text("清除日志", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
 }
