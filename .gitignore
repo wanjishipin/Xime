@@ -26,6 +26,8 @@ DECISIONS.md
 app/src/main/jni/librime/
 app/src/main/jni/snappy/
 app/src/main/jni/boost*
+app/src/main/jni/onnxruntime/
+app/src/main/jniLibs/
 app/release
 # Large archives
 *.tar.xz
@@ -40,7 +42,9 @@ app/src/main/assets/association_model
 
 # Plugin module builds
 plugin-api/build
-plugins/prediction-onnx/build
+plugins/funasr-speech/build
+plugins/emoji-sticker/build
+plugins/kaomoji/build
 
 # Plugin APKs (development only, not packaged in main app)
 app/src/main/assets/plugins/*.apk

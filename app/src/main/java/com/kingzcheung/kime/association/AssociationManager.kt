@@ -18,7 +18,7 @@ object AssociationManager {
     private lateinit var fusionEngine: NgramFusionEngine
     private var context: Context? = null
     
-    suspend fun initialize(ctx: Context, customFilesDir: File? = null, apkPath: String? = null): Boolean = withContext(Dispatchers.IO) {
+    suspend fun initialize(ctx: Context): Boolean = withContext(Dispatchers.IO) {
         context = ctx
         if (isInitialized) {
             return@withContext true
@@ -32,7 +32,7 @@ object AssociationManager {
             try {
                 fusionEngine = NgramFusionEngine(ctx)
                 
-                val modelInit = OnnxAssociationEngine.initialize(ctx, apkPath)
+                val modelInit = OnnxAssociationEngine.initialize(ctx)
                 val cacheInit = fusionEngine.initialize()
                 
                 isInitialized = modelInit
@@ -49,17 +49,34 @@ object AssociationManager {
     
     suspend fun predict(contextText: String, topK: Int = 5): List<AssociationCandidate> = withContext(Dispatchers.Default) {
         if (!isInitialized) {
-            return@withContext emptyList()
+            Log.d(TAG, "Not initialized, attempting to initialize...")
+            val ctx = context
+            if (ctx != null) {
+                val initSuccess = withContext(Dispatchers.IO) {
+                    initialize(ctx)
+                }
+                if (!initSuccess) {
+                    Log.e(TAG, "Initialization failed, returning empty list")
+                    return@withContext emptyList()
+                }
+            } else {
+                Log.e(TAG, "Context is null, cannot initialize")
+                return@withContext emptyList()
+            }
         }
         
         try {
             val modelCandidates = OnnxAssociationEngine.predict(contextText, topK * 2)
+            
+            Log.d(TAG, "Model candidates: ${modelCandidates.size}, ${modelCandidates.map { it.text }}")
             
             if (modelCandidates.isEmpty()) {
                 return@withContext emptyList()
             }
             
             val fusedCandidates = fusionEngine.fuseCandidates(modelCandidates, contextText)
+            
+            Log.d(TAG, "Fused candidates: ${fusedCandidates.size}, ${fusedCandidates.map { it.text }}")
             
             fusedCandidates.take(topK)
             

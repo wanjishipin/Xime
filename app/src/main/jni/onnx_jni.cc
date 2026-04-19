@@ -28,7 +28,7 @@ static const OrtApi* GetApi() {
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_kingzcheung_kime_plugin_prediction_association_association_NativeOnnxEngine_nativeInitialize(
+Java_com_kingzcheung_kime_association_NativeOnnxEngine_nativeInitialize(
     JNIEnv* env, jobject thiz, jstring model_path) {
 
     const OrtApi* api = GetApi();
@@ -99,7 +99,7 @@ Java_com_kingzcheung_kime_plugin_prediction_association_association_NativeOnnxEn
 
 extern "C"
 JNIEXPORT jobjectArray JNICALL
-Java_com_kingzcheung_kime_plugin_prediction_association_association_NativeOnnxEngine_nativePredict(
+Java_com_kingzcheung_kime_association_NativeOnnxEngine_nativePredict(
     JNIEnv* env, jobject thiz, jlongArray input_ids, jint top_k) {
 
     const OrtApi* api = GetApi();
@@ -237,7 +237,7 @@ Java_com_kingzcheung_kime_plugin_prediction_association_association_NativeOnnxEn
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_kingzcheung_kime_plugin_prediction_association_association_NativeOnnxEngine_nativeRelease(
+Java_com_kingzcheung_kime_association_NativeOnnxEngine_nativeRelease(
     JNIEnv* env, jobject thiz) {
 
     const OrtApi* api = GetApi();
@@ -257,7 +257,7 @@ Java_com_kingzcheung_kime_plugin_prediction_association_association_NativeOnnxEn
 
 extern "C"
 JNIEXPORT jboolean JNICALL
-Java_com_kingzcheung_kime_plugin_prediction_association_association_NativeOnnxEngine_nativeIsInitialized(
+Java_com_kingzcheung_kime_association_NativeOnnxEngine_nativeIsInitialized(
     JNIEnv* env, jobject thiz) {
     return g_session ? JNI_TRUE : JNI_FALSE;
 }

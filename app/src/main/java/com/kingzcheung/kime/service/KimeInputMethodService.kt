@@ -35,6 +35,7 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.kingzcheung.kime.MainActivity
+import com.kingzcheung.kime.association.AssociationManager
 import com.kingzcheung.kime.clipboard.ClipboardManager
 import com.kingzcheung.kime.plugin.ExtensionManager
 import com.kingzcheung.kime.plugin.core.api.RecognitionState
@@ -303,10 +304,19 @@ override fun onCreate() {
             ExtensionManager.initialize(this)
         }
         
-        if (ExtensionManager.hasPredictionPlugins(this)) {
-            FileLogger.i(TAG, "Prediction plugins available")
-        } else {
-            FileLogger.w(TAG, "No prediction plugins available")
+        if (SettingsPreferences.isSmartPredictionEnabled(this)) {
+            serviceScope.launch {
+                try {
+                    val initialized = AssociationManager.initialize(this@KimeInputMethodService)
+                    if (initialized) {
+                        FileLogger.i(TAG, "Smart prediction initialized")
+                    } else {
+                        FileLogger.w(TAG, "Smart prediction initialization failed")
+                    }
+                } catch (e: Exception) {
+                    FileLogger.e(TAG, "Failed to initialize smart prediction: ${e.message}")
+                }
+            }
         }
     }
     
@@ -322,6 +332,21 @@ override fun onCreate() {
             FileLogger.i(TAG, "ExtensionManager not initialized, initializing now...")
             ExtensionManager.initialize(this)
         }
+        
+        if (SettingsPreferences.isSmartPredictionEnabled(this)) {
+            serviceScope.launch {
+                try {
+                    val initialized = AssociationManager.initialize(this@KimeInputMethodService)
+                    if (initialized) {
+                        FileLogger.i(TAG, "Smart prediction initialized in checkAndInitialize")
+                    } else {
+                        FileLogger.w(TAG, "Smart prediction initialization failed in checkAndInitialize")
+                    }
+                } catch (e: Exception) {
+                    FileLogger.e(TAG, "Failed to initialize smart prediction: ${e.message}")
+                }
+            }
+        }
     }
     
     /**
@@ -333,14 +358,31 @@ private fun getPredictionFromPlugin(contextText: String) {
             return
         }
         
+        if (!SettingsPreferences.isSmartPredictionEnabled(this)) {
+            uiState.value = uiState.value.copy(associationCandidates = emptyArray())
+            return
+        }
+        
         serviceScope.launch {
             try {
-                val candidates = ExtensionManager.predict(this@KimeInputMethodService, contextText, 5)
+                if (!AssociationManager.isInitialized()) {
+                    Log.d(TAG, "AssociationManager not initialized, initializing...")
+                    val initSuccess = AssociationManager.initialize(this@KimeInputMethodService)
+                    if (!initSuccess) {
+                        Log.e(TAG, "Failed to initialize AssociationManager")
+                        withContext(Dispatchers.Main) {
+                            uiState.value = uiState.value.copy(associationCandidates = emptyArray())
+                        }
+                        return@launch
+                    }
+                }
                 
-                Log.d(TAG, "Prediction candidates: ${candidates.joinToString()}")
+                val candidates = AssociationManager.predict(contextText, 5)
+                
+                Log.d(TAG, "Prediction candidates: ${candidates.map { it.text }}")
                 
                 withContext(Dispatchers.Main) {
-                    uiState.value = uiState.value.copy(associationCandidates = candidates.toTypedArray())
+                    uiState.value = uiState.value.copy(associationCandidates = candidates.map { it.text }.toTypedArray())
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Prediction failed", e)
@@ -348,7 +390,7 @@ private fun getPredictionFromPlugin(contextText: String) {
                     uiState.value = uiState.value.copy(associationCandidates = emptyArray())
                 }
             }
-}
+        }
     }
     
     /**
@@ -764,24 +806,29 @@ private fun getPredictionFromPlugin(contextText: String) {
      )
      
 // 联想预测只在已上屏文本存在且没有正在输入编码时触发
-     // 正确逻辑：只有上屏后才应该显示联想词
- if (ExtensionManager.hasPredictionPlugins(this) && inputText.isEmpty() && lastCommittedText.isNotEmpty()) {
-          serviceScope.launch {
-              try {
-                  Log.d(TAG, "Predicting association for lastCommittedText='$lastCommittedText'")
-                  
-                  val candidates = ExtensionManager.predict(this@KimeInputMethodService, lastCommittedText, 5)
-                  
-                  Log.d(TAG, "Association candidates: ${candidates.joinToString()}")
-                  withContext(Dispatchers.Main) {
-                      uiState.value = uiState.value.copy(associationCandidates = candidates.toTypedArray())
-                  }
-              } catch (e: Exception) {
-                  Log.e(TAG, "Association prediction failed", e)
-              }
-          }
-      }
- }
+      // 正确逻辑：只有上屏后才应该显示联想词
+  if (SettingsPreferences.isSmartPredictionEnabled(this) && inputText.isEmpty() && lastCommittedText.isNotEmpty()) {
+           serviceScope.launch {
+               try {
+                   if (!AssociationManager.isInitialized()) {
+                       Log.d(TAG, "AssociationManager not initialized in updateUI, initializing...")
+                       AssociationManager.initialize(this@KimeInputMethodService)
+                   }
+                   
+                   Log.d(TAG, "Predicting association for lastCommittedText='$lastCommittedText'")
+                   
+                   val candidates = AssociationManager.predict(lastCommittedText, 5)
+                   
+                   Log.d(TAG, "Association candidates: ${candidates.map { it.text }}")
+                   withContext(Dispatchers.Main) {
+                       uiState.value = uiState.value.copy(associationCandidates = candidates.map { it.text }.toTypedArray())
+                   }
+               } catch (e: Exception) {
+                   Log.e(TAG, "Association prediction failed", e)
+               }
+           }
+       }
+  }
     
     private fun updateSchemaName() {
         val currentSchemaId = rimeEngine.getCurrentSchema()
@@ -968,15 +1015,11 @@ private fun getPredictionFromPlugin(contextText: String) {
             val committedText = rimeEngine.commit()
             if (committedText.isNotEmpty()) {
                 // 学习用户输入
-                if (ExtensionManager.hasPredictionPlugins(this@KimeInputMethodService) && selectedCandidate != null) {
+                if (SettingsPreferences.isSmartPredictionEnabled(this@KimeInputMethodService) && selectedCandidate != null && AssociationManager.isInitialized()) {
                     if (lastCommittedText.isNotEmpty()) {
-                        val predictionPlugin = ExtensionManager.getEnabledPredictionPlugins(this@KimeInputMethodService).firstOrNull()?.second
-                        
-                        if (predictionPlugin != null) {
-                            val lastChar = lastCommittedText.last().toString()
-                            predictionPlugin.learn(lastChar + selectedCandidate)
-                            Log.d(TAG, "Learned: '$lastChar' + '$selectedCandidate'")
-                        }
+                        val lastChar = lastCommittedText.last().toString()
+                        AssociationManager.recordInput(lastChar + selectedCandidate)
+                        Log.d(TAG, "Learned: '$lastChar' + '$selectedCandidate'")
                     }
                 }
                 withContext(Dispatchers.Main) {
@@ -1137,14 +1180,9 @@ private fun commitText(text: String) {
         currentInputConnection?.commitText(text, 1)
         lastCommittedText = text
         
-        // 调用插件学习用户输入
-        serviceScope.launch {
-            try {
-                ExtensionManager.getEnabledPredictionPlugins(this@KimeInputMethodService)
-                    .forEach { (_, plugin) -> plugin.learn(text) }
-            } catch (e: Exception) {
-                Log.e(TAG, "Failed to learn from plugin", e)
-            }
+        // 学习用户输入
+        if (SettingsPreferences.isSmartPredictionEnabled(this) && AssociationManager.isInitialized()) {
+            AssociationManager.recordInput(text)
         }
         
         // 获取联想词

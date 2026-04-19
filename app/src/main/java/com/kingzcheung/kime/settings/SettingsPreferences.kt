@@ -16,6 +16,9 @@ object SettingsPreferences {
     private const val KEY_KEYBOARD_THEME = "keyboard_theme"
     private const val KEY_SHOW_BOTTOM_BUTTONS = "show_bottom_buttons"
     
+    private const val KEY_SMART_PREDICTION_ENABLED = "smart_prediction_enabled"
+    private const val KEY_PREDICTION_MODEL_REPO = "prediction_model_repo"
+    
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     }
@@ -98,5 +101,22 @@ object SettingsPreferences {
     
     fun setPluginEnabled(context: Context, pluginId: String, enabled: Boolean) {
         getPrefs(context).edit().putBoolean("plugin_enabled_$pluginId", enabled).apply()
+    }
+    
+    fun isSmartPredictionEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_SMART_PREDICTION_ENABLED, false)
+    }
+    
+    fun setSmartPredictionEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_SMART_PREDICTION_ENABLED, enabled).apply()
+    }
+    
+    fun getPredictionModelRepo(context: Context): String {
+        return getPrefs(context).getString(KEY_PREDICTION_MODEL_REPO, "https://www.modelscope.cn/models/bikeand/predictive-text-small") 
+            ?: "https://www.modelscope.cn/models/bikeand/predictive-text-small"
+    }
+    
+    fun setPredictionModelRepo(context: Context, repo: String) {
+        getPrefs(context).edit().putString(KEY_PREDICTION_MODEL_REPO, repo).apply()
     }
 }

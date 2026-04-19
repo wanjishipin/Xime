@@ -15,7 +15,6 @@
             <option value="$PROJECT_DIR$/plugins/emoji-sticker" />
             <option value="$PROJECT_DIR$/plugins/funasr-speech" />
             <option value="$PROJECT_DIR$/plugins/kaomoji" />
-            <option value="$PROJECT_DIR$/plugins/prediction-onnx" />
           </set>
         </option>
         <option name="resolveExternalAnnotations" value="true" />

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddBox
+import androidx.compose.material.icons.outlined.AutoAwesome
 import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Keyboard
@@ -83,6 +84,7 @@ object SettingsRoutes {
     const val Dictionary = "dictionary"
     const val Plugins = "plugins"
     const val PluginSettings = "plugin_settings"
+    const val SmartPrediction = "smart_prediction"
     const val About = "about"
     const val Privacy = "privacy"
     const val Licenses = "licenses"
@@ -109,6 +111,7 @@ fun SettingsScreen(
                 onNavigateToKeyEffect = { navController.navigate(SettingsRoutes.KeyEffect) },
                 onNavigateToDictionary = { navController.navigate(SettingsRoutes.Dictionary) },
                 onNavigateToPlugins = { navController.navigate(SettingsRoutes.Plugins) },
+                onNavigateToSmartPrediction = { navController.navigate(SettingsRoutes.SmartPrediction) },
                 onNavigateToAbout = { navController.navigate(SettingsRoutes.About) }
             )
         }
@@ -143,6 +146,11 @@ fun SettingsScreen(
         }
         composable(SettingsRoutes.KeyEffect) {
             KeyEffectSettingsContent(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(SettingsRoutes.SmartPrediction) {
+            SmartPredictionSettingsContent(
                 onBack = { navController.popBackStack() }
             )
         }
@@ -185,6 +193,7 @@ fun SettingsMainContent(
     onNavigateToKeyEffect: () -> Unit,
     onNavigateToDictionary: () -> Unit,
     onNavigateToPlugins: () -> Unit,
+    onNavigateToSmartPrediction: () -> Unit,
     onNavigateToAbout: () -> Unit
 ) {
     val context = LocalContext.current
@@ -350,6 +359,18 @@ fun SettingsMainContent(
                         title = "词库管理",
                         subtitle = "管理用户词库",
                         onClick = onNavigateToDictionary,
+                        showArrow = true
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 56.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                    SettingsItem(
+                        icon = Icons.Outlined.AutoAwesome,
+                        title = "智能联想",
+                        subtitle = "基于 AI 模型的智能联想词预测",
+                        onClick = onNavigateToSmartPrediction,
                         showArrow = true
                     )
                     HorizontalDivider(
