@@ -4,7 +4,8 @@ import android.content.Context
 import android.util.Log
 import java.io.File
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
+import java.util.Locale
 
 object FileLogger {
     private const val TAG = "FileLogger"

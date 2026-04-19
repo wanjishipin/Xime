@@ -2,8 +2,8 @@ package com.kingzcheung.kime
 
 import android.app.Application
 import android.util.Log
-import com.kingzcheung.kime.plugin.core.runtime.PluginManager
 import com.kingzcheung.kime.plugin.ExtensionManager
+import com.kingzcheung.kime.plugin.core.runtime.PluginManager
 
 class KimeApplication : Application() {
     

@@ -3,7 +3,6 @@ package com.kingzcheung.kime.plugin
 import android.content.Context
 import android.util.Log
 import com.kingzcheung.kime.plugin.core.api.EmojiPlugin
-import com.kingzcheung.kime.plugin.core.api.IPluginEntryClass
 import com.kingzcheung.kime.plugin.core.api.PredictionPlugin
 import com.kingzcheung.kime.plugin.core.api.SpeechPlugin
 import com.kingzcheung.kime.plugin.core.model.PluginInfo
@@ -12,7 +11,6 @@ import com.kingzcheung.kime.settings.SettingsPreferences
 import com.kingzcheung.kime.ui.EmojiCategory
 import com.kingzcheung.kime.ui.EmojiData
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow

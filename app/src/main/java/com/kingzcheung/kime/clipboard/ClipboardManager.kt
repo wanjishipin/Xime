@@ -1,9 +1,7 @@
 package com.kingzcheung.kime.clipboard
 
 import android.content.ClipData
-import android.content.ClipboardManager as AndroidClipboardManager
 import android.content.Context
-import android.net.Uri
 import android.util.Log
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -11,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.io.FileInputStream
+import android.content.ClipboardManager as AndroidClipboardManager
 
 data class ClipboardItem(
     val id: Long = System.currentTimeMillis(),

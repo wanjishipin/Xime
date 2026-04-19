@@ -1,8 +1,7 @@
+import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Properties
-import com.android.build.gradle.internal.api.BaseVariantOutputImpl
-import java.net.URL
 
 plugins {
     alias(libs.plugins.android.application)

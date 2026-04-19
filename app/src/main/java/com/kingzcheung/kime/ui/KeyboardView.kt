@@ -15,8 +15,6 @@ import com.kingzcheung.kime.clipboard.ClipboardItem
 import com.kingzcheung.kime.plugin.core.api.RecognitionState
 import com.kingzcheung.kime.ui.theme.CandidateBarBackground
 import com.kingzcheung.kime.ui.theme.CandidateBarBackgroundDark
-import com.kingzcheung.kime.ui.theme.CandidateTextColor
-import com.kingzcheung.kime.ui.theme.CandidateTextColorDark
 import com.kingzcheung.kime.ui.theme.DividerColor
 import com.kingzcheung.kime.ui.theme.DividerColorDark
 import com.kingzcheung.kime.ui.theme.KeyBackground

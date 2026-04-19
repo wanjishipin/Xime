@@ -5,13 +5,18 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
+import com.kingzcheung.kime.plugin.ExtensionManager
 import com.kingzcheung.kime.plugin.core.api.AudioConfig
-import com.kingzcheung.kime.plugin.core.api.AudioEncoding
 import com.kingzcheung.kime.plugin.core.api.RecognitionState
 import com.kingzcheung.kime.plugin.core.api.SpeechPlugin
 import com.kingzcheung.kime.plugin.core.api.SpeechResult
-import com.kingzcheung.kime.plugin.ExtensionManager
-import kotlinx.coroutines.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicBoolean
 
 class SpeechRecognitionManager(private val context: Context) {

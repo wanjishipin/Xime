@@ -2,8 +2,6 @@ package com.kingzcheung.kime.ui
 
 import android.content.Context
 import android.util.Log
-import java.io.BufferedReader
-import java.io.InputStreamReader
 
 object SubcharHelper {
     private const val TAG = "SubcharHelper"
