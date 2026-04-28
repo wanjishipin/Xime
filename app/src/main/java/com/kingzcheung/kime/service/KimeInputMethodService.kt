@@ -157,6 +157,8 @@ class KimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         FileLogger.init(this)
         FileLogger.i(TAG, "KimeInputMethodService created")
         
+        feedbackManager.initialize()
+        
         loadDarkModePreference()
         registerSharedPrefsListener()
         
@@ -641,6 +643,7 @@ class KimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         sharedPrefsListener?.let {
             SettingsPreferences.getPrefsPublic(this).unregisterOnSharedPreferenceChangeListener(it)
         }
+        feedbackManager.release()
         rimeEngine.destroy()
         voiceRecognitionHandler.release()
         ExtensionManager.release()
