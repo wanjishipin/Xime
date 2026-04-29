@@ -2,6 +2,8 @@ import com.android.build.gradle.internal.api.BaseVariantOutputImpl
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Properties
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 plugins {
     alias(libs.plugins.android.application)
@@ -61,8 +63,89 @@ val downloadOnnx by tasks.registering {
     }
 }
 
+val buildTrie by tasks.registering {
+    val inputFile = file("src/main/assets/english.txt")
+    val outputFile = file("src/main/assets/english_trie.bin")
+    
+    inputs.file(inputFile)
+    outputs.file(outputFile)
+    
+    doLast {
+        val words = inputFile.readLines()
+            .map { it.trim().lowercase() }
+            .filter { it.isNotEmpty() }
+        
+        println("Loaded ${words.size} words from ${inputFile.name}")
+        
+        val nodes = mutableListOf<MutableMap<Char, Int>>()
+        val nodeWords = mutableListOf<String?>()
+        val nodeFreqs = mutableListOf<Int>()
+        nodes.add(mutableMapOf())
+        nodeWords.add(null)
+        nodeFreqs.add(0)
+        
+        fun getOrCreateChild(parentIndex: Int, char: Char): Int {
+            val existing = nodes[parentIndex][char]
+            if (existing != null) return existing
+            
+            val newIndex = nodes.size
+            nodes.add(mutableMapOf())
+            nodeWords.add(null)
+            nodeFreqs.add(0)
+            nodes[parentIndex][char] = newIndex
+            return newIndex
+        }
+        
+        words.forEachIndexed { lineNum, word ->
+            var current = 0
+            for (char in word) {
+                current = getOrCreateChild(current, char)
+            }
+            if (nodeWords[current] == null) {
+                nodeWords[current] = word
+                nodeFreqs[current] = lineNum + 1
+            }
+        }
+        
+        println("Built trie with ${nodes.size} nodes")
+        
+        val buffer = ByteBuffer.allocate(512 * 1024)
+        buffer.order(ByteOrder.LITTLE_ENDIAN)
+        
+        buffer.put("TRIE".toByteArray())
+        buffer.put(1)
+        buffer.putInt(nodes.size)
+        
+        for (i in nodes.indices) {
+            val children = nodes[i]
+            buffer.put(children.size.toByte())
+            for ((char, childIndex) in children) {
+                buffer.put(char.code.toByte())
+                buffer.putInt(childIndex)
+            }
+            
+            val word = nodeWords[i]
+            buffer.put(if (word != null) 1 else 0)
+            if (word != null) {
+                val bytes = word.toByteArray(Charsets.UTF_8)
+                buffer.put(bytes.size.toByte())
+                buffer.put(bytes)
+                buffer.putInt(nodeFreqs[i])
+            }
+        }
+        
+        val data = ByteArray(buffer.position())
+        buffer.flip()
+        buffer.get(data)
+        outputFile.writeBytes(data)
+        
+        println("Wrote ${data.size} bytes (${data.size / 1024}KB) to ${outputFile.name}")
+    }
+}
+
 tasks.named("preBuild").configure {
     dependsOn(downloadOnnx)
+    dependsOn(buildTrie)
 }
 
 tasks.register("copyPluginsToAssets", Copy::class) {
