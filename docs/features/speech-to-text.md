@@ -75,11 +75,10 @@ Xime 提供两种语音识别引擎：
 
 ### 可用模型
 
-| 模型 | 大小 | 特点 | 推荐场景 |
-|------|------|------|----------|
-| 中文多方言 CTC int8 | 13 MB | CTC 架构，支持多种中文方言，int8 量化 | 日常使用，存储空间有限 |
-| 多语言 Zipformer int8 | 259 MB | 支持阿拉伯语、英语、印尼语、日语、俄语、泰语、越南语、中文 | 多语言环境 |
-| 中文大模型 CTC int8 | 590 MB | 中文大模型，int8 量化，更高精度 | 需要高准确率的中文场景 |
+| 模型 | 大小 | 架构 | 特点 | 推荐场景 |
+|------|------|------|------|----------|
+| 中文多方言 CTC int8 | 13 MB | CTC | 支持多种中文方言，int8 量化 | 快速识别，存储空间有限 |
+| 中文 Zipformer int8 | 36 MB | Zipformer Transducer | 适合实时语音识别，int8 量化 | 日常使用，识别精度与速度均衡 |
 
 ### 模型下载
 
@@ -101,7 +100,29 @@ Xime 提供两种语音识别引擎：
 - 完全离线运行，无需网络
 - 隐私安全，语音数据不上传
 - 支持多种模型选择
-- 自动添加标点符号（启发式算法）
+
+## 标点预测模型
+
+Xime 支持标点预测功能，可在语音识别结果中添加标点符号。
+
+### 模型来源
+
+标点预测模型基于 Transformer 架构训练，项目地址：
+[https://github.com/ximeiorg/srf-punctuation](https://github.com/ximeiorg/srf-punctuation)
+
+### 启用方法
+
+1. 进入「设置 → 语音转文本」
+2. 在「标点预测模型」区域点击下载模型
+3. 下载完成后开启「启用标点预测」开关
+
+### 技术参数
+
+- **模型**：Transformer 标点预测模型
+- **量化**：int8 量化
+- **输入**：中文文本
+- **输出**：带标点符号的文本
+- **支持标点**：逗号、句号、问号、感叹号
 
 ## 使用方法
 
@@ -171,6 +192,15 @@ Xime 提供两种语音识别引擎：
 | `ModelDownloadManager.kt` | 模型下载管理 |
 | `VoiceRecognitionHandler.kt` | 语音识别 UI 处理 |
 | `VoiceKeyboardLayout.kt` | 语音模式键盘布局 |
+| `PunctuationInference.kt` | 标点预测推理引擎 |
+| `PunctuationModelManager.kt` | 标点预测模型下载管理 |
+
+### 相关项目
+
+| 项目 | 说明 |
+|------|------|
+| [srf-punctuation](https://github.com/ximeiorg/srf-punctuation) | 标点预测模型训练与导出 |
+| [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) | 本地 ASR 引擎 |
 
 ### 识别状态
 

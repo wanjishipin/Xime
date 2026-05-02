@@ -22,9 +22,13 @@ Xime 内置智能联想词功能，可在用户输入后自动预测下一个可
 
 英文联想使用 Trie 树实现：
 
-1. 加载内置英文词典（`english.txt`）
-2. 根据当前输入前缀查找匹配单词
-3. 按词频排序返回候选词
+1. 根据当前输入前缀查找匹配单词
+2. 按词频排序返回候选词
+
+### 模型来源
+
+联想预测模型项目地址：
+[https://github.com/ximeiorg/predictive-text](https://github.com/ximeiorg/predictive-text)
 
 ## 启用方法
 
