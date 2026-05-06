@@ -121,7 +121,7 @@ git submodule update --init --recursive
 
 - **项目地址**: https://github.com/ximeiorg/predictive-text
 - **模型下载**: https://www.modelscope.cn/models/bikeand/predictive-text-small
-- **模型文件**: `model_int8_dynamic.onnx` (约 6MB)
+- **模型文件**: `model_int8_dynamic.onnx` (约 17MB)
 - **词表文件**: `vocab.json`
 - **存放位置**: `filesDir/` 目录（即应用私有目录根目录）
 - **功能**: 基于 Transformer 的中文联想词预测，提供智能候选词推荐
