@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import com.kingzcheung.xime.ui.LocalStretchFactor
 import androidx.compose.ui.Alignment
@@ -218,6 +219,15 @@ fun SwipeableKeyButton(
     var isSwipeDown by remember { mutableStateOf(false) }
     var buttonBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
     
+    val currentText by rememberUpdatedState(text)
+    val currentSwipeText by rememberUpdatedState(swipeText)
+    val currentSwipeDownText by rememberUpdatedState(swipeDownText)
+    val currentOnSwipe by rememberUpdatedState(onSwipe)
+    val currentOnSwipeDown by rememberUpdatedState(onSwipeDown)
+    val currentOnSwipeStateChange by rememberUpdatedState(onSwipeStateChange)
+    val currentOnPress by rememberUpdatedState(onPress)
+    val currentOnClick by rememberUpdatedState(onClick)
+    
     val swipeUpThreshold = -50f
     val swipeDownThreshold = 50f
     val bubbleShowThresholdUp = swipeUpThreshold * 0.3f
@@ -245,12 +255,12 @@ fun SwipeableKeyButton(
                         hasTriggeredSwipeDown = false
                         isSwiping = false
                         isSwipeDown = false
-                        onSwipeStateChange?.invoke(SwipeState(isPressed = true, pressedText = text), buttonBounds)
-                        onPress?.invoke()
+                        currentOnSwipeStateChange?.invoke(SwipeState(isPressed = true, pressedText = currentText), buttonBounds)
+                        currentOnPress?.invoke()
                     },
                     onDragEnd = {
                         if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown && dragOffsetY > swipeUpThreshold && dragOffsetY < swipeDownThreshold) {
-                            onClick()
+                            currentOnClick?.invoke()
                         }
                         isPressed = false
                         dragOffsetY = 0f
@@ -258,7 +268,7 @@ fun SwipeableKeyButton(
                         hasTriggeredSwipeDown = false
                         isSwiping = false
                         isSwipeDown = false
-                        onSwipeStateChange?.invoke(SwipeState(false, null, false, emptyList(), false, null), buttonBounds)
+                        currentOnSwipeStateChange?.invoke(SwipeState(false, null, false, emptyList(), false, null), buttonBounds)
                     },
                     onDragCancel = {
                         isPressed = false
@@ -267,34 +277,38 @@ fun SwipeableKeyButton(
                         hasTriggeredSwipeDown = false
                         isSwiping = false
                         isSwipeDown = false
-                        onSwipeStateChange?.invoke(SwipeState(false, null, false, emptyList(), false, null), buttonBounds)
+                        currentOnSwipeStateChange?.invoke(SwipeState(false, null, false, emptyList(), false, null), buttonBounds)
                     },
                     onDrag = { change, dragAmount ->
                         dragOffsetY += dragAmount.y
                         
                         if (dragOffsetY < 0) {
-                            val shouldShowBubble = dragOffsetY < bubbleShowThresholdUp && swipeText != null
+                            val shouldShowBubble = dragOffsetY < bubbleShowThresholdUp && currentSwipeText != null
                             if (shouldShowBubble != isSwiping) {
                                 isSwiping = shouldShowBubble
                                 isSwipeDown = false
-                                onSwipeStateChange?.invoke(SwipeState(shouldShowBubble, swipeText, false, emptyList(), false, null), buttonBounds)
+                                currentOnSwipeStateChange?.invoke(SwipeState(shouldShowBubble, currentSwipeText, false, emptyList(), false, null), buttonBounds)
                             }
                             
-                            if (dragOffsetY < swipeUpThreshold && !hasTriggeredSwipeUp && swipeText != null && onSwipe != null) {
+                            val swipeTextValue = currentSwipeText
+                            val onSwipeValue = currentOnSwipe
+                            if (dragOffsetY < swipeUpThreshold && !hasTriggeredSwipeUp && swipeTextValue != null && onSwipeValue != null) {
                                 hasTriggeredSwipeUp = true
-                                onSwipe(swipeText)
+                                onSwipeValue(swipeTextValue)
                             }
                         } else if (dragOffsetY > 0) {
-                            val shouldShowBubble = dragOffsetY > bubbleShowThresholdDown && swipeDownText != null
+                            val shouldShowBubble = dragOffsetY > bubbleShowThresholdDown && currentSwipeDownText != null
                             if (shouldShowBubble != isSwipeDown) {
                                 isSwipeDown = shouldShowBubble
                                 isSwiping = shouldShowBubble
-                                onSwipeStateChange?.invoke(SwipeState(shouldShowBubble, swipeDownText, true, emptyList(), false, null), buttonBounds)
+                                currentOnSwipeStateChange?.invoke(SwipeState(shouldShowBubble, currentSwipeDownText, true, emptyList(), false, null), buttonBounds)
                             }
                             
-                            if (dragOffsetY > swipeDownThreshold && !hasTriggeredSwipeDown && swipeDownText != null && onSwipeDown != null) {
+                            val swipeDownTextValue = currentSwipeDownText
+                            val onSwipeDownValue = currentOnSwipeDown
+                            if (dragOffsetY > swipeDownThreshold && !hasTriggeredSwipeDown && swipeDownTextValue != null && onSwipeDownValue != null) {
                                 hasTriggeredSwipeDown = true
-                                onSwipeDown(swipeDownText)
+                                onSwipeDownValue(swipeDownTextValue)
                             }
                         }
                     }
@@ -304,14 +318,14 @@ fun SwipeableKeyButton(
                 detectTapGestures(
                     onPress = {
                         isPressed = true
-                        onSwipeStateChange?.invoke(SwipeState(isPressed = true, pressedText = text), buttonBounds)
-                        onPress?.invoke()
+                        currentOnSwipeStateChange?.invoke(SwipeState(isPressed = true, pressedText = currentText), buttonBounds)
+                        currentOnPress?.invoke()
                         tryAwaitRelease()
                         isPressed = false
-                        onSwipeStateChange?.invoke(SwipeState(false, null, false, emptyList(), false, null), buttonBounds)
+                        currentOnSwipeStateChange?.invoke(SwipeState(false, null, false, emptyList(), false, null), buttonBounds)
                     },
                     onTap = {
-                        if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) onClick()
+                        if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) currentOnClick?.invoke()
                     }
                 )
             },

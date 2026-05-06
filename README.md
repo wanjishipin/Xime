@@ -73,6 +73,9 @@
 3. 在系统设置中启用 Xime 输入法
 4. 将 Xime 设为当前输入法
 
+### 国内下载
+由于 apk 包是通过 github actions 自动构建的，国内的仓库没有免费的功能使用，因此如果你觉得github release 不稳定，请自行构建安装，或者通过[https://github.akams.cn](https://github.akams.cn) 来下载。
+
 ### 手动构建安装
 
 1. 克隆项目并构建 APK
