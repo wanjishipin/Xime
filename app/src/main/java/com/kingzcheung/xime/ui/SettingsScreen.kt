@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.twotone.LibraryBooks
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.outlined.AddBox
 import androidx.compose.material.icons.outlined.AutoAwesome
@@ -50,6 +51,7 @@ import androidx.compose.material.icons.twotone.Straighten
 import androidx.compose.material.icons.twotone.ToggleOn
 import androidx.compose.material.icons.twotone.Vibration
 import androidx.compose.material.icons.twotone.Visibility
+import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -70,8 +72,10 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -480,6 +484,16 @@ fun SchemaSettingsContent(
     val context = LocalContext.current
     val schemas = remember { SchemaConfigHelper.loadSchemas(context) }
     var currentSchema by remember { mutableStateOf(SettingsPreferences.getCurrentSchema(context)) }
+    var isDeploying by remember { mutableStateOf(false) }
+    var downloadingSchema by remember { mutableStateOf<String?>(null) }
+    
+    var downloadStatusMap by remember { 
+        mutableStateOf(schemas.associate { schema ->
+            schema.schemaId to !SchemaConfigHelper.needsDownload(context, schema.schemaId)
+        })
+    }
+    
+    val scope = rememberCoroutineScope()
     
     Column(
         modifier = Modifier
@@ -517,30 +531,53 @@ fun SchemaSettingsContent(
             item {
                 SettingsSection(title = "方案列表", content = {
                     schemas.forEachIndexed { index, schema ->
+                        val isDownloaded = downloadStatusMap[schema.schemaId] ?: false
+                        
                         SchemaItem(
                             schema = schema,
-                            isSelected = schema.schemaId == currentSchema,
+                            isSelected = schema.schemaId == currentSchema && isDownloaded,
+                            isDownloaded = isDownloaded,
                             onClick = {
-                                if (currentSchema != schema.schemaId) {
-                                    android.util.Log.d("Settings", "Selecting schema: ${schema.schemaId}")
+                                if (isDownloaded && currentSchema != schema.schemaId) {
                                     currentSchema = schema.schemaId
                                     SettingsPreferences.setCurrentSchema(context, schema.schemaId)
-                                    android.util.Log.d("Settings", "Saved schema: ${SettingsPreferences.getCurrentSchema(context)}")
                                     
                                     if (com.kingzcheung.xime.rime.RimeEngine.isInitialized()) {
                                         val engine = com.kingzcheung.xime.rime.RimeEngine.getInstance()
                                         val availableSchemas = engine.getAvailableSchemas()
-                                        android.util.Log.d("Settings", "Available schemas: ${availableSchemas.joinToString()}")
                                         
                                         if (schema.schemaId in availableSchemas) {
-                                            val result = engine.switchSchema(schema.schemaId)
-                                            android.util.Log.d("Settings", "Switch schema result: $result")
+                                            engine.switchSchema(schema.schemaId)
                                             Toast.makeText(context, "已切换到${schema.name}", Toast.LENGTH_SHORT).show()
                                         } else {
-                                            Toast.makeText(context, "已保存${schema.name}，请部署方案后生效", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "请点击「部署」按钮", Toast.LENGTH_SHORT).show()
                                         }
-                                    } else {
-                                        Toast.makeText(context, "已保存${schema.name}，请在输入法中生效", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            },
+                            onDownload = {
+                                scope.launch(Dispatchers.IO) {
+                                    downloadingSchema = schema.schemaId
+                                    val success = SchemaConfigHelper.downloadSchema(context, schema.schemaId)
+                                    downloadingSchema = null
+                                    withContext(Dispatchers.Main) {
+                                        if (success) {
+                                            downloadStatusMap = downloadStatusMap + (schema.schemaId to true)
+                                            Toast.makeText(context, "${schema.name}下载完成，请部署", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            Toast.makeText(context, "${schema.name}下载失败", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                            },
+                            onUpdate = {
+                                scope.launch(Dispatchers.IO) {
+                                    downloadingSchema = schema.schemaId
+                                    val success = SchemaConfigHelper.downloadSchema(context, schema.schemaId)
+                                    downloadingSchema = null
+                                    withContext(Dispatchers.Main) {
+                                        downloadStatusMap = downloadStatusMap + (schema.schemaId to true)
+                                        Toast.makeText(context, if (success) "${schema.name}更新完成" else "${schema.name}更新失败", Toast.LENGTH_SHORT).show()
                                     }
                                 }
                             }
@@ -554,6 +591,51 @@ fun SchemaSettingsContent(
                         }
                     }
                 })
+            }
+            
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+            
+            item {
+                Button(
+                    onClick = {
+                        if (!isDeploying) {
+                            scope.launch(Dispatchers.IO) {
+                                isDeploying = true
+                                val success = com.kingzcheung.xime.rime.RimeEngine.getInstance().deploy()
+                                isDeploying = false
+                                withContext(Dispatchers.Main) {
+                                    Toast.makeText(context, if (success) "部署完成" else "部署失败", Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isDeploying && downloadingSchema == null
+                ) {
+                    if (isDeploying) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("正在部署...")
+                    } else {
+                        Icon(Icons.Default.Refresh, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("部署方案")
+                    }
+                }
+            }
+            
+            item {
+                Text(
+                    text = "提示:下载或更新方案后需点击「部署」按钮才能生效",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                )
             }
         }
     }

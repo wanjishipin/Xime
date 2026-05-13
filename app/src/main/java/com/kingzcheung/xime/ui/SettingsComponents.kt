@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -186,12 +187,15 @@ fun SettingsToggleItem(
 fun SchemaItem(
     schema: SchemaInfo,
     isSelected: Boolean,
-    onClick: () -> Unit
+    isDownloaded: Boolean,
+    onClick: () -> Unit,
+    onDownload: () -> Unit,
+    onUpdate: () -> Unit
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable(enabled = isDownloaded, onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -200,7 +204,9 @@ fun SchemaItem(
                 text = schema.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
+                color = if (!isDownloaded) MaterialTheme.colorScheme.outline
+                    else if (isSelected) MaterialTheme.colorScheme.primary 
+                    else MaterialTheme.colorScheme.onSurface
             )
             if (schema.description.isNotEmpty()) {
                 Text(
@@ -227,15 +233,38 @@ fun SchemaItem(
                         color = MaterialTheme.colorScheme.outline
                     )
                 }
+                if (!isDownloaded) {
+                    Text(
+                        text = "未下载",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             }
         }
         
-        if (isSelected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "已选择",
-                tint = MaterialTheme.colorScheme.primary
-            )
+        if (!isDownloaded) {
+            OutlinedButton(
+                onClick = onDownload,
+                shape = RoundedCornerShape(50)
+            ) {
+                Text("下载")
+            }
+        } else {
+            if (isSelected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "已选择",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            OutlinedButton(
+                onClick = onUpdate,
+                shape = RoundedCornerShape(50)
+            ) {
+                Text("更新")
+            }
         }
     }
 }

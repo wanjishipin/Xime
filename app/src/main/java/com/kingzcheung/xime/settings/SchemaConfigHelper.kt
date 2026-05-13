@@ -2,118 +2,193 @@ package com.kingzcheung.xime.settings
 
 import android.content.Context
 import android.util.Log
-import java.io.BufferedReader
-import java.io.InputStreamReader
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileOutputStream
+import java.net.URL
 
 object SchemaConfigHelper {
     private const val TAG = "SchemaConfigHelper"
     private const val RIME_ASSETS_DIR = "rime"
     
+    data class BuiltInSchema(
+        val schemaId: String,
+        val name: String,
+        val version: String,
+        val author: String,
+        val description: String,
+        val needsDict: Boolean = true,
+        val downloadUrl: String? = null
+    )
+    
+    private val builtInSchemas = listOf(
+        BuiltInSchema(
+            schemaId = "wubi86",
+            name = "五笔86",
+            version = "1.0",
+            author = "王永民",
+            description = "五笔字形86版",
+            downloadUrl = "https://s.ximei.me/rime-wubi"
+        ),
+        BuiltInSchema(
+            schemaId = "wubi86_pinyin",
+            name = "五笔拼音",
+            version = "1.0",
+            author = "王永民",
+            description = "五笔86版带拼音反查",
+            needsDict = false,
+            downloadUrl = "https://s.ximei.me/rime-wubi"
+        ),
+        BuiltInSchema(
+            schemaId = "pinyin_simp",
+            name = "简体拼音",
+            version = "1.0",
+            author = "Rime",
+            description = "简体拼音输入",
+            downloadUrl = "https://s.ximei.me/rime-wubi"
+        ),
+        BuiltInSchema(
+            schemaId = "wubi98",
+            name = "五笔98",
+            version = "24.05.29",
+            author = "王永民",
+            description = "五笔字形98版",
+            downloadUrl = "https://s.ximei.me/rime-wubi"
+        )
+    )
+    
+    fun getBuiltInSchemas(): List<BuiltInSchema> = builtInSchemas
+    
+    fun getSchemaById(schemaId: String): BuiltInSchema? {
+        return builtInSchemas.find { it.schemaId == schemaId }
+    }
+    
     fun loadSchemas(context: Context): List<SchemaInfo> {
-        val schemas = mutableListOf<SchemaInfo>()
+        val schemaListIds = parseSchemaListFromDefault(context)
+        Log.d(TAG, "Schema list from default.yaml: $schemaListIds")
+        
+        return schemaListIds.mapNotNull { schemaId ->
+            val builtIn = getSchemaById(schemaId)
+            if (builtIn != null) {
+                SchemaInfo(
+                    schemaId = builtIn.schemaId,
+                    name = builtIn.name,
+                    version = builtIn.version,
+                    author = builtIn.author,
+                    description = builtIn.description
+                )
+            } else {
+                Log.w(TAG, "Unknown schema in default.yaml: $schemaId")
+                null
+            }
+        }
+    }
+    
+    fun parseSchemaListFromDefault(context: Context): List<String> {
+        val schemas = mutableListOf<String>()
         
         try {
-            val assetManager = context.assets
-            val files = assetManager.list(RIME_ASSETS_DIR)
+            val inputStream = context.assets.open("$RIME_ASSETS_DIR/default.yaml")
+            val content = inputStream.bufferedReader().readText()
+            inputStream.close()
             
-            if (files != null) {
-                for (fileName in files) {
-                    if (fileName.endsWith(".schema.yaml")) {
-                        val schema = parseSchemaFile(context, "$RIME_ASSETS_DIR/$fileName")
-                        if (schema != null) {
-                            schemas.add(schema)
-                        }
+            for (line in content.lines()) {
+                val trimmed = line.trim()
+                if (trimmed.startsWith("- schema:")) {
+                    val schemaId = trimmed.removePrefix("- schema:").trim()
+                    if (schemaId.isNotEmpty()) {
+                        schemas.add(schemaId)
                     }
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to load schemas", e)
+            Log.e(TAG, "Failed to parse default.yaml", e)
         }
         
         return schemas
     }
     
-    private fun parseSchemaFile(context: Context, filePath: String): SchemaInfo? {
-        return try {
-            val inputStream = context.assets.open(filePath)
-            val reader = BufferedReader(InputStreamReader(inputStream))
-            val content = reader.readText()
-            reader.close()
-            inputStream.close()
-            
-            parseSchemaYaml(content)
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to parse schema file: $filePath", e)
-            null
+    fun checkSchemaFilesExist(context: Context, schemaId: String): Pair<Boolean, Boolean> {
+        val sharedDir = File(context.filesDir, "rime/shared")
+        val schemaFile = File(sharedDir, "$schemaId.schema.yaml")
+        val dictFile = File(sharedDir, "$schemaId.dict.yaml")
+        
+        val builtIn = getSchemaById(schemaId)
+        val needsDict = builtIn?.needsDict ?: true
+        
+        return Pair(schemaFile.exists(), if (needsDict) dictFile.exists() else true)
+    }
+    
+    fun needsDownload(context: Context, schemaId: String): Boolean {
+        val (schemaExists, dictExists) = checkSchemaFilesExist(context, schemaId)
+        return !schemaExists || !dictExists
+    }
+    
+    suspend fun downloadSchema(context: Context, schemaId: String): Boolean {
+        return withContext(Dispatchers.IO) {
+            try {
+                val sharedDir = File(context.filesDir, "rime/shared")
+                if (!sharedDir.exists()) {
+                    sharedDir.mkdirs()
+                }
+                
+                val builtIn = getSchemaById(schemaId)
+                val downloadUrl = builtIn?.downloadUrl
+                
+                if (downloadUrl == null) {
+                    Log.w(TAG, "Schema $schemaId has no download URL configured")
+                    false
+                } else {
+                    Log.i(TAG, "Downloading schema: $schemaId from $downloadUrl")
+                    
+                    val schemaUrl = "$downloadUrl/$schemaId.schema.yaml"
+                    val schemaFile = File(sharedDir, "$schemaId.schema.yaml")
+                    downloadFile(schemaUrl, schemaFile)
+                    Log.d(TAG, "Downloaded schema: $schemaFile.absolutePath")
+                    
+                    if (builtIn?.needsDict == true) {
+                        val dictUrl = "$downloadUrl/$schemaId.dict.yaml"
+                        val dictFile = File(sharedDir, "$schemaId.dict.yaml")
+                        downloadFile(dictUrl, dictFile)
+                        Log.d(TAG, "Downloaded dict: $dictFile.absolutePath")
+                    }
+                    
+                    Log.i(TAG, "Schema $schemaId downloaded successfully")
+                    true
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to download schema $schemaId", e)
+                false
+            }
         }
     }
     
-    private fun parseSchemaYaml(content: String): SchemaInfo? {
-        var schemaId = ""
-        var name = ""
-        var version = ""
-        var author = ""
-        var description = ""
+    private fun downloadFile(url: String, targetFile: File) {
+        val connection = URL(url).openConnection()
+        connection.connectTimeout = 30000
+        connection.readTimeout = 60000
         
-        var inSchemaSection = false
-        var inAuthorSection = false
-        val authorList = mutableListOf<String>()
-        
-        for (line in content.lines()) {
-            val trimmed = line.trim()
-            
-            if (trimmed.startsWith("schema:")) {
-                inSchemaSection = true
-                continue
+        connection.getInputStream().use { input ->
+            FileOutputStream(targetFile).use { output ->
+                input.copyTo(output)
             }
-            
-            if (inSchemaSection) {
-                when {
-                    trimmed.startsWith("schema_id:") -> {
-                        schemaId = extractValue(trimmed)
-                    }
-                    trimmed.startsWith("name:") -> {
-                        name = extractValue(trimmed)
-                    }
-                    trimmed.startsWith("version:") -> {
-                        version = extractValue(trimmed)
-                    }
-                    trimmed.startsWith("author:") -> {
-                        inAuthorSection = true
-                    }
-                    trimmed.startsWith("description:") -> {
-                        description = extractValue(trimmed)
-                        inSchemaSection = false
-                    }
-                    inAuthorSection && trimmed.startsWith("-") -> {
-                        authorList.add(extractListItem(trimmed))
-                    }
-                    inAuthorSection && !trimmed.startsWith("-") && !trimmed.startsWith(" ") -> {
-                        inAuthorSection = false
-                    }
+        }
+    }
+    
+    suspend fun downloadMissingSchemas(context: Context): List<String> {
+        val downloaded = mutableListOf<String>()
+        val schemaListIds = parseSchemaListFromDefault(context)
+        
+        for (schemaId in schemaListIds) {
+            if (needsDownload(context, schemaId)) {
+                Log.d(TAG, "Schema $schemaId needs download")
+                if (downloadSchema(context, schemaId)) {
+                    downloaded.add(schemaId)
                 }
             }
         }
         
-        author = authorList.joinToString(", ")
-        
-        return if (schemaId.isNotEmpty() && name.isNotEmpty()) {
-            SchemaInfo(schemaId, name, version, author, description)
-        } else {
-            null
-        }
-    }
-    
-    private fun extractValue(line: String): String {
-        val parts = line.split(":", limit = 2)
-        return if (parts.size == 2) {
-            parts[1].trim().replace("\"", "")
-        } else {
-            ""
-        }
-    }
-    
-    private fun extractListItem(line: String): String {
-        return line.removePrefix("-").trim()
+        return downloaded
     }
 }

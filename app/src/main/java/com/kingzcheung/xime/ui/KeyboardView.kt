@@ -60,6 +60,8 @@ fun KeyboardView(
     associationCandidates: Array<String> = emptyArray(),
     keyboardHeightDp: Int = 290,
     keyboardBottomPaddingDp: Int = 0,
+    isDeploying: Boolean = false,
+    deploymentMessage: String = "",
     onKeyPress: (String, Boolean) -> Unit,
     onKeyPressDown: ((String) -> Unit)? = null,
     onCandidateSelect: (Int) -> Unit,
@@ -248,6 +250,7 @@ onHideKeyboard = {
                         currentSchemaId = currentSchemaId,
                         isDarkTheme = isDarkTheme,
                         backgroundColor = keyboardBgColor,
+                        accentColor = accentColor,
                         onSelectSchema = { schemaId ->
                             onSwitchSchema?.invoke(schemaId)
                             showSchemaList = false
@@ -406,6 +409,31 @@ onHideKeyboard = {
                 }
             } else if (!isVoiceMode) {
                 Spacer(modifier = Modifier.height(40.dp))
+            }
+        }
+        
+        if (isDeploying) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .background(keyboardBgColor.copy(alpha = 0.9f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    androidx.compose.material3.Text(
+                        text = deploymentMessage.ifEmpty { "正在初始化..." },
+                        color = keyTextColor,
+                        style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
+                    )
+                    androidx.compose.material3.Text(
+                        text = "请稍候",
+                        color = keyTextColor.copy(alpha = 0.7f),
+                        style = androidx.compose.material3.MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
     }

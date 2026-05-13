@@ -47,7 +47,7 @@ speller:
   auto_select_unique_candidate: true
 
 translator:
-  dictionary: wubi86
+  dictionary:  wubi86
   prism: wubi86
   enable_charset_filter: true
   enable_completion: true

@@ -33,7 +33,9 @@ data class InputUIState(
     val voiceAmplitude: Float = 0f,
     val pendingEnglishText: String = "",
     val stretchFactor: Float = 1f,
-    val isShowingRecentClipboard: Boolean = false
+    val isShowingRecentClipboard: Boolean = false,
+    val isDeploying: Boolean = false,
+    val deploymentMessage: String = ""
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -71,6 +73,8 @@ if (showBottomButtons != other.showBottomButtons) return false
         if (pendingEnglishText != other.pendingEnglishText) return false
         if (stretchFactor != other.stretchFactor) return false
         if (isShowingRecentClipboard != other.isShowingRecentClipboard) return false
+        if (isDeploying != other.isDeploying) return false
+        if (deploymentMessage != other.deploymentMessage) return false
 
         return true
     }
@@ -106,6 +110,8 @@ result = 31 * result + showBottomButtons.hashCode()
         result = 31 * result + pendingEnglishText.hashCode()
         result = 31 * result + stretchFactor.hashCode()
         result = 31 * result + isShowingRecentClipboard.hashCode()
+        result = 31 * result + isDeploying.hashCode()
+        result = 31 * result + deploymentMessage.hashCode()
         return result
     }
 }

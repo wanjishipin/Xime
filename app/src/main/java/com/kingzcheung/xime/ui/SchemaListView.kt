@@ -36,13 +36,13 @@ fun SchemaListView(
     currentSchemaId: String,
     isDarkTheme: Boolean,
     backgroundColor: Color,
+    accentColor: Color,
     onSelectSchema: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val itemBgColor = if (isDarkTheme) Color(0xFF45474A) else Color.White
     val textColor = if (isDarkTheme) Color(0xFFE8EAED) else Color(0xFF202124)
     val subTextColor = if (isDarkTheme) Color(0xFF9AA0A6) else Color(0xFF5F6368)
-    val accentColor = if (isDarkTheme) Color(0xFF8AB4F8) else Color(0xFF1A73E8)
 
     Column(
         modifier = modifier
@@ -130,13 +130,5 @@ private fun SchemaGridItem(
             textAlign = TextAlign.Center,
             maxLines = 1
         )
-        if (isSelected) {
-            Icon(
-                imageVector = Icons.Default.Check,
-                contentDescription = "当前方案",
-                tint = accentColor,
-                modifier = Modifier.size(12.dp)
-            )
-        }
     }
 }

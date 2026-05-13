@@ -164,9 +164,10 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         loadDarkModePreference()
         registerSharedPrefsListener()
         
+        initRimeEngine()
+        
         serviceScope.launch(Dispatchers.IO) {
             try {
-                initRimeEngine()
                 initClipboardManager()
                 initAssociationEngine()
                 initSpeechRecognition()
@@ -198,33 +199,55 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     
     private fun initRimeEngine() {
         Log.d(TAG, "initRimeEngine: Starting initialization...")
-        try {
-            KeysConfigHelper.loadConfig(this)
-            
-            val (userDataDir, sharedDataDir) = RimeConfigHelper.initializeRimeData(this)
-            
-            Log.d(TAG, "initRimeEngine: userDataDir=$userDataDir, sharedDataDir=$sharedDataDir")
-            
-            Log.d(TAG, "initRimeEngine: Calling rimeEngine.initialize...")
-            rimeEngine.initialize(userDataDir, sharedDataDir)
-            
-            val currentSchema = rimeEngine.getCurrentSchema()
-            val savedSchema = SettingsPreferences.getCurrentSchema(this)
-            Log.d(TAG, "initRimeEngine: currentSchema=$currentSchema, savedSchema=$savedSchema")
-            
-            val availableSchemas = rimeEngine.getAvailableSchemas()
-            Log.d(TAG, "initRimeEngine: availableSchemas=${availableSchemas.joinToString()}")
-            
-            if (savedSchema in availableSchemas && currentSchema != savedSchema) {
-                Log.d(TAG, "initRimeEngine: Switching to saved schema: $savedSchema")
-                rimeEngine.switchSchema(savedSchema)
+        
+        RimeEngine.setDeploymentCallback { isDeploying, message ->
+            serviceScope.launch(Dispatchers.Main) {
+                uiState.value = uiState.value.copy(
+                    isDeploying = isDeploying,
+                    deploymentMessage = message
+                )
             }
-            
-            updateSchemaName()
-            
-            Log.d(TAG, "initRimeEngine: Rime engine initialized successfully")
-        } catch (e: Exception) {
-            Log.e(TAG, "initRimeEngine: Failed to initialize Rime engine", e)
+        }
+        
+        serviceScope.launch(Dispatchers.IO) {
+            try {
+                KeysConfigHelper.loadConfig(this@XimeInputMethodService)
+                
+                notifyDeploymentStatus(true, "正在初始化...")
+                
+                val (userDataDir, sharedDataDir) = RimeConfigHelper.initializeRimeDataAsync(this@XimeInputMethodService)
+                
+                notifyDeploymentStatus(true, "正在加载输入法引擎...")
+                rimeEngine.initialize(userDataDir, sharedDataDir)
+                
+                withContext(Dispatchers.Main) {
+                    val currentSchema = rimeEngine.getCurrentSchema()
+                    val savedSchema = SettingsPreferences.getCurrentSchema(this@XimeInputMethodService)
+                    Log.d(TAG, "initRimeEngine: currentSchema=$currentSchema, savedSchema=$savedSchema")
+                    
+                    val availableSchemas = rimeEngine.getAvailableSchemas()
+                    Log.d(TAG, "initRimeEngine: availableSchemas=${availableSchemas.joinToString()}")
+                    
+                    if (savedSchema in availableSchemas && currentSchema != savedSchema) {
+                        Log.d(TAG, "initRimeEngine: Switching to saved schema: $savedSchema")
+                        rimeEngine.switchSchema(savedSchema)
+                    }
+                    
+                    updateSchemaName()
+                    Log.d(TAG, "initRimeEngine: Rime engine initialized successfully")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "initRimeEngine: Failed to initialize Rime engine", e)
+            }
+        }
+    }
+    
+    private fun notifyDeploymentStatus(isDeploying: Boolean, message: String) {
+        serviceScope.launch(Dispatchers.Main) {
+            uiState.value = uiState.value.copy(
+                isDeploying = isDeploying,
+                deploymentMessage = message
+            )
         }
     }
     
@@ -444,7 +467,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                     clipboardManager.copyImageToSystemClipboard(imagePath)
                                 }
                             },
-                            onVoiceModeChange = { enabled ->
+onVoiceModeChange = { enabled ->
                                 Log.d("VoiceButtons", "onVoiceModeChange called: enabled=$enabled")
                                 uiState.value = uiState.value.copy(
                                     isVoiceMode = enabled,
@@ -459,9 +482,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                     Log.d("VoiceButtons", "Speech recognition starting...")
                                 } else {
                                     isTrackingVoiceButtons = false
-                                }
 }
-                             )
+ },
+                             isDeploying = state.isDeploying,
+                             deploymentMessage = state.deploymentMessage
+                              )
                         }
                      }
                      
@@ -712,9 +737,29 @@ if (state.showKeyboardResize) {
     }
     
     private fun updateSchemaName() {
+        val availableSchemaIds = if (RimeEngine.isInitialized()) {
+            rimeEngine.getAvailableSchemas().toList()
+        } else {
+            emptyList()
+        }
+        
+        val builtInSchemas = SchemaConfigHelper.getBuiltInSchemas()
+        
+        val schemas = builtInSchemas.map { builtIn ->
+            val isDeployed = builtIn.schemaId in availableSchemaIds
+            com.kingzcheung.xime.settings.SchemaInfo(
+                schemaId = builtIn.schemaId,
+                name = builtIn.name,
+                version = builtIn.version,
+                author = builtIn.author,
+                description = builtIn.description,
+                isDownloaded = isDeployed
+            )
+        }
+        
         val currentSchemaId = rimeEngine.getCurrentSchema()
-        val schemas = SchemaConfigHelper.loadSchemas(this)
         val schemaInfo = schemas.find { it.schemaId == currentSchemaId }
+        
         uiState.value = uiState.value.copy(
             schemaName = schemaInfo?.name ?: currentSchemaId,
             currentSchemaId = currentSchemaId,
@@ -1081,6 +1126,43 @@ if (state.showKeyboardResize) {
             Log.d(TAG, "Switched to schema: $schemaId")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to switch schema", e)
+        }
+    }
+    
+    private fun downloadSchema(schemaId: String) {
+        Log.d(TAG, "Downloading schema: $schemaId")
+        serviceScope.launch(Dispatchers.IO) {
+            notifyDeploymentStatus(true, "正在下载 $schemaId...")
+            
+            val success = SchemaConfigHelper.downloadSchema(this@XimeInputMethodService, schemaId)
+            
+            withContext(Dispatchers.Main) {
+                if (success) {
+                    Toast.makeText(this@XimeInputMethodService, "$schemaId 下载成功，请点击部署", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this@XimeInputMethodService, "$schemaId 下载失败", Toast.LENGTH_SHORT).show()
+                }
+                notifyDeploymentStatus(false, "")
+            }
+        }
+    }
+    
+    private fun deploy() {
+        Log.d(TAG, "Deploying schemas")
+        serviceScope.launch(Dispatchers.IO) {
+            notifyDeploymentStatus(true, "正在部署...")
+            
+            val success = rimeEngine.deploy()
+            
+            withContext(Dispatchers.Main) {
+                if (success) {
+                    Toast.makeText(this@XimeInputMethodService, "部署成功", Toast.LENGTH_SHORT).show()
+                    updateUI()
+                } else {
+                    Toast.makeText(this@XimeInputMethodService, "部署失败", Toast.LENGTH_SHORT).show()
+                }
+                notifyDeploymentStatus(false, "")
+            }
         }
     }
     

@@ -12,9 +12,9 @@ class RimeEngine {
     companion object {
         private const val TAG = "RimeEngine"
         private var instance: RimeEngine? = null
+        private var deploymentCallback: ((Boolean, String) -> Unit)? = null
         
         init {
-            // 加载 native 库
             System.loadLibrary("rime_jni")
             Log.d(TAG, "Native library loaded")
         }
@@ -26,9 +26,17 @@ class RimeEngine {
         }
         
         fun isInitialized(): Boolean = instance?.isInitialized ?: false
+        
+        fun setDeploymentCallback(callback: (isDeploying: Boolean, message: String) -> Unit) {
+            deploymentCallback = callback
+        }
     }
     
     private var isInitialized = false
+    
+    private fun notifyDeploymentStatus(isDeploying: Boolean, message: String) {
+        deploymentCallback?.invoke(isDeploying, message)
+    }
     
     /**
      * 初始化 Rime 引擎
@@ -39,6 +47,7 @@ class RimeEngine {
         if (!isInitialized) {
             Log.d(TAG, "Initializing Rime: userDataDir=$userDataDir, sharedDataDir=$sharedDataDir")
             
+            notifyDeploymentStatus(true, "正在初始化输入法引擎...")
             nativeInitialize(userDataDir, sharedDataDir)
             isInitialized = true
             
@@ -48,20 +57,27 @@ class RimeEngine {
             Log.d(TAG, "Is maintaining: $isMaintaining")
             
             if (isMaintaining) {
+                notifyDeploymentStatus(true, "正在编译词库，请稍候...")
                 Log.d(TAG, "Waiting for deployment to complete...")
                 var waitCount = 0
                 while (isMaintaining() && waitCount < 300) {
                     Thread.sleep(100)
                     waitCount++
                     if (waitCount % 10 == 0) {
-                        Log.d(TAG, "Still waiting for deployment... (${waitCount / 10} seconds)")
+                        val seconds = waitCount / 10
+                        notifyDeploymentStatus(true, "正在编译词库... ${seconds}秒")
+                        Log.d(TAG, "Still waiting for deployment... ($seconds seconds)")
                     }
                 }
                 if (isMaintaining()) {
                     Log.e(TAG, "Deployment timeout after 30 seconds!")
+                    notifyDeploymentStatus(false, "词库编译超时")
                 } else {
                     Log.d(TAG, "Deployment completed")
+                    notifyDeploymentStatus(false, "")
                 }
+            } else {
+                notifyDeploymentStatus(false, "")
             }
             
             val currentSchema = getCurrentSchema()
