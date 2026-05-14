@@ -22,6 +22,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -188,6 +189,7 @@ fun SchemaItem(
     schema: SchemaInfo,
     isSelected: Boolean,
     isDownloaded: Boolean,
+    isLoading: Boolean = false,
     onClick: () -> Unit,
     onDownload: () -> Unit,
     onUpdate: () -> Unit
@@ -195,7 +197,7 @@ fun SchemaItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = isDownloaded, onClick = onClick)
+            .clickable(enabled = isDownloaded && !isLoading, onClick = onClick)
             .padding(16.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -246,9 +248,18 @@ fun SchemaItem(
         if (!isDownloaded) {
             OutlinedButton(
                 onClick = onDownload,
+                enabled = !isLoading,
                 shape = RoundedCornerShape(50)
             ) {
-                Text("下载")
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Text(if (isLoading) "下载中" else "下载")
             }
         } else {
             if (isSelected) {
@@ -261,9 +272,18 @@ fun SchemaItem(
             }
             OutlinedButton(
                 onClick = onUpdate,
+                enabled = !isLoading,
                 shape = RoundedCornerShape(50)
             ) {
-                Text("更新")
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                }
+                Text(if (isLoading) "更新中" else "更新")
             }
         }
     }

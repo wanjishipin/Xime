@@ -537,6 +537,7 @@ fun SchemaSettingsContent(
                             schema = schema,
                             isSelected = schema.schemaId == currentSchema && isDownloaded,
                             isDownloaded = isDownloaded,
+                            isLoading = downloadingSchema == schema.schemaId,
                             onClick = {
                                 if (isDownloaded && currentSchema != schema.schemaId) {
                                     currentSchema = schema.schemaId
