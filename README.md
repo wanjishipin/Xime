@@ -4,8 +4,7 @@
 
 <h1 align="center">Xime（曦码） - 五笔/拼音输入法</h1>
 
-[Xime 输入法 (Windows)](https://github.com/ximeiorg/winxime)
-
+[Xime 输入法 (Windows 版)](https://github.com/ximeiorg/winxime) [Xime 输入法 (Linux 版)](https://github.com/ximeiorg/xime-wayland)
 
 ---
 > 通过检索发现，“Kime” 已经是韩国输入法引擎的名称，为了避免与已有项目冲突，将名称改为 Xime。
