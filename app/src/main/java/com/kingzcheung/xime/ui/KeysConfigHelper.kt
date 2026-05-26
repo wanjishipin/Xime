@@ -42,10 +42,15 @@ object KeysConfigHelper {
     
     private val yaml = Yaml.default
     
-    private var config: KeysConfig = KeysConfig()
+    private var config: KeysConfig = KeysConfig(
+        swipeUp = getDefaultSwipeUp(),
+        swipeDownEnglish = getDefaultSwipeDownEnglish()
+    )
     
     fun loadConfig(context: Context): KeysConfig {
         loadXimeConfig(context)
+        // loadConfig 负责加载 xime.yaml 中的 schemaRadicals（字根配置），
+        // swipeUp/swipeDownEnglish 的默认值已在初始值中内置。
         config = config.copy(
             swipeUp = getDefaultSwipeUp(),
             swipeDownEnglish = getDefaultSwipeDownEnglish()

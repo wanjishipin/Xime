@@ -201,6 +201,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private fun initRimeEngine() {
         Log.d(TAG, "initRimeEngine: Starting initialization...")
         
+        // 必须在任何异步操作之前同步加载键盘按键配置，
+        // 否则 KeyboardLayout 组合时 swipeUp/swipeDown 配置可能尚未就绪，
+        // 导致按键上的符号不显示、上滑/下滑手势不触发。
+        KeysConfigHelper.loadConfig(this)
+        
         RimeEngine.setDeploymentCallback { isDeploying, message ->
             serviceScope.launch(Dispatchers.Main) {
                 uiState.value = uiState.value.copy(
@@ -233,8 +238,6 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         
         val initJob = serviceScope.launch(Dispatchers.IO) {
             try {
-                KeysConfigHelper.loadConfig(this@XimeInputMethodService)
-                
                 notifyDeploymentStatus(true, "正在初始化...")
                 
                 val (userDataDir, sharedDataDir) = RimeConfigHelper.initializeRimeDataAsync(this@XimeInputMethodService)
