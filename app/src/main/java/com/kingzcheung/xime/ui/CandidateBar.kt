@@ -1,11 +1,13 @@
 package com.kingzcheung.xime.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -72,293 +74,113 @@ fun CandidateBar(
     onInputTextClick: (() -> Unit)? = null,
     associationCandidates: List<String> = emptyList(),
     onAssociationSelect: ((Int) -> Unit)? = null,
-    modifier: Modifier = Modifier
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     val displayCandidates = candidates.take(5)
     val hasMoreCandidates = candidates.size >= 5
     val hasMoreAssociation = associationCandidates.size >= 5
     val hasAnyMore = hasMoreCandidates || hasMoreAssociation
-    
+
     val density = LocalDensity.current
-    val paint = remember { android.graphics.Paint().apply { this.textSize = with(density) { 15.sp.toPx() } } }
+    val paint = remember {
+        android.graphics.Paint().apply { this.textSize = with(density) { 15.sp.toPx() } }
+    }
     val itemPaddingPx = with(density) { 8.dp.toPx() }
     val spacingPx = with(density) { 4.dp.toPx() }
-    
+
     val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
     val rowPaddingPx = with(density) { 16.dp.toPx() }
-    val rightSidePx = with(density) { 
+    val rightSidePx = with(density) {
         val moreBtn = if (hasAnyMore && onShowMoreCandidates != null) 38.dp.toPx() else 0f
         val hideBtn = if (onHideKeyboard != null) 28.dp.toPx() else 0f
         rowPaddingPx + moreBtn + hideBtn + 8.dp.toPx()
     }
-    
-    val displayAssociation = remember(associationCandidates, displayCandidates, isComposing, inputText) {
-        if (displayCandidates.isEmpty()) {
-            associationCandidates.take(5)
-        } else {
-            val leftSidePx = with(density) {
-                var left = rowPaddingPx
-                if (isComposing && inputText.isNotEmpty()) {
-                    val inputWidth = paint.measureText(inputText) + 14.dp.toPx()
-                    left += inputWidth + 9.dp.toPx()
-                } else {
-                    left += 32.dp.toPx()
+
+    val displayAssociation =
+        remember(associationCandidates, displayCandidates, isComposing, inputText) {
+            if (displayCandidates.isEmpty()) {
+                associationCandidates.take(5)
+            } else {
+                val leftSidePx = with(density) {
+                    // inputText 已移到上方行，底部行只需留出 Logo 区域
+                    rowPaddingPx + 32.dp.toPx()
                 }
-                left
+                val lazyRowWidthPx = screenWidthPx - leftSidePx - rightSidePx
+
+                val regularWidthPx = displayCandidates.sumOf { c ->
+                    (paint.measureText(c) + itemPaddingPx).toDouble()
+                }.toFloat()
+                val dividerWidthPx = with(density) { 9.dp.toPx() }
+                val availablePx = lazyRowWidthPx - regularWidthPx - dividerWidthPx
+
+                var usedPx = 0f
+                val result = mutableListOf<String>()
+                for (c in associationCandidates) {
+                    val w =
+                        paint.measureText(c) + itemPaddingPx + (if (result.isEmpty()) 0f else spacingPx)
+                    if (usedPx + w <= availablePx) {
+                        usedPx += w
+                        result.add(c)
+                    } else break
+                }
+                if (result.isEmpty() && associationCandidates.isNotEmpty()) {
+                    listOf(associationCandidates.first())
+                } else result
             }
-            val lazyRowWidthPx = screenWidthPx - leftSidePx - rightSidePx
-            
-            val regularWidthPx = displayCandidates.sumOf { c ->
-                (paint.measureText(c) + itemPaddingPx).toDouble()
-            }.toFloat()
-            val dividerWidthPx = with(density) { 9.dp.toPx() }
-            val availablePx = lazyRowWidthPx - regularWidthPx - dividerWidthPx
-            
-            var usedPx = 0f
-            val result = mutableListOf<String>()
-            for (c in associationCandidates) {
-                val w = paint.measureText(c) + itemPaddingPx + (if (result.isEmpty()) 0f else spacingPx)
-                if (usedPx + w <= availablePx) {
-                    usedPx += w
-                    result.add(c)
-                } else break
-            }
-            if (result.isEmpty() && associationCandidates.isNotEmpty()) {
-                listOf(associationCandidates.first())
-            } else result
         }
-    }
-    
-    Row(
+
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .height(44.dp)
             .background(backgroundColor)
-            .padding(horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 8.dp).padding(vertical = 0.dp)
     ) {
-        if (showClipboardTabs) {
+        // 上方行：输入编码（拼音），仅在打字时显示
+        if (!showClipboardTabs && isComposing && inputText.isNotEmpty()) {
+            val inputTextInteractionSource = remember { MutableInteractionSource() }
+            val isInputTextPressed by inputTextInteractionSource.collectIsPressedAsState()
+
             Box(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                    .clickable { onDismissMenu?.invoke() },
-                contentAlignment = Alignment.Center
+                    .fillMaxWidth()
+                    .height(16.dp),
+                contentAlignment = Alignment.CenterStart
             ) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowUp,
-                    contentDescription = "关闭面板",
-                    tint = accentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Box(
-                modifier = Modifier
-                    .height(26.dp)
-                    .clip(RoundedCornerShape(13.dp))
-                    .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                    .padding(2.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxHeight(),
-                    horizontalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(11.dp))
-                            .background(if (clipboardTab == 0) accentColor else Color.Transparent)
-                            .clickable { onClipboardTabChange?.invoke(0) }
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "剪贴板",
-                            color = if (clipboardTab == 0) Color.White else textColor,
-                            fontSize = 11.sp,
-                            fontWeight = if (clipboardTab == 0) FontWeight.Medium else FontWeight.Normal
-                        )
-                    }
-                    
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .clip(RoundedCornerShape(11.dp))
-                            .background(if (clipboardTab == 1) accentColor else Color.Transparent)
-                            .clickable { onClipboardTabChange?.invoke(1) }
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = "快捷发送",
-                            color = if (clipboardTab == 1) Color.White else textColor,
-                            fontSize = 11.sp,
-                            fontWeight = if (clipboardTab == 1) FontWeight.Medium else FontWeight.Normal
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.weight(1f))
-        } else {
-            if (!isComposing && inputText.isEmpty()) {
-                if (showSchemaList && onDismissMenu != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                            .clickable { onDismissMenu() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowLeft,
-                            contentDescription = "返回菜单",
-                            tint = accentColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                } else if (showMenu && onDismissMenu != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                            .clickable { onDismissMenu() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.KeyboardArrowUp,
-                            contentDescription = "关闭菜单",
-                            tint = accentColor,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                            .clickable { onLogoClick?.invoke() },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            painter = painterResource(id = if (isDarkTheme) R.drawable.logo_dark else R.drawable.logo),
-                            contentDescription = "曦码 Logo",
-                            tint = Color.Unspecified,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                
-                Spacer(modifier = Modifier.width(4.dp))
-            }
-            
-            if (isComposing && inputText.isNotEmpty()) {
-                val inputTextInteractionSource = remember { MutableInteractionSource() }
-                val isInputTextPressed by inputTextInteractionSource.collectIsPressedAsState()
-                
                 Text(
                     text = inputText,
-                    color = textColor,
-                    fontSize = 16.sp,
+                    color = textColor.copy(alpha = 0.6f),
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Normal,
+                    maxLines = 1,
                     modifier = Modifier
-                        .padding(horizontal = 3.dp, vertical = 2.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(
-                            if (isInputTextPressed && onInputTextClick != null) 
-                                (if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.1f))
-                            else 
+                            if (isInputTextPressed && onInputTextClick != null)
+                                (if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(
+                                    alpha = 0.1f
+                                ))
+                            else
                                 Color.Transparent
                         )
                         .clickable(
                             enabled = onInputTextClick != null,
                             interactionSource = inputTextInteractionSource,
                             indication = null
-                        ) { 
-                            onInputTextClick?.invoke() 
-                        }
-                        .padding(horizontal = 4.dp, vertical = 2.dp)
+                        ) { onInputTextClick?.invoke() }
+                        .padding(horizontal = 4.dp)
                 )
-                
-                Box(
-                    modifier = Modifier
-                        .width(1.dp)
-                        .height(20.dp)
-                        .background(dividerColor)
-                )
-                
-                Spacer(modifier = Modifier.width(8.dp))
             }
-            
-            if (showClipboardHeader) {
-                Row(
-                    modifier = Modifier.padding(end = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ContentCopy,
-                        contentDescription = "剪切板",
-                        tint = accentColor,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-//                Spacer(modifier = Modifier.width(2.dp))
-            }
+        }
 
-            LazyRow(
-                modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                itemsIndexed(displayCandidates) { index, candidate ->
-                    CandidateItem(
-                        text = candidate,
-                        index = index,
-                        onClick = { onCandidateSelect(index) },
-                        textColor = textColor,
-                        comment = candidateComments.getOrElse(index) { "" }
-                    )
-                }
-                
-                if (displayAssociation.isNotEmpty()) {
-                    item {
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(20.dp)
-                                .background(dividerColor.copy(alpha = 0.5f))
-                                .padding(horizontal = 4.dp)
-                        )
-                    }
-                    
-                    itemsIndexed(displayAssociation) { index, candidate ->
-                        CandidateItem(
-                            text = candidate,
-                            index = -1,
-                            onClick = { onAssociationSelect?.invoke(index) },
-                            textColor = textColor,
-                            comment = ""
-                        )
-                    }
-                }
-            }
-            
-            Spacer(modifier = Modifier.width(8.dp))
-            
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(28.dp)
-                    .background(dividerColor)
-            )
-            
-            if (showCandidatePage) {
+        // 下方行：Logo + 候选词 + 操作按钮
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f).padding(top = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (showClipboardTabs) {
                 Box(
                     modifier = Modifier
                         .size(28.dp)
@@ -369,79 +191,270 @@ fun CandidateBar(
                 ) {
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowUp,
-                        contentDescription = "返回键盘",
+                        contentDescription = "关闭面板",
                         tint = accentColor,
                         modifier = Modifier.size(24.dp)
                     )
                 }
-            } else {
-                if (hasAnyMore && onShowMoreCandidates != null) {
-                    val moreInteractionSource = remember { MutableInteractionSource() }
-                    val isMorePressed by moreInteractionSource.collectIsPressedAsState()
-                    
-                    Spacer(modifier = Modifier.width(4.dp))
-                    
-                    Box(
-                        modifier = Modifier
-                            .width(30.dp)
-                            .height(24.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(
-                                if (isMorePressed) (if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.1f))
-                                else Color.Transparent
-                            )
-                            .clickable(
-                                interactionSource = moreInteractionSource,
-                                indication = null,
-                                onClick = { onShowMoreCandidates() }
-                            ),
-                        contentAlignment = Alignment.Center
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Box(
+                    modifier = Modifier
+                        .height(26.dp)
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                        .padding(2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxHeight(),
+                        horizontalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
-                        Text(
-                            text = "更多",
-                            color = if (isMorePressed) textColor.copy(alpha = 0.6f) else textColor,
-                            fontSize = 11.sp
-                        )
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(11.dp))
+                                .background(if (clipboardTab == 0) accentColor else Color.Transparent)
+                                .clickable { onClipboardTabChange?.invoke(0) }
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "剪贴板",
+                                color = if (clipboardTab == 0) Color.White else textColor,
+                                fontSize = 11.sp,
+                                fontWeight = if (clipboardTab == 0) FontWeight.Medium else FontWeight.Normal
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .fillMaxHeight()
+                                .clip(RoundedCornerShape(11.dp))
+                                .background(if (clipboardTab == 1) accentColor else Color.Transparent)
+                                .clickable { onClipboardTabChange?.invoke(1) }
+                                .padding(horizontal = 12.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "快捷发送",
+                                color = if (clipboardTab == 1) Color.White else textColor,
+                                fontSize = 11.sp,
+                                fontWeight = if (clipboardTab == 1) FontWeight.Medium else FontWeight.Normal
+                            )
+                        }
                     }
                 }
-                
-                if (onHideKeyboard != null) {
-                    val hideKeyboardInteractionSource = remember { MutableInteractionSource() }
-                    val isHideKeyboardPressed by hideKeyboardInteractionSource.collectIsPressedAsState()
-                    
+
+                Spacer(modifier = Modifier.weight(1f))
+            } else {
+                if (!isComposing && inputText.isEmpty()) {
+                    if (showSchemaList && onDismissMenu != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                .clickable { onDismissMenu() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowLeft,
+                                contentDescription = "返回菜单",
+                                tint = accentColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    } else if (showMenu && onDismissMenu != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                .clickable { onDismissMenu() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowUp,
+                                contentDescription = "关闭菜单",
+                                tint = accentColor,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(28.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                .clickable { onLogoClick?.invoke() },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(id = if (isDarkTheme) R.drawable.logo_dark else R.drawable.logo),
+                                contentDescription = "曦码 Logo",
+                                tint = Color.Unspecified,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
                     Spacer(modifier = Modifier.width(4.dp))
-                    
+                }
+
+                if (showClipboardHeader) {
+                    Row(
+                        modifier = Modifier.padding(end = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.ContentCopy,
+                            contentDescription = "剪切板",
+                            tint = accentColor,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+//                Spacer(modifier = Modifier.width(2.dp))
+                }
+
+                LazyRow(
+                    modifier = Modifier.weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    itemsIndexed(displayCandidates) { index, candidate ->
+                        CandidateItem(
+                            text = candidate,
+                            index = index,
+                            onClick = { onCandidateSelect(index) },
+                            textColor = textColor,
+                            comment = candidateComments.getOrElse(index) { "" },
+                            isSelected = index == 0,
+                            accentColor = accentColor
+                        )
+                    }
+
+                    if (displayAssociation.isNotEmpty()) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .width(1.dp)
+                                    .height(20.dp)
+                                    .background(dividerColor.copy(alpha = 0.5f))
+                                    .padding(horizontal = 4.dp)
+                            )
+                        }
+
+                        itemsIndexed(displayAssociation) { index, candidate ->
+                            CandidateItem(
+                                text = candidate,
+                                index = -1,
+                                onClick = { onAssociationSelect?.invoke(index) },
+                                textColor = textColor,
+                                comment = ""
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                
+
+                if (showCandidatePage) {
+                    // 分割线
+                    Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(28.dp)
+                        .background(dividerColor)
+                    )
                     Box(
                         modifier = Modifier
-                            .size(24.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(
-                                if (isHideKeyboardPressed) (if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.1f))
-                                else (if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                            )
-                            .clickable(
-                                interactionSource = hideKeyboardInteractionSource,
-                                indication = null,
-                                onClick = { onHideKeyboard() }
-                            ),
+                            .size(28.dp)
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                            .clickable { onDismissMenu?.invoke() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowDown,
-                            contentDescription = "收起键盘",
-                            tint = if (isHideKeyboardPressed) textColor.copy(alpha = 0.6f) else textColor,
-                            modifier = Modifier.size(18.dp)
+                            imageVector = Icons.Default.KeyboardArrowUp,
+                            contentDescription = "返回键盘",
+                            tint = accentColor,
+                            modifier = Modifier.size(24.dp)
                         )
+                    }
+                } else {
+                    if (hasAnyMore && onShowMoreCandidates != null) {
+                        val moreInteractionSource = remember { MutableInteractionSource() }
+                        val isMorePressed by moreInteractionSource.collectIsPressedAsState()
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .width(30.dp)
+                                .height(24.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (isMorePressed) (if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(
+                                        alpha = 0.1f
+                                    ))
+                                    else Color.Transparent
+                                )
+                                .clickable(
+                                    interactionSource = moreInteractionSource,
+                                    indication = null,
+                                    onClick = { onShowMoreCandidates() }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "更多",
+                                color = if (isMorePressed) textColor.copy(alpha = 0.6f) else textColor,
+                                fontSize = 11.sp
+                            )
+                        }
+                    }
+
+                    if (onHideKeyboard != null && (!isComposing || inputText.isEmpty())) {
+                        val hideKeyboardInteractionSource = remember { MutableInteractionSource() }
+                        val isHideKeyboardPressed by hideKeyboardInteractionSource.collectIsPressedAsState()
+
+                        Spacer(modifier = Modifier.width(4.dp))
+
+                        Box(
+                            modifier = Modifier
+                                .size(24.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(
+                                    if (isHideKeyboardPressed) (if (isDarkTheme) Color.White.copy(
+                                        alpha = 0.15f
+                                    ) else Color.Black.copy(alpha = 0.1f))
+                                    else (if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                )
+                                .clickable(
+                                    interactionSource = hideKeyboardInteractionSource,
+                                    indication = null,
+                                    onClick = { onHideKeyboard() }
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.KeyboardArrowDown,
+                                contentDescription = "收起键盘",
+                                tint = if (isHideKeyboardPressed) textColor.copy(alpha = 0.6f) else textColor,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
-
 /**
  * 单个候选词项
- * 显示候选词和编码
+ * 显示候选词和编码注释
  */
 @Composable
 fun CandidateItem(
@@ -450,11 +463,17 @@ fun CandidateItem(
     onClick: () -> Unit,
     textColor: Color,
     comment: String = "",
-    modifier: Modifier = Modifier
+    isSelected: Boolean = false,
+    accentColor: Color = Color(0xFF1A73E8),
+    @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
+            .background(
+                if (isSelected) accentColor.copy(alpha = 0.2f)
+                else Color.Transparent
+            )
             .clickable(onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -462,9 +481,9 @@ fun CandidateItem(
         // 显示候选词
         Text(
             text = text,
-            color = textColor,
+            color = if (isSelected) accentColor else textColor,
             fontSize = 15.sp,
-            fontWeight = FontWeight.Normal,
+            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
             maxLines = 1
         )
         // 显示编码注释
@@ -472,7 +491,7 @@ fun CandidateItem(
             Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = comment,
-                color = textColor.copy(alpha = 0.5f),
+                color = if (isSelected) accentColor.copy(alpha = 0.6f) else textColor.copy(alpha = 0.5f),
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Normal,
                 maxLines = 1
