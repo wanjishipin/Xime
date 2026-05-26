@@ -16,6 +16,7 @@ import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -115,6 +116,14 @@ fun KeyboardView(
     val candidateTextColor = keyTextColor
     val dividerColor = if (isDarkTheme) DividerColorDark else DividerColor
     val state = uiStateProvider()
+    // 每次重新开始输入时（onStartInput 重建 candidates），重置导航状态到全键盘
+    LaunchedEffect(state.isShowingRecentClipboard, state.candidates.toList()) {
+        showCandidatePage = false
+        showClipboard = false
+        showEmoji = false
+        showSchemaList = false
+        showMenu = false
+    }
 
     Box(modifier = modifier.background(keyboardBgColor)) {
         Column(
