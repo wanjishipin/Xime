@@ -227,6 +227,11 @@ object SettingsPreferences {
     }
     
     fun getDefaultKeyboardHeightDp(): Int = DEFAULT_KEYBOARD_HEIGHT_DP
+
+    fun getOrientationDefaultKeyboardHeightDp(context: Context, isLandscape: Boolean): Int {
+        val key = if (isLandscape) KEY_KEYBOARD_HEIGHT_DP_LANDSCAPE else KEY_KEYBOARD_HEIGHT_DP
+        return getPrefs(context).getInt(key, DEFAULT_KEYBOARD_HEIGHT_DP)
+    }
     
     fun getKeyboardBottomPaddingDp(context: Context): Int {
         return getPrefs(context).getInt(KEY_KEYBOARD_BOTTOM_PADDING_DP, DEFAULT_KEYBOARD_BOTTOM_PADDING_DP)

@@ -585,10 +585,10 @@ onVoiceModeChange = { enabled ->
                      }
                      
                          if (state.showKeyboardResize) {
-                           KeyboardResizeOverlay(
-                               initialHeightDp = state.resizePreviewHeightDp,
-                               initialBottomPaddingDp = state.resizePreviewBottomPaddingDp,
-                               defaultHeightDp = SettingsPreferences.getDefaultKeyboardHeightDp(),
+                            KeyboardResizeOverlay(
+                                initialHeightDp = state.resizePreviewHeightDp,
+                                initialBottomPaddingDp = state.resizePreviewBottomPaddingDp,
+                                defaultHeightDp = SettingsPreferences.getOrientationDefaultKeyboardHeightDp(this@XimeInputMethodService, isLandscape),
                                  defaultBottomPaddingDp = SettingsPreferences.getDefaultKeyboardBottomPaddingDp(),
                                maxContainerHeightDp = keyboardHeight,
                               onHeightChange = { newHeight ->
