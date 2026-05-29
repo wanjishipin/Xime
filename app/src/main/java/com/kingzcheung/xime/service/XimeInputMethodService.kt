@@ -120,11 +120,12 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private val feedbackManager = FeedbackManager(this)
     
     private fun loadDarkModePreference() {
+        val isLandscape = resources.configuration.screenWidthDp > resources.configuration.screenHeightDp
         uiState.value = uiState.value.copy(
             darkMode = SettingsPreferences.getDarkMode(this),
             themeId = SettingsPreferences.getKeyboardTheme(this),
             showBottomButtons = SettingsPreferences.showBottomButtons(this),
-            keyboardHeightDp = SettingsPreferences.getKeyboardHeightDp(this),
+            keyboardHeightDp = SettingsPreferences.getKeyboardHeightDp(this, isLandscape),
             keyboardBottomPaddingDp = SettingsPreferences.getKeyboardBottomPaddingDp(this)
         )
     }
@@ -272,7 +273,20 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 notifyDeploymentStatus(true, "正在加载输入法引擎...")
                 rimeEngine.initialize(userDataDir, sharedDataDir)
 
-                notifyDeploymentStatus(true, "正在编译词库...")
+                // 检查词库是否已部署（prism.bin 文件是否存在）
+                val deploymentDone = SettingsPreferences.isDeploymentDone(this@XimeInputMethodService)
+                val needsDeployment = !deploymentDone || !RimeConfigHelper.isDeploymentComplete(this@XimeInputMethodService)
+
+                if (needsDeployment) {
+                    // 首次部署：需要编译词库
+                    notifyDeploymentStatus(true, "正在编译词库...")
+                    rimeEngine.startMaintenance(false)
+                    SettingsPreferences.setDeploymentDone(this@XimeInputMethodService, true)
+                } else {
+                    // 词库已存在：快速刷新 schema 注册表，不显示"编译"提示
+                    rimeEngine.startMaintenance(false)
+                }
+
                 val sessionReady = rimeEngine.ensureSession()
                 if (sessionReady) {
                     Log.d(TAG, "initRimeEngine: Session ready")
@@ -385,10 +399,13 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 val isDarkTheme = isDarkTheme()
                 val screenHeightDp = resources.configuration.screenHeightDp
                 val maxHeightDp = (screenHeightDp * 3) / 5
+                val isLandscape = resources.configuration.screenWidthDp > screenHeightDp
+                val orientationHeight = SettingsPreferences.getKeyboardHeightDp(this@XimeInputMethodService, isLandscape)
+                val displayHeight = minOf(orientationHeight, maxHeightDp)
                 val keyboardHeight = if (state.showKeyboardResize) {
-                    maxHeightDp + 100
+                    if (isLandscape) (screenHeightDp * 7) / 10 else maxHeightDp + 100
                 } else {
-                    minOf(state.keyboardHeightDp, maxHeightDp)
+                    displayHeight
                 }
                 
                 XimeTheme(darkTheme = isDarkTheme, themeId = state.themeId) {
@@ -488,15 +505,20 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                 Log.d(TAG, "QuickSend clicked")
                             },
                             onKeyboardResize = {
-                                val currentHeight = uiState.value.keyboardHeightDp
+                                val config = resources.configuration
+                                val isLandscape = config.screenWidthDp > config.screenHeightDp
+                                val currentHeight = SettingsPreferences.getKeyboardHeightDp(this@XimeInputMethodService, isLandscape)
                                 val currentPadding = uiState.value.keyboardBottomPaddingDp
+                                val maxHeightDp = (config.screenHeightDp * 3) / 5
+                                val displayHeight = minOf(currentHeight, maxHeightDp)
                                 uiState.value = uiState.value.copy(
                                     showKeyboardResize = true,
-                                    resizePreviewHeightDp = currentHeight,
+                                    keyboardHeightDp = currentHeight,
+                                    resizePreviewHeightDp = displayHeight,
                                     resizePreviewBottomPaddingDp = currentPadding,
-                                    originalKeyboardHeightDp = currentHeight,
+                                    originalKeyboardHeightDp = displayHeight,
                                     originalKeyboardBottomPaddingDp = currentPadding,
-                                    stretchFactor = ((currentHeight - 126f) / (SettingsPreferences.getDefaultKeyboardHeightDp() - 126f)).coerceAtLeast(0f)
+                                    stretchFactor = ((displayHeight - 126f) / (SettingsPreferences.getDefaultKeyboardHeightDp() - 126f)).coerceAtLeast(0f)
                                 )
                             },
                             onReloadConfig = {
@@ -593,16 +615,13 @@ onVoiceModeChange = { enabled ->
                          }
                      }
                      
-if (state.showKeyboardResize) {
-                          val screenHeightDp = resources.configuration.screenHeightDp
-                          val maxContainerHeightDp = screenHeightDp / 2
-                          
-                          KeyboardResizeOverlay(
-                              initialHeightDp = state.resizePreviewHeightDp,
-                              initialBottomPaddingDp = state.resizePreviewBottomPaddingDp,
-                              defaultHeightDp = SettingsPreferences.getDefaultKeyboardHeightDp(),
-                               defaultBottomPaddingDp = SettingsPreferences.getDefaultKeyboardBottomPaddingDp(),
-                              maxContainerHeightDp = maxContainerHeightDp,
+                         if (state.showKeyboardResize) {
+                           KeyboardResizeOverlay(
+                               initialHeightDp = state.resizePreviewHeightDp,
+                               initialBottomPaddingDp = state.resizePreviewBottomPaddingDp,
+                               defaultHeightDp = SettingsPreferences.getDefaultKeyboardHeightDp(),
+                                 defaultBottomPaddingDp = SettingsPreferences.getDefaultKeyboardBottomPaddingDp(),
+                               maxContainerHeightDp = keyboardHeight,
                               onHeightChange = { newHeight ->
                                   uiState.value = uiState.value.copy(
                                       resizePreviewHeightDp = newHeight
@@ -629,6 +648,7 @@ if (state.showKeyboardResize) {
                               },
                               onConfirm = { newHeight, newPadding ->
                                   setKeyboardHeight(newHeight)
+                                  SettingsPreferences.setKeyboardBottomPaddingDp(this@XimeInputMethodService, newPadding)
                                   uiState.value = uiState.value.copy(
                                       showKeyboardResize = false,
                                       keyboardHeightDp = newHeight,
@@ -762,14 +782,24 @@ if (state.showKeyboardResize) {
         attribute?.let { updateEnterKeyText(it) }
     }
     
+    override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
+        super.onStartInputView(info, restarting)
+        // 作为 onStartInput 的补充，某些 ROM/Android 版本可能不保证 onStartInput 中 EditorInfo 完整
+        info?.let { updateEnterKeyText(it) }
+    }
+    
     private fun updateEnterKeyText(editorInfo: EditorInfo) {
-        val action = editorInfo.imeOptions and EditorInfo.IME_MASK_ACTION
-        val enterText = when (action) {
-            EditorInfo.IME_ACTION_GO -> "前往"
-            EditorInfo.IME_ACTION_SEARCH -> "搜索"
-            EditorInfo.IME_ACTION_SEND -> "发送"
-            EditorInfo.IME_ACTION_NEXT -> "下一项"
-            EditorInfo.IME_ACTION_DONE -> "完成"
+        val imeOptions = editorInfo.imeOptions
+        val action = imeOptions and EditorInfo.IME_MASK_ACTION
+        val noEnterAction = imeOptions and EditorInfo.IME_FLAG_NO_ENTER_ACTION != 0
+        Log.d(TAG, "updateEnterKeyText: imeOptions=0x${imeOptions.toString(16)}, action=0x${action.toString(16)}, noEnterAction=$noEnterAction")
+        val enterText = when {
+            noEnterAction -> "换行"
+            action == EditorInfo.IME_ACTION_GO -> "前往"
+            action == EditorInfo.IME_ACTION_SEARCH -> "搜索"
+            action == EditorInfo.IME_ACTION_SEND -> "发送"
+            action == EditorInfo.IME_ACTION_NEXT -> "下一项"
+            action == EditorInfo.IME_ACTION_DONE -> "完成"
             else -> "换行"
         }
         uiState.value = uiState.value.copy(enterKeyText = enterText)
@@ -1052,21 +1082,33 @@ if (state.showKeyboardResize) {
                         rimeEngine.clearComposition()
                         needsUIUpdate = true
                     } else {
+                        rimeEngine.clearComposition()
                         withContext(Dispatchers.Main) {
-                            val action = currentInputEditorInfo?.imeOptions ?: 0
-                            when (action and EditorInfo.IME_MASK_ACTION) {
+                            val imeOptions = currentInputEditorInfo?.imeOptions ?: 0
+                            val action = imeOptions and EditorInfo.IME_MASK_ACTION
+                            when (action) {
                                 EditorInfo.IME_ACTION_GO,
                                 EditorInfo.IME_ACTION_SEARCH,
                                 EditorInfo.IME_ACTION_SEND,
                                 EditorInfo.IME_ACTION_NEXT,
                                 EditorInfo.IME_ACTION_DONE -> {
-                                    sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
+                                    currentInputConnection?.performEditorAction(action)
                                 }
                                 else -> {
                                     sendDownUpKeyEvents(KeyEvent.KEYCODE_ENTER)
                                 }
                             }
                         }
+                    }
+                    withContext(Dispatchers.Main) {
+                        uiState.value = uiState.value.copy(
+                            inputText = "",
+                            pendingEnglishText = "",
+                            candidates = emptyArray(),
+                            candidateComments = emptyArray(),
+                            associationCandidates = emptyArray(),
+                            isComposing = false
+                        )
                     }
                 }
                 "space" -> {
@@ -1422,7 +1464,8 @@ if (state.showKeyboardResize) {
     
     private fun setKeyboardHeight(heightDp: Int) {
         Log.d(TAG, "Setting keyboard height to: $heightDp")
-        SettingsPreferences.setKeyboardHeightDp(this, heightDp)
+        val isLandscape = resources.configuration.screenWidthDp > resources.configuration.screenHeightDp
+        SettingsPreferences.setKeyboardHeightDp(this, heightDp, isLandscape)
         uiState.value = uiState.value.copy(keyboardHeightDp = heightDp)
         Toast.makeText(this, "键盘高度已调整", Toast.LENGTH_SHORT).show()
     }

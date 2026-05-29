@@ -7,6 +7,7 @@ import com.kingzcheung.xime.plugin.core.runtime.PluginManager
 object SettingsPreferences {
     private const val PREFS_NAME = "kime_settings"
     private const val KEY_CURRENT_SCHEMA = "current_schema"
+    private const val KEY_DEPLOYMENT_DONE = "deployment_done"
     private const val KEY_DARK_MODE = "dark_mode"
     
     private const val KEY_SOUND_ENABLED = "sound_enabled"
@@ -32,6 +33,7 @@ object SettingsPreferences {
     private const val KEY_LAYOUT_PREFIX = "layout_pref_"
     
     private const val KEY_KEYBOARD_HEIGHT_DP = "keyboard_height_dp"
+    private const val KEY_KEYBOARD_HEIGHT_DP_LANDSCAPE = "keyboard_height_dp_landscape"
     private const val DEFAULT_KEYBOARD_HEIGHT_DP = 290
     
     private const val KEY_KEYBOARD_BOTTOM_PADDING_DP = "keyboard_bottom_padding_dp"
@@ -51,6 +53,14 @@ object SettingsPreferences {
     
     fun setCurrentSchema(context: Context, schemaId: String) {
         getPrefs(context).edit().putString(KEY_CURRENT_SCHEMA, schemaId).apply()
+    }
+    
+    fun isDeploymentDone(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_DEPLOYMENT_DONE, false)
+    }
+    
+    fun setDeploymentDone(context: Context, done: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_DEPLOYMENT_DONE, done).apply()
     }
     
     fun getDarkMode(context: Context): Int {
@@ -211,9 +221,21 @@ object SettingsPreferences {
     fun getKeyboardHeightDp(context: Context): Int {
         return getPrefs(context).getInt(KEY_KEYBOARD_HEIGHT_DP, DEFAULT_KEYBOARD_HEIGHT_DP)
     }
-    
+
+    fun getKeyboardHeightDp(context: Context, isLandscape: Boolean): Int {
+        val key = if (isLandscape) KEY_KEYBOARD_HEIGHT_DP_LANDSCAPE else KEY_KEYBOARD_HEIGHT_DP
+        val alt = if (isLandscape) KEY_KEYBOARD_HEIGHT_DP else KEY_KEYBOARD_HEIGHT_DP_LANDSCAPE
+        // 先读本方向的值，如果没有则用另一个方向的，最后用默认值
+        return getPrefs(context).getInt(key, getPrefs(context).getInt(alt, DEFAULT_KEYBOARD_HEIGHT_DP))
+    }
+
     fun setKeyboardHeightDp(context: Context, heightDp: Int) {
         getPrefs(context).edit().putInt(KEY_KEYBOARD_HEIGHT_DP, heightDp).apply()
+    }
+
+    fun setKeyboardHeightDp(context: Context, heightDp: Int, isLandscape: Boolean) {
+        val key = if (isLandscape) KEY_KEYBOARD_HEIGHT_DP_LANDSCAPE else KEY_KEYBOARD_HEIGHT_DP
+        getPrefs(context).edit().putInt(key, heightDp).apply()
     }
     
     fun getDefaultKeyboardHeightDp(): Int = DEFAULT_KEYBOARD_HEIGHT_DP

@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,10 +53,22 @@ fun KeyboardResizeOverlay(
     val density = LocalDensity.current
     val configuration = androidx.compose.ui.platform.LocalConfiguration.current
     val screenHeightDp = configuration.screenHeightDp
-    val minKeyboardHeightDp = defaultHeightDp
-    val maxKeyboardHeightDp = screenHeightDp / 2
+    val isLandscape = configuration.screenWidthDp > configuration.screenHeightDp
+
+    val maxKeyboardHeightDp: Int
+    val minKeyboardHeightDp: Int
+    val maxBottomPaddingDp: Int
+    if (isLandscape) {
+        minKeyboardHeightDp = screenHeightDp / 2
+        maxKeyboardHeightDp = (screenHeightDp * 3) / 5
+        maxBottomPaddingDp = maxKeyboardHeightDp - minKeyboardHeightDp
+    } else {
+        minKeyboardHeightDp = defaultHeightDp.coerceAtMost(screenHeightDp / 2)
+        maxKeyboardHeightDp = screenHeightDp / 2
+        maxBottomPaddingDp = maxKeyboardHeightDp - minKeyboardHeightDp
+    }
+
     val minBottomPaddingDp = 0
-    val maxBottomPaddingDp = 100
 
     val safeDefaultHeightDp = defaultHeightDp.coerceIn(minKeyboardHeightDp, maxKeyboardHeightDp)
     val safeDefaultBottomPaddingDp = defaultBottomPaddingDp.coerceIn(minBottomPaddingDp, maxBottomPaddingDp)
@@ -66,8 +79,13 @@ fun KeyboardResizeOverlay(
     var currentBottomPaddingDp by remember { mutableFloatStateOf(safeInitialBottomPaddingDp.toFloat()) }
     var baseHeightDp by remember { mutableFloatStateOf(safeDefaultHeightDp.toFloat()) }
 
+    val currentOnHeightChange by rememberUpdatedState(onHeightChange)
+    val currentOnBottomPaddingChange by rememberUpdatedState(onBottomPaddingChange)
+    val currentOnStretchChange by rememberUpdatedState(onStretchChange)
+
     Box(
         modifier = modifier
+            .background(Color.Transparent)
             .height(maxContainerHeightDp.dp)
             .fillMaxWidth()
     ) {
@@ -84,7 +102,7 @@ fun KeyboardResizeOverlay(
                             val paddingChangeDp = with(density) { -dragAmount.y.toDp().value }
                             currentBottomPaddingDp = (currentBottomPaddingDp + paddingChangeDp)
                                 .coerceIn(minBottomPaddingDp.toFloat(), maxBottomPaddingDp.toFloat())
-                            onBottomPaddingChange(currentBottomPaddingDp.roundToInt())
+                            currentOnBottomPaddingChange(currentBottomPaddingDp.roundToInt())
                         },
                         onDragEnd = { }
                     )
@@ -102,11 +120,11 @@ fun KeyboardResizeOverlay(
                                 val heightChangeDp = with(density) { -dragAmount.y.toDp().value }
                                 currentHeightDp = (currentHeightDp + heightChangeDp)
                                     .coerceIn(minKeyboardHeightDp.toFloat(), maxKeyboardHeightDp.toFloat())
-                                onHeightChange(currentHeightDp.roundToInt())
+                                currentOnHeightChange(currentHeightDp.roundToInt())
                                 if (baseHeightDp > 0) {
-                                    val fixedComponents = 118f // 44(候选栏) + 40(底部按钮) + 18(行间距) + 16(内边距)
+                                    val fixedComponents = 118f
                                     val stretchFactor = (currentHeightDp - fixedComponents) / (baseHeightDp - fixedComponents)
-                                    onStretchChange(stretchFactor)
+                                    currentOnStretchChange(stretchFactor)
                                 }
                             },
                             onDragEnd = { }

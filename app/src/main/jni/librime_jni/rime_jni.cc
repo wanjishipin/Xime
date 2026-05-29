@@ -55,11 +55,15 @@ public:
         rime->initialize(&traits);
         LOGI("Rime initialize completed");
         
-        // 参考 trime：每次 startup 都调用 start_maintenance 
-        // 以触发 librime 刷新 schema 注册表，不判断 is_maintenance_mode
-        // 若 build 文件已存在且最新则几乎立即返回（无实际编译）
-        LOGI("Starting maintenance (refresh schema registry)...");
-        rime->start_maintenance(false);
+        // NOTE: start_maintenance 不再在 startup 中调用。
+        // 从 Kotlin 侧根据词库文件是否已存在，按需调用 startMaintenance()。
+        // 避免每次切换输入法时都触发 librime 的部署流程。
+    }
+
+    void startMaintenance(bool full) {
+        if (!rime) return;
+        LOGI("Starting maintenance (full=%s)...", full ? "true" : "false");
+        rime->start_maintenance(full);
     }
 
     bool createSession() {
@@ -704,6 +708,17 @@ Java_com_kingzcheung_xime_rime_RimeEngine_nativeDeploy(
 ) {
     LOGI("Deploying Rime engine");
     return Rime::Instance().deploy() ? JNI_TRUE : JNI_FALSE;
+}
+
+// 启动维护（词库编译/刷新）
+JNIEXPORT void JNICALL
+Java_com_kingzcheung_xime_rime_RimeEngine_nativeStartMaintenance(
+    JNIEnv* env,
+    jobject thiz,
+    jboolean full
+) {
+    LOGI("Starting maintenance (full=%s)", full ? "true" : "false");
+    Rime::Instance().startMaintenance(full);
 }
 
 // 查询词汇编码

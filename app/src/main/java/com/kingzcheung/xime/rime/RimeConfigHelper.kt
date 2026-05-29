@@ -68,6 +68,21 @@ object RimeConfigHelper {
         return Pair(userDataDir.absolutePath, sharedDataDir.absolutePath)
     }
     
+    fun isDeploymentComplete(context: Context): Boolean {
+        val userDataDir = File(context.filesDir, "rime/user")
+        val buildDir = File(userDataDir, "build")
+        if (!buildDir.exists()) return false
+
+        val schemaListIds = SchemaConfigHelper.parseSchemaListFromDefault(context)
+        if (schemaListIds.isEmpty()) return false
+
+        for (schemaId in schemaListIds) {
+            val prismFile = File(buildDir, "$schemaId.prism.bin")
+            if (!prismFile.exists()) return false
+        }
+        return true
+    }
+
     private fun checkAndCleanBuildDir(sharedDataDir: File, userDataDir: File) {
         val buildDir = File(userDataDir, "build")
         val defaultYaml = File(sharedDataDir, "default.yaml")
