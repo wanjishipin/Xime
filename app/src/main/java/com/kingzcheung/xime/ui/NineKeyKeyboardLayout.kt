@@ -73,10 +73,18 @@ fun NineKeyKeyboardLayout(
 
     fun onDigitPressed(digit: String) {
         if (digit == "1") {
-            onKeyPress("'")
+            // 分词键：将当前 digits 解码的拼音作为已确认音节，追加分隔符
+            if (digits.isNotEmpty()) {
+                val currentPinyin = decoder.bestPinyin(digits)
+                if (currentPinyin.isNotEmpty()) {
+                    confirmedPinyinPrefix += currentPinyin + "'"
+                }
+            } else {
+                confirmedPinyinPrefix += "'"
+            }
             digits = ""
             pinyinChoices = null
-            confirmedPinyinPrefix = ""
+            onReplaceFullPinyin(confirmedPinyinPrefix)
             return
         }
         digits += digit
@@ -220,7 +228,7 @@ fun NineKeyKeyboardLayout(
                             SwipeableIconKeyButton(
                                 icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
                                 onClick = { onDeleted() },
-                                backgroundColor = specialKeyBackgroundColor, iconColor = keyTextColor,
+                                backgroundColor = keyBackgroundColor, iconColor = keyTextColor,
                                 modifier = Modifier.weight(1f),
                                 onSwipe = { digits = ""; pinyinChoices = null },
                                 onLongClick = { onDeleted() },
@@ -234,7 +242,27 @@ fun NineKeyKeyboardLayout(
                             NineKeyButton2(digit = "4", letters = "GHI", onClick = { onDigitPressed("4") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("4") })
                             NineKeyButton2(digit = "5", letters = "JKL", onClick = { onDigitPressed("5") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("5") })
                             NineKeyButton2(digit = "6", letters = "MNO", onClick = { onDigitPressed("6") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("6") })
-                            KeyButton(text = "换行", onClick = { onKeyPress("enter") }, backgroundColor = specialKeyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("enter") })
+                            val hasInput = digits.isNotEmpty() || pinyinChoices != null || confirmedPinyinPrefix.isNotEmpty()
+                            val resetKeyText = if (hasInput) "重输" else "换行"
+                            KeyButton(
+                                text = resetKeyText,
+                                onClick = {
+                                    if (hasInput) {
+                                        digits = ""
+                                        pinyinChoices = null
+                                        confirmedPinyinPrefix = ""
+                                        onReplaceFullPinyin("")
+                                    } else {
+                                        onKeyPress("enter")
+                                    }
+                                },
+                                backgroundColor = keyBackgroundColor,
+                                textColor = keyTextColor,
+                                modifier = Modifier.weight(1f),
+                                onPress = {
+                                    onKeyPressDown?.invoke(if (hasInput) "clear" else "enter")
+                                }
+                            )
                         }
                         Row(
                             modifier = Modifier.fillMaxWidth().weight(1f),
@@ -243,7 +271,7 @@ fun NineKeyKeyboardLayout(
                             NineKeyButton2(digit = "7", letters = "PQRS", onClick = { onDigitPressed("7") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("7") })
                             NineKeyButton2(digit = "8", letters = "TUV", onClick = { onDigitPressed("8") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("8") })
                             NineKeyButton2(digit = "9", letters = "WXYZ", onClick = { onDigitPressed("9") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("9") })
-                            IconKeyButton(icon = rememberVectorPainter(Icons.Default.EmojiEmotions), onClick = { onKeyPress("emoji") }, backgroundColor = specialKeyBackgroundColor, iconColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("emoji") })
+                            IconKeyButton(icon = rememberVectorPainter(Icons.Default.EmojiEmotions), onClick = { onKeyPress("emoji") }, backgroundColor = keyBackgroundColor, iconColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("emoji") })
                         }
                     }
                 }
@@ -254,9 +282,10 @@ fun NineKeyKeyboardLayout(
                         .weight(1f),
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    KeyButton(text = "符号", onClick = { onKeyPress("symbol") }, backgroundColor = specialKeyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("symbol") })
-                    KeyButton(text = "123", onClick = { onKeyPress("mode_change") }, backgroundColor = specialKeyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("mode_change") })
-                    KeyButton(text = "空格", onClick = { onKeyPress("space") }, backgroundColor = specialKeyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(2f), onPress = { onKeyPressDown?.invoke("space") })
+                    KeyButton(text = "符号", onClick = { onKeyPress("symbol") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("symbol") })
+                    KeyButton(text = "abc", onClick = { onKeyPress("abc") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("abc") })
+                    KeyButton(text = "空格", onClick = { onKeyPress("space") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(2f), onPress = { onKeyPressDown?.invoke("space") })
+                    KeyButton(text = "123", onClick = { onKeyPress("mode_change") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("mode_change") })
                     KeyButton(text = "确定", onClick = { onKeyPress("enter") }, backgroundColor = specialKeyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1.2f), onPress = { onKeyPressDown?.invoke("enter") })
                 }
             }

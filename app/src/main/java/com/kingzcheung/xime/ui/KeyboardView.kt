@@ -108,7 +108,15 @@ fun KeyboardView(
     modifier: Modifier = Modifier
 ) {
     var isShifted by remember { mutableStateOf(false) }
-    var keyboardMode by remember { mutableStateOf(KeyboardMode.FULL) }
+    val state = uiStateProvider()
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var pendingAscii by remember { mutableStateOf(false) }
+    var keyboardMode by remember(state.currentSchemaId, isAsciiMode, pendingAscii) {
+        mutableStateOf(
+            if (isAsciiMode || pendingAscii) KeyboardMode.FULL
+            else InputMode.keyboardModeFor(state.currentSchemaId)
+        )
+    }
     var showMenu by remember { mutableStateOf(false) }
     var showCandidatePage by remember { mutableStateOf(false) }
     var showClipboard by remember { mutableStateOf(false) }
@@ -124,20 +132,26 @@ fun KeyboardView(
     val candidateBarBg = keyboardBgColor
     val candidateTextColor = keyTextColor
     val dividerColor = if (isDarkTheme) DividerColorDark else DividerColor
-    val state = uiStateProvider()
-    val context = androidx.compose.ui.platform.LocalContext.current
     
-    // 每次重新开始输入或切换方案时，根据当前方案确定键盘模式
-    LaunchedEffect(state.inputSessionId, state.currentSchemaId) {
+    // 每次重新开始输入、切换方案或切换中英文时，重置面板状态
+    LaunchedEffect(state.inputSessionId, state.currentSchemaId, isAsciiMode) {
         showCandidatePage = false
         showClipboard = false
         showEmoji = false
         showSchemaList = false
         showMenu = false
-        if (state.currentSchemaId == "t9_pinyin") {
-            keyboardMode = KeyboardMode.NINEKEY
+        // 同步键盘模式（兜底，remember 已处理同步初始化）
+        keyboardMode = if (isAsciiMode || pendingAscii) {
+            KeyboardMode.FULL
         } else {
-            keyboardMode = KeyboardMode.FULL
+            InputMode.keyboardModeFor(state.currentSchemaId)
+        }
+    }
+
+    // 等待 ASCII 模式实际追上后清除乐观状态
+    LaunchedEffect(isAsciiMode) {
+        if (isAsciiMode && pendingAscii) {
+            pendingAscii = false
         }
     }
 
@@ -286,7 +300,7 @@ fun KeyboardView(
                         accentColor = accentColor,
                         onSelectSchema = { schemaId, _ ->
                             onSwitchSchema?.invoke(schemaId)
-                            keyboardMode = if (schemaId == "t9_pinyin") KeyboardMode.NINEKEY else KeyboardMode.FULL
+                            keyboardMode = InputMode.keyboardModeFor(schemaId)
                             showSchemaList = false
                         },
                         modifier = Modifier.weight(1f)
@@ -421,7 +435,7 @@ fun KeyboardView(
                                         "symbol" -> keyboardMode = KeyboardMode.SYMBOL
                                         "t9" -> {
                                             keyboardMode = KeyboardMode.NINEKEY
-                                            onSchemaSwitch?.invoke("t9_pinyin")
+                                            onSchemaSwitch?.invoke(InputMode.T9_PINYIN.schemaId)
                                         }
                                         "emoji" -> showEmoji = true
                                         else -> onKeyPress(key, false)
@@ -443,8 +457,9 @@ fun KeyboardView(
                                 onKeyPress = { key ->
                                     when (key) {
                                         "abc" -> {
+                                            pendingAscii = true
                                             keyboardMode = KeyboardMode.FULL
-                                            onSchemaSwitch?.invoke(currentSchemaId)
+                                            onKeyPress("ime_switch", false)
                                         }
                                         "mode_change" -> {
                                             keyboardMode = KeyboardMode.NUMBER

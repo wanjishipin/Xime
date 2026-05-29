@@ -132,7 +132,17 @@ object SchemaConfigHelper {
     
     fun needsDownload(context: Context, schemaId: String): Boolean {
         val (schemaExists, dictExists) = checkSchemaFilesExist(context, schemaId)
-        return !schemaExists || !dictExists
+        if (schemaExists && dictExists) return false
+
+        // shared 目录没有但 assets 中存在的方案（尚未 sync 到 shared），视为可用
+        try {
+            context.assets.open("$RIME_ASSETS_DIR/$schemaId.schema.yaml").close()
+            return false
+        } catch (_: Exception) {
+            // assets 中也不存在，确实需要下载
+        }
+
+        return true
     }
     
     suspend fun downloadSchema(context: Context, schemaId: String): Boolean {

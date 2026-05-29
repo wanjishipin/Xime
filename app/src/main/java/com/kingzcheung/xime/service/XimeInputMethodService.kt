@@ -23,6 +23,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ComposeView
+import com.kingzcheung.xime.ui.InputMode
 import com.kingzcheung.xime.ui.LocalStretchFactor
 import androidx.compose.ui.unit.dp
 import com.kingzcheung.xime.ui.KeyboardResizeOverlay
@@ -820,7 +821,7 @@ if (state.showKeyboardResize) {
     private fun updateUI() {
         val rawInput = rimeEngine.getInput()
         val currentSchema = rimeEngine.getCurrentSchema()
-        val inputText = if (currentSchema == "t9_pinyin") rawInput.lowercase() else rawInput
+        val inputText = if (InputMode.keyboardModeFor(currentSchema) == com.kingzcheung.xime.ui.KeyboardMode.NINEKEY) rawInput.lowercase() else rawInput
         val candidatesWithComments = rimeEngine.getCandidatesWithComments()
         val isAsciiMode = rimeEngine.isAsciiMode()
         val hasNextPage = rimeEngine.hasNextPage()
