@@ -147,16 +147,18 @@ fun CandidateBar(
 
             Box(
                 modifier = Modifier
-                    .padding(vertical = 0.dp)
+                    .padding(vertical = 0.5.dp)
                     .fillMaxWidth()
-                    .height(20.dp),
-                contentAlignment = Alignment.TopStart
+                    .height(16.dp),
+                contentAlignment = Alignment.CenterStart,
+
             ) {
                 Text(
                     text = inputText,
                     color = textColor.copy(alpha = 0.8f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
+                    lineHeight = 16.sp,
                     maxLines = 1,
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
@@ -468,7 +470,7 @@ fun CandidateItem(
 ) {
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(5.dp))
             .background(
                 if (isSelected) accentColor.copy(alpha = 0.2f)
                 else Color.Transparent
@@ -481,7 +483,7 @@ fun CandidateItem(
         Text(
             text = text,
             color = if (isSelected) accentColor else textColor,
-            fontSize = 16.sp,
+            fontSize = 19.sp,
             fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
             maxLines = 1
         )

@@ -14,13 +14,11 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
@@ -107,7 +106,7 @@ fun CandidatePage(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.KeyboardArrowRight,
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                             contentDescription = "下一页",
                             tint = if (hasNextPage) textColor else textColor.copy(alpha = 0.3f),
                             modifier = Modifier.size(20.dp)
@@ -118,13 +117,12 @@ fun CandidatePage(
             
             Spacer(modifier = Modifier.height(8.dp))
             
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
+            FlowRow(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                itemsIndexed(candidates) { index, candidate ->
+                candidates.forEachIndexed { index, candidate ->
                     CandidatePageItem(
                         text = candidate,
                         comment = candidateComments.getOrElse(index) { "" },
@@ -138,13 +136,12 @@ fun CandidatePage(
         if (associationCandidates.isNotEmpty()) {
             Spacer(modifier = Modifier.height(8.dp))
             
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
+            FlowRow(
                 modifier = Modifier.fillMaxSize(),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                itemsIndexed(associationCandidates) { index, candidate ->
+                associationCandidates.forEachIndexed { index, candidate ->
                     CandidatePageItem(
                         text = candidate,
                         comment = "",
@@ -167,33 +164,33 @@ fun CandidatePageItem(
 ) {
     val displayComment = comment.replace("~", "")
     
-    Box(
+    Row(
+
         modifier = modifier
-//            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(6.dp))
 //            .background(textColor.copy(alpha = 0.1f))
             .clickable(onClick = onClick)
-            .fillMaxWidth()
+            .padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = text,
             color = textColor,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Normal,
             maxLines = 1,
             modifier = Modifier
-                .align(Alignment.Center)
-                .padding(vertical = 4.dp)
+                .padding(horizontal = 2.dp)
         )
         if (displayComment.isNotEmpty()) {
             Text(
                 text = displayComment,
                 color = textColor.copy(alpha = 0.5f),
-                fontSize = 9.sp,
+                fontSize = 11.sp,
                 fontWeight = FontWeight.Normal,
                 maxLines = 1,
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .offset(x = (-3).dp, y = (-4).dp)
+                    .padding(horizontal = 1.dp)
             )
         }
     }
