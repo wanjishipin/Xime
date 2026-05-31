@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -18,10 +17,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontFamily
@@ -40,24 +44,20 @@ private val BubbleCornerRadius = KeyboardDimensions.BubbleCornerRadius
 private val BubbleScreenMargin = 4.dp
 
 /**
- * 绘制倒"凸"字形气泡：
+ * 构建倒"凸"字形路径：
  *
- *   ┌──────────────────────┐  ← 宽体 rounded rect，居中于 pointer
+ *   ┌──────────────────────┐  ← 宽体 rounded rect
  *   │        text          │
- *   └──────┬──────────┬────┘  ← 两边有"肩膀"过渡到窄体
- *          │          │         ← 窄体 rounded rect，覆盖按键
+ *   └──────┬──────────┬────┘  ← "肩膀"过渡
+ *          │          │         ← 窄体 rounded rect
  *          └──────────┘
- *
- * 边缘情况：当 body 被 clamp 到屏幕边缘时，pointer 仍然居中于按键，
- * 左右"肩膀"可能不对称，但 Path fill 能正确处理凹多边形。
  */
-private fun DrawScope.drawInvertedConvexShape(
+private fun buildInvertedConvexPath(
     bodyLeft: Float, bodyWidth: Float, bodyHeight: Float,
     pointerLeft: Float, pointerWidth: Float, pointerHeight: Float,
-    cornerRadius: Float, color: Color,
-    isLeftFlush: Boolean = false,
-    isRightFlush: Boolean = false
-) {
+    cornerRadius: Float,
+    isLeftFlush: Boolean, isRightFlush: Boolean
+): Path {
     val bodyRight = bodyLeft + bodyWidth
     val bodyBottom = bodyHeight
     val pointerRight = pointerLeft + pointerWidth
@@ -66,8 +66,7 @@ private fun DrawScope.drawInvertedConvexShape(
     val r = cornerRadius.coerceAtMost(bodyWidth / 2f).coerceAtMost(bodyHeight / 2f)
     val pr = cornerRadius.coerceAtMost(pointerWidth / 2f).coerceAtMost(pointerHeight / 2f)
 
-    val path = Path().apply {
-        // 顺时针从主体左上角开始
+    return Path().apply {
         moveTo(bodyLeft + r, 0f)
 
         // ── 主体上边 ──
@@ -76,13 +75,11 @@ private fun DrawScope.drawInvertedConvexShape(
 
         // ── 主体右边 ──
         if (isRightFlush) {
-            // 贴右边缘：直角到底边，跳过圆角和肩膀，直接进 pointer 右上角
             lineTo(bodyRight, bodyBottom)
             quadraticBezierTo(pointerRight, bodyBottom, pointerRight, bodyBottom + pr)
         } else {
             lineTo(bodyRight, bodyBottom - r)
             quadraticBezierTo(bodyRight, bodyBottom, bodyRight - r, bodyBottom)
-            // ── 右下"肩膀"（← 向左走） ──
             lineTo(pointerRight + pr, bodyBottom)
             quadraticBezierTo(pointerRight, bodyBottom, pointerRight, bodyBottom + pr)
         }
@@ -91,31 +88,53 @@ private fun DrawScope.drawInvertedConvexShape(
         lineTo(pointerRight, pointerBottom - pr)
         quadraticBezierTo(pointerRight, pointerBottom, pointerRight - pr, pointerBottom)
 
-        // ── pointer 底边（← 向左走） ──
+        // ── pointer 底边 ──
         lineTo(pointerLeft + pr, pointerBottom)
         quadraticBezierTo(pointerLeft, pointerBottom, pointerLeft, pointerBottom - pr)
 
-        // ── pointer 左边（↑ 向上走） ──
+        // ── pointer 左边 ──
         lineTo(pointerLeft, bodyBottom + pr)
 
         if (isLeftFlush) {
-            // 贴左边缘：跳过肩膀和主体左下圆角，直接直上走主体左边
             lineTo(bodyLeft, r)
             quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
         } else {
-            // ── pointer 左上角（← 向左上走凸圆弧） ──
             quadraticBezierTo(pointerLeft, bodyBottom, pointerLeft - pr, bodyBottom)
-            // ── 左下"肩膀"（← 沿 bodyBottom 向左走） ──
             lineTo(bodyLeft + r, bodyBottom)
-            // ── 主体左下圆角（← 再向左上走凸圆弧） ──
             quadraticBezierTo(bodyLeft, bodyBottom, bodyLeft, bodyBottom - r)
-            // ── 主体左边（↑ 向上走） ──
             lineTo(bodyLeft, r)
             quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
         }
 
         close()
     }
+}
+
+/**
+ * 自定义 Shape，使 Modifier.shadow() 能沿倒"凸"轮廓投射阴影
+ */
+private class InvertedConvexShape(
+    private val builder: (Size) -> Path
+) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        return Outline.Generic(builder(size))
+    }
+}
+
+/** 绘制倒"凸"字形气泡 */
+private fun DrawScope.drawInvertedConvexShape(
+    bodyLeft: Float, bodyWidth: Float, bodyHeight: Float,
+    pointerLeft: Float, pointerWidth: Float, pointerHeight: Float,
+    cornerRadius: Float, color: Color,
+    isLeftFlush: Boolean = false,
+    isRightFlush: Boolean = false
+) {
+    val path = buildInvertedConvexPath(
+        bodyLeft, bodyWidth, bodyHeight,
+        pointerLeft, pointerWidth, pointerHeight,
+        cornerRadius,
+        isLeftFlush, isRightFlush
+    )
     drawPath(path, color)
 }
 
@@ -143,11 +162,11 @@ fun SwipeBubble(
 
     // ── 尺寸（px） ──
     val bodyHeightPx = with(density) { BubbleBodyHeight.toPx() }
-    val pointerHeightPx = with(density) { BubblePointerHeight.toPx() }
+    val pointerHeightPx = with(density) { (BubblePointerHeight + 5.dp).toPx() }
     val cornerRadiusPx = with(density) { BubbleCornerRadius.toPx() }
     val screenMarginPx = with(density) { BubbleScreenMargin.toPx() }
-    val minBodyWidthPx = with(density) { 104.dp.toPx() } // 64dp defaultMinSize + 20dp*2 padding
     val keyWidthPx = keyWidth
+    val minBodyWidthPx = keyWidthPx + with(density) { 24.dp.toPx() }
     val totalHeightPx = bodyHeightPx + pointerHeightPx
 
     // ── 测量文本内容宽度（上一帧结果），用于当前帧 bodyWidth ──
@@ -181,8 +200,8 @@ fun SwipeBubble(
     val boxLeft = minOf(bodyLeft, pointerLeft)
     val boxRight = maxOf(bodyRight, pointerRight)
     val boxWidth = boxRight - boxLeft
-    // 窄体从按键顶部开始，覆盖整个按键
-    val boxTop = keyBounds.top - bodyHeightPx
+    // 气泡底部与按键底部对齐，窄体覆盖整个按键
+    val boxTop = keyBounds.top + keyBounds.height - totalHeightPx
 
     // ── Box 内部相对坐标 ──
     val bodyLeftInBox = bodyLeft - boxLeft
@@ -191,6 +210,25 @@ fun SwipeBubble(
     // ── dp 值（Modifier 需要） ──
     val boxWidthDp = with(density) { boxWidth.toDp() }
     val totalHeightDp = with(density) { totalHeightPx.toDp() }
+
+    // 自定义 Shape，使阴影沿倒"凸"轮廓投射
+    val bubbleShape = remember(bodyLeftInBox, bodyWidth, bodyHeightPx,
+        pointerLeftInBox, keyWidthPx, pointerHeightPx, cornerRadiusPx,
+        isLeftClamped, isRightClamped) {
+        InvertedConvexShape { _ ->
+            buildInvertedConvexPath(
+                bodyLeft = bodyLeftInBox,
+                bodyWidth = bodyWidth,
+                bodyHeight = bodyHeightPx,
+                pointerLeft = pointerLeftInBox,
+                pointerWidth = keyWidthPx,
+                pointerHeight = pointerHeightPx,
+                cornerRadius = cornerRadiusPx,
+                isLeftFlush = isLeftClamped,
+                isRightFlush = isRightClamped
+            )
+        }
+    }
 
     val chaiFontFamily = remember {
         FontFamily(
@@ -208,8 +246,8 @@ fun SwipeBubble(
             .width(boxWidthDp)
             .height(totalHeightDp)
             .shadow(
-                4.dp, RoundedCornerShape(BubbleCornerRadius),
-                ambientColor = Color(0x22000000), spotColor = Color(0x22000000)
+                10.dp, shape = bubbleShape, clip = false,
+                ambientColor = Color(0x88000000), spotColor = Color(0x88000000)
             )
             .drawBehind {
                 drawInvertedConvexShape(
@@ -233,8 +271,7 @@ fun SwipeBubble(
                     measuredWidth = coordinates.size.width.toFloat()
                 }
                 .align(Alignment.TopCenter)
-                .padding(horizontal = 20.dp)
-                .defaultMinSize(minWidth = 64.dp)
+                .padding(horizontal = 10.dp)
                 .height(BubbleBodyHeight),
             contentAlignment = Alignment.Center
         ) {
