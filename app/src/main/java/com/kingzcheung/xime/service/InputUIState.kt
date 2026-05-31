@@ -38,7 +38,8 @@ data class InputUIState(
     val deploymentMessage: String = "",
     val hasNextPage: Boolean = false,
     val hasPrevPage: Boolean = false,
-    val inputSessionId: Long = 0
+    val inputSessionId: Long = 0,
+    val t9ResetSignal: Long = 0
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -81,6 +82,7 @@ if (showBottomButtons != other.showBottomButtons) return false
         if (hasNextPage != other.hasNextPage) return false
         if (hasPrevPage != other.hasPrevPage) return false
         if (inputSessionId != other.inputSessionId) return false
+        if (t9ResetSignal != other.t9ResetSignal) return false
 
         return true
     }
@@ -120,6 +122,8 @@ result = 31 * result + showBottomButtons.hashCode()
         result = 31 * result + deploymentMessage.hashCode()
         result = 31 * result + hasNextPage.hashCode()
         result = 31 * result + hasPrevPage.hashCode()
+        result = 31 * result + inputSessionId.hashCode()
+        result = 31 * result + t9ResetSignal.hashCode()
         return result
     }
 }

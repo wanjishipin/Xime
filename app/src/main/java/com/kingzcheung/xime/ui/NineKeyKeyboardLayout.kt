@@ -26,9 +26,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -43,12 +46,31 @@ fun NineKeyKeyboardLayout(
     keyTextColor: Color,
     specialKeyBackgroundColor: Color,
     keyboardBackgroundColor: Color = Color.Transparent,
+    isDarkTheme: Boolean = false,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
     resetSignal: Long = 0
 ) {
     val context = LocalContext.current
     val decoder = remember { T9Decoder(context) }
+    var swipeState by remember { mutableStateOf(SwipeState()) }
+    var keyboardBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
+    var lastKeyBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
+
+    fun processSwipeState(state: SwipeState, bounds: Rect) {
+        val newState = if (state.isSwipeDown && state.swipeText != null) {
+            state.copy(charInfos = SubcharHelper.parseSwipeDownText(state.swipeText))
+        } else {
+            state
+        }
+        swipeState = newState
+        lastKeyBounds = Rect(
+            left = bounds.left - keyboardBounds.left,
+            top = bounds.top - keyboardBounds.top,
+            right = bounds.right - keyboardBounds.left,
+            bottom = bounds.bottom - keyboardBounds.top
+        )
+    }
     var digits by remember { mutableStateOf("") }
     var confirmedPinyins by remember { mutableStateOf(listOf<String>()) }
     var firstOptions by remember { mutableStateOf<List<T9Decoder.SyllableOption>>(emptyList()) }
@@ -116,6 +138,9 @@ fun NineKeyKeyboardLayout(
         modifier = modifier
             .background(keyboardBackgroundColor)
             .padding(horizontal = 4.dp)
+            .onGloballyPositioned { coordinates ->
+                keyboardBounds = coordinates.boundsInRoot()
+            }
     ) {
         Column(
             modifier = Modifier
@@ -201,12 +226,19 @@ fun NineKeyKeyboardLayout(
                             NineKeyButton2(digit = "3", letters = "DEF", onClick = { onDigitPressed("3") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("3") })
                             SwipeableIconKeyButton(
                                 icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
-                                onClick = { onDeleted() },
+                                onClick = { onKeyPress("delete") },
                                 backgroundColor = keyBackgroundColor, iconColor = keyTextColor,
                                 modifier = Modifier.weight(1f),
-                                onSwipe = { digits = ""; confirmedPinyins = emptyList(); firstOptions = emptyList(); onReplaceFullPinyin("") },
-                                onLongClick = { onDeleted() },
-                                onPress = { onKeyPressDown?.invoke("delete") }
+                                swipeText = "清空",
+                                onSwipe = { onKeyPress("clear_composition") },
+                                onLongClick = { onKeyPress("delete") },
+                                onPress = { onKeyPressDown?.invoke("delete") },
+                                swipeUpLabel = "上滑清空",
+                                swipeDownLabel = "下滑撤回",
+                                onSwipeUp = { onKeyPress("clear_all") },
+                                onSwipeDown = { onKeyPress("undo_clear") },
+                                onSwipeLeft = { onKeyPress("clear_composition") },
+                                onSwipeStateChange = { state, bounds -> processSwipeState(state, bounds) }
                             )
                         }
                         Row(
@@ -268,6 +300,14 @@ fun NineKeyKeyboardLayout(
                 }
             }
         }
+
+        SwipeBubble(
+            swipeState = swipeState,
+            keyBounds = lastKeyBounds,
+            isDarkTheme = isDarkTheme,
+            keyWidth = if (swipeState.isSwiping || swipeState.isPressed) lastKeyBounds.width else 0f,
+            keyboardWidth = keyboardBounds.width
+        )
     }
 }
 

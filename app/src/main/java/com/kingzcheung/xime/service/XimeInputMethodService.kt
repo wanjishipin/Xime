@@ -457,6 +457,17 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             onKeyPressDown = { key ->
                                 feedbackManager.performKeyPressDownEffect(key)
                             },
+                            onT9ReplaceFullPinyin = { pinyin ->
+                                serviceScope.launch(Dispatchers.Default) {
+                                    rimeEngine.clearComposition()
+                                    for (char in pinyin) {
+                                        rimeEngine.processKey(char.lowercaseChar().code, 0)
+                                    }
+                                    withContext(Dispatchers.Main) {
+                                        updateUI()
+                                    }
+                                }
+                            },
                             onCursorMove = { direction ->
                                 serviceScope.launch(Dispatchers.Main) {
                                     val keyCode = if (direction > 0) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_LEFT
@@ -852,6 +863,13 @@ onVoiceModeChange = { enabled ->
             candidatesWithComments.map { it.text }.toTypedArray() to candidatesWithComments.map { it.comment }.toTypedArray()
         }
         
+        val prevInputText = uiState.value.inputText
+        val t9ResetSignal = if (prevInputText.isNotEmpty() && inputText.isEmpty()) {
+            uiState.value.t9ResetSignal + 1
+        } else {
+            uiState.value.t9ResetSignal
+        }
+
         uiState.value = uiState.value.copy(
             inputText = inputText,
             candidates = filteredTexts,
@@ -861,7 +879,8 @@ onVoiceModeChange = { enabled ->
             associationCandidates = if (isAsciiMode && pendingEnglish.isEmpty()) emptyArray() else uiState.value.associationCandidates,
             isShowingRecentClipboard = false,
             hasNextPage = hasNextPage,
-            hasPrevPage = hasPrevPage
+            hasPrevPage = hasPrevPage,
+            t9ResetSignal = t9ResetSignal
         )
         
         if (pendingEnglish.isNotEmpty()) {

@@ -481,9 +481,10 @@ fun KeyboardView(
                                 keyTextColor = keyTextColor,
                                 specialKeyBackgroundColor = specialKeyBgColor,
                                 keyboardBackgroundColor = keyboardBgColor,
+                                isDarkTheme = isDarkTheme,
                                 modifier = Modifier.weight(1f).then(cursorMod),
                                 onKeyPressDown = onKeyPressDown,
-                                resetSignal = state.inputSessionId
+                                resetSignal = state.t9ResetSignal
                             )
                         }
                         KeyboardMode.SYMBOL -> {
