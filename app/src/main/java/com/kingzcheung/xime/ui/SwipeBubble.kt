@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -43,21 +44,24 @@ private val BubbleCornerRadius = KeyboardDimensions.BubbleCornerRadius
 private val BubbleScreenMargin = 4.dp
 
 /**
- * 构建倒"凸"字形路径：
+ * 绘制倒"凸"字形气泡：
  *
- *   ┌──────────────────────┐  ← 宽体 rounded rect
+ *   ┌──────────────────────┐  ← 宽体 rounded rect，居中于 pointer
  *   │        text          │
- *   └──────┬──────────┬────┘  ← "肩膀"过渡
- *          │          │         ← 窄体 rounded rect
+ *   └──────┬──────────┬────┘  ← 两边有"肩膀"过渡到窄体
+ *          │          │         ← 窄体 rounded rect，覆盖按键
  *          └──────────┘
+ *
+ * 边缘情况：当 body 被 clamp 到屏幕边缘时，pointer 仍然居中于按键，
+ * 左右"肩膀"可能不对称，但 Path fill 能正确处理凹多边形。
  */
-private fun buildInvertedConvexPath(
+private fun DrawScope.drawInvertedConvexShape(
     bodyLeft: Float, bodyWidth: Float, bodyHeight: Float,
     pointerLeft: Float, pointerWidth: Float, pointerHeight: Float,
-    cornerRadius: Float,
+    cornerRadius: Float, color: Color,
     isLeftFlush: Boolean = false,
     isRightFlush: Boolean = false
-): Path {
+) {
     val bodyRight = bodyLeft + bodyWidth
     val bodyBottom = bodyHeight
     val pointerRight = pointerLeft + pointerWidth
@@ -66,7 +70,8 @@ private fun buildInvertedConvexPath(
     val r = cornerRadius.coerceAtMost(bodyWidth / 2f).coerceAtMost(bodyHeight / 2f)
     val pr = cornerRadius.coerceAtMost(pointerWidth / 2f).coerceAtMost(pointerHeight / 2f)
 
-    return Path().apply {
+    val path = Path().apply {
+        // 顺时针从主体左上角开始
         moveTo(bodyLeft + r, 0f)
 
         // ── 主体上边 ──
@@ -75,68 +80,46 @@ private fun buildInvertedConvexPath(
 
         // ── 主体右边 ──
         if (isRightFlush) {
-            // 直角落底 → 直线进 pointer 右边（无圆角）
+            // 贴右边缘：直角到底边，跳过圆角和肩膀，直接进 pointer 右上角
             lineTo(bodyRight, bodyBottom)
-            lineTo(pointerRight, pointerBottom - pr)
+            quadraticBezierTo(pointerRight, bodyBottom, pointerRight, bodyBottom + pr)
         } else {
             lineTo(bodyRight, bodyBottom - r)
             quadraticBezierTo(bodyRight, bodyBottom, bodyRight - r, bodyBottom)
+            // ── 右下"肩膀"（← 向左走） ──
             lineTo(pointerRight + pr, bodyBottom)
             quadraticBezierTo(pointerRight, bodyBottom, pointerRight, bodyBottom + pr)
-            lineTo(pointerRight, pointerBottom - pr)
         }
+
+        // ── pointer 右边 ──
+        lineTo(pointerRight, pointerBottom - pr)
         quadraticBezierTo(pointerRight, pointerBottom, pointerRight - pr, pointerBottom)
 
-        // ── pointer 底边 ──
+        // ── pointer 底边（← 向左走） ──
         lineTo(pointerLeft + pr, pointerBottom)
         quadraticBezierTo(pointerLeft, pointerBottom, pointerLeft, pointerBottom - pr)
 
-        // ── pointer 左边 ──
+        // ── pointer 左边（↑ 向上走） ──
         lineTo(pointerLeft, bodyBottom + pr)
 
         if (isLeftFlush) {
-            // 直角落底 → 直线进主体左边（无圆角）
-            lineTo(pointerLeft, bodyBottom)
-            lineTo(bodyLeft, bodyBottom)
+            // 贴左边缘：跳过肩膀和主体左下圆角，直接直上走主体左边
             lineTo(bodyLeft, r)
             quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
         } else {
+            // ── pointer 左上角（← 向左上走凸圆弧） ──
             quadraticBezierTo(pointerLeft, bodyBottom, pointerLeft - pr, bodyBottom)
+            // ── 左下"肩膀"（← 沿 bodyBottom 向左走） ──
             lineTo(bodyLeft + r, bodyBottom)
+            // ── 主体左下圆角（← 再向左上走凸圆弧） ──
             quadraticBezierTo(bodyLeft, bodyBottom, bodyLeft, bodyBottom - r)
+            // ── 主体左边（↑ 向上走） ──
             lineTo(bodyLeft, r)
             quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
         }
 
         close()
     }
-}
-
-/**
- * 自定义 Shape，使 Modifier.shadow() 能沿倒"凸"轮廓投射阴影
- */
-private class InvertedConvexShape(
-    private val builder: (Size) -> Path
-) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        return Outline.Generic(builder(size))
-    }
-}
-
-/** 绘制倒"凸"字形气泡 */
-private fun DrawScope.drawInvertedConvexShape(
-    bodyLeft: Float, bodyWidth: Float, bodyHeight: Float,
-    pointerLeft: Float, pointerWidth: Float, pointerHeight: Float,
-    cornerRadius: Float, color: Color,
-    isLeftFlush: Boolean = false,
-    isRightFlush: Boolean = false
-) {
-    val path = buildInvertedConvexPath(
-        bodyLeft, bodyWidth, bodyHeight,
-        pointerLeft, pointerWidth, pointerHeight,
-        cornerRadius,
-        isLeftFlush, isRightFlush
-    )
     drawPath(path, color)
 }
 
@@ -150,26 +133,9 @@ fun SwipeBubble(
     modifier: Modifier = Modifier
 ) {
     val shouldShowBubble = swipeState.isSwiping || swipeState.isPressed
-    val displayText = if (swipeState.isPressed) {
-        swipeState.pressedText
-    } else {
-        swipeState.swipeText
-    }
-    
-    if (!shouldShowBubble || displayText == null) {
-        return
-    }
-    
-    android.util.Log.d("SwipeBubble", "SwipeBubble called: keyBounds=$keyBounds, keyboardWidth=$keyboardWidth")
-    
-    val bubbleBgColor = if (swipeState.isDanger) {
-        if (swipeState.isSwipeDown) Color(0xFF1A73E8) // 下滑撤回用主题蓝色
-        else Color(0xFFD93025) // 上滑清空用红色
-    } else if (isDarkTheme) KeyBackgroundDark else KeyBackground
-    val bubbleTextColor = if (swipeState.isDanger) {
-        Color.White
-    } else if (isDarkTheme) Color(0xFFE8EAED) else Color(0xFF202124)
-    
+    val displayText = if (swipeState.isPressed) swipeState.pressedText else swipeState.swipeText
+    if (!shouldShowBubble || displayText == null) return
+
     val density = LocalDensity.current
     val context = LocalContext.current
 
@@ -184,29 +150,51 @@ fun SwipeBubble(
     val pointerHeightPx = with(density) { (BubblePointerHeight + 5.dp).toPx() }
     val cornerRadiusPx = with(density) { BubbleCornerRadius.toPx() }
     val screenMarginPx = with(density) { BubbleScreenMargin.toPx() }
-    // 预估最小宽度 (defaultMinSize 64dp + padding 20dp*2 = 104dp)
-    val minBodyWidthPx = with(density) { 104.dp.toPx() }
-    
-    var actualBodyWidth by remember { mutableStateOf(minBodyWidthPx) }
-    
-    val effectiveBodyWidth = maxOf(actualBodyWidth, minBodyWidthPx)
-    
-    val layoutInfo = remember(effectiveBodyWidth, keyBounds, keyboardWidth) {
-        android.util.Log.d("SwipeBubble", "calculateBubbleLayout: effectiveBodyWidth=$effectiveBodyWidth, keyBounds=$keyBounds, keyboardWidth=$keyboardWidth")
-        if (keyboardWidth > 0) {
-            calculateBubbleLayout(
-                keyBounds = keyBounds,
-                bodyWidth = effectiveBodyWidth,
-                bodyHeight = bodyHeightPx,
-                pointerLeft = pointerLeftInBox,
-                pointerWidth = keyWidthPx,
-                pointerHeight = pointerHeightPx,
-                cornerRadius = cornerRadiusPx,
-                isLeftFlush = isLeftFlush,
-                isRightFlush = isRightFlush
-            )
-        }
+    val minBodyWidthPx = with(density) { 104.dp.toPx() } // 64dp defaultMinSize + 20dp*2 padding
+    val keyWidthPx = keyWidth
+    val totalHeightPx = bodyHeightPx + pointerHeightPx
+
+    // ── 测量文本内容宽度（上一帧结果），用于当前帧 bodyWidth ──
+    var measuredWidth by remember { mutableStateOf(0f) }
+    val bodyWidth = maxOf(measuredWidth, minBodyWidthPx)
+
+    // ── pointer 居中于按键 ──
+    val pointerCenterX = keyBounds.left + keyBounds.width / 2f
+
+    // ── body 居中于 pointerCenterX，但 clamp 到键盘边界内 ──
+    val idealBodyLeft = pointerCenterX - bodyWidth / 2f
+    val bodyLeft = idealBodyLeft.coerceIn(
+        screenMarginPx,
+        keyboardWidth - bodyWidth - screenMarginPx
+    )
+    val bodyRight = bodyLeft + bodyWidth
+
+    // ── pointer 位置 ──
+    //    默认居中于按键；靠边一侧与 body 对齐，消除肩膀间隙 ──
+    val isLeftClamped = idealBodyLeft < screenMarginPx
+    val isRightClamped = idealBodyLeft > keyboardWidth - bodyWidth - screenMarginPx
+    val basePointerLeft = pointerCenterX - keyWidthPx / 2f
+    val (pointerLeft, pointerRight) = when {
+        isLeftClamped && isRightClamped -> bodyLeft to bodyRight
+        isLeftClamped -> bodyLeft to (bodyLeft + keyWidthPx)
+        isRightClamped -> (bodyRight - keyWidthPx) to bodyRight
+        else -> basePointerLeft to (basePointerLeft + keyWidthPx)
     }
+
+    // ── Box 容器同时包裹 body 和 pointer ──
+    val boxLeft = minOf(bodyLeft, pointerLeft)
+    val boxRight = maxOf(bodyRight, pointerRight)
+    val boxWidth = boxRight - boxLeft
+    // 窄体从按键顶部开始，覆盖整个按键
+    val boxTop = keyBounds.top - bodyHeightPx
+
+    // ── Box 内部相对坐标 ──
+    val bodyLeftInBox = bodyLeft - boxLeft
+    val pointerLeftInBox = pointerLeft - boxLeft
+
+    // ── dp 值（Modifier 需要） ──
+    val boxWidthDp = with(density) { boxWidth.toDp() }
+    val totalHeightDp = with(density) { totalHeightPx.toDp() }
 
     val chaiFontFamily = remember {
         FontFamily(
@@ -224,8 +212,8 @@ fun SwipeBubble(
             .width(boxWidthDp)
             .height(totalHeightDp)
             .shadow(
-                10.dp, shape = bubbleShape, clip = false,
-                ambientColor = Color(0x88000000), spotColor = Color(0x88000000)
+                4.dp, RoundedCornerShape(BubbleCornerRadius),
+                ambientColor = Color(0x22000000), spotColor = Color(0x22000000)
             )
             .drawBehind {
                 drawInvertedConvexShape(
@@ -237,15 +225,20 @@ fun SwipeBubble(
                     pointerHeight = pointerHeightPx,
                     cornerRadius = cornerRadiusPx,
                     color = bgColor,
-                    isLeftFlush = isLeftFlush,
-                    isRightFlush = isRightFlush
+                    isLeftFlush = isLeftClamped,
+                    isRightFlush = isRightClamped
                 )
             }
     ) {
         Box(
             modifier = Modifier
+                .onGloballyPositioned { coordinates ->
+                    // 测量实际内容宽度，更新下一帧的 bodyWidth
+                    measuredWidth = coordinates.size.width.toFloat()
+                }
                 .align(Alignment.TopCenter)
-                .padding(horizontal = 10.dp)
+                .padding(horizontal = 20.dp)
+                .defaultMinSize(minWidth = 64.dp)
                 .height(BubbleBodyHeight),
             contentAlignment = Alignment.Center
         ) {
