@@ -54,7 +54,9 @@ private val BubbleScreenMargin = 4.dp
 private fun buildInvertedConvexPath(
     bodyLeft: Float, bodyWidth: Float, bodyHeight: Float,
     pointerLeft: Float, pointerWidth: Float, pointerHeight: Float,
-    cornerRadius: Float
+    cornerRadius: Float,
+    isLeftFlush: Boolean = false,
+    isRightFlush: Boolean = false
 ): Path {
     val bodyRight = bodyLeft + bodyWidth
     val bodyBottom = bodyHeight
@@ -72,13 +74,17 @@ private fun buildInvertedConvexPath(
         quadraticBezierTo(bodyRight, 0f, bodyRight, r)
 
         // ── 主体右边 ──
-        lineTo(bodyRight, bodyBottom - r)
-        quadraticBezierTo(bodyRight, bodyBottom, bodyRight - r, bodyBottom)
-        lineTo(pointerRight + pr, bodyBottom)
-        quadraticBezierTo(pointerRight, bodyBottom, pointerRight, bodyBottom + pr)
-
-        // ── pointer 右边 ──
-        lineTo(pointerRight, pointerBottom - pr)
+        if (isRightFlush) {
+            // 直角落底 → 直线进 pointer 右边（无圆角）
+            lineTo(bodyRight, bodyBottom)
+            lineTo(pointerRight, pointerBottom - pr)
+        } else {
+            lineTo(bodyRight, bodyBottom - r)
+            quadraticBezierTo(bodyRight, bodyBottom, bodyRight - r, bodyBottom)
+            lineTo(pointerRight + pr, bodyBottom)
+            quadraticBezierTo(pointerRight, bodyBottom, pointerRight, bodyBottom + pr)
+            lineTo(pointerRight, pointerBottom - pr)
+        }
         quadraticBezierTo(pointerRight, pointerBottom, pointerRight - pr, pointerBottom)
 
         // ── pointer 底边 ──
@@ -88,11 +94,19 @@ private fun buildInvertedConvexPath(
         // ── pointer 左边 ──
         lineTo(pointerLeft, bodyBottom + pr)
 
-        quadraticBezierTo(pointerLeft, bodyBottom, pointerLeft - pr, bodyBottom)
-        lineTo(bodyLeft + r, bodyBottom)
-        quadraticBezierTo(bodyLeft, bodyBottom, bodyLeft, bodyBottom - r)
-        lineTo(bodyLeft, r)
-        quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
+        if (isLeftFlush) {
+            // 直角落底 → 直线进主体左边（无圆角）
+            lineTo(pointerLeft, bodyBottom)
+            lineTo(bodyLeft, bodyBottom)
+            lineTo(bodyLeft, r)
+            quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
+        } else {
+            quadraticBezierTo(pointerLeft, bodyBottom, pointerLeft - pr, bodyBottom)
+            lineTo(bodyLeft + r, bodyBottom)
+            quadraticBezierTo(bodyLeft, bodyBottom, bodyLeft, bodyBottom - r)
+            lineTo(bodyLeft, r)
+            quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
+        }
 
         close()
     }
@@ -113,12 +127,15 @@ private class InvertedConvexShape(
 private fun DrawScope.drawInvertedConvexShape(
     bodyLeft: Float, bodyWidth: Float, bodyHeight: Float,
     pointerLeft: Float, pointerWidth: Float, pointerHeight: Float,
-    cornerRadius: Float, color: Color
+    cornerRadius: Float, color: Color,
+    isLeftFlush: Boolean = false,
+    isRightFlush: Boolean = false
 ) {
     val path = buildInvertedConvexPath(
         bodyLeft, bodyWidth, bodyHeight,
         pointerLeft, pointerWidth, pointerHeight,
-        cornerRadius
+        cornerRadius,
+        isLeftFlush, isRightFlush
     )
     drawPath(path, color)
 }
@@ -186,6 +203,10 @@ fun SwipeBubble(
     // 气泡底部与按键底部对齐，窄体覆盖整个按键
     val boxTop = keyBounds.top + keyBounds.height - totalHeightPx
 
+    // ── 检测宽窄体是否对齐（贴边时边缘侧肩膀应为直角直线） ──
+    val isLeftFlush = kotlin.math.abs(bodyLeft - pointerLeft) < 1f
+    val isRightFlush = kotlin.math.abs(bodyRight - pointerRight) < 1f
+
     // ── Box 内部相对坐标 ──
     val bodyLeftInBox = bodyLeft - boxLeft
     val pointerLeftInBox = pointerLeft - boxLeft
@@ -196,7 +217,8 @@ fun SwipeBubble(
 
     // 自定义 Shape，使阴影沿倒"凸"轮廓投射
     val bubbleShape = remember(bodyLeftInBox, bodyWidth, bodyHeightPx,
-        pointerLeftInBox, keyWidthPx, pointerHeightPx, cornerRadiusPx) {
+        pointerLeftInBox, keyWidthPx, pointerHeightPx, cornerRadiusPx,
+        isLeftFlush, isRightFlush) {
         InvertedConvexShape { _ ->
             buildInvertedConvexPath(
                 bodyLeft = bodyLeftInBox,
@@ -205,7 +227,9 @@ fun SwipeBubble(
                 pointerLeft = pointerLeftInBox,
                 pointerWidth = keyWidthPx,
                 pointerHeight = pointerHeightPx,
-                cornerRadius = cornerRadiusPx
+                cornerRadius = cornerRadiusPx,
+                isLeftFlush = isLeftFlush,
+                isRightFlush = isRightFlush
             )
         }
     }
@@ -238,7 +262,9 @@ fun SwipeBubble(
                     pointerWidth = keyWidthPx,
                     pointerHeight = pointerHeightPx,
                     cornerRadius = cornerRadiusPx,
-                    color = bgColor
+                    color = bgColor,
+                    isLeftFlush = isLeftFlush,
+                    isRightFlush = isRightFlush
                 )
             }
     ) {
