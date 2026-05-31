@@ -167,7 +167,14 @@ class SpeechRecognitionManager(private val context: Context) {
 
     fun startPreBuffer() {
         synchronized(preBufferLock) {
-            if (preBufferThread != null) return
+            if (preBufferThread != null) {
+                preBufferThread?.interrupt()
+                try {
+                    preBufferThread?.join(500)
+                } catch (_: InterruptedException) { }
+                preBufferThread = null
+                releasePreBufferRecord()
+            }
             preBufferChunks.clear()
         }
         val record = createAudioRecord() ?: return
@@ -182,9 +189,13 @@ class SpeechRecognitionManager(private val context: Context) {
 
     fun stopPreBuffer(): List<ByteArray> {
         mainHandler.removeCallbacks(preBufferTimeoutRunnable)
+        synchronized(preBufferLock) {
+            preBufferRecord?.stop()
+            preBufferRecord = null
+        }
         preBufferThread?.interrupt()
         try {
-            preBufferThread?.join(500)
+            preBufferThread?.join(1000)
         } catch (_: InterruptedException) { }
         preBufferThread = null
         synchronized(preBufferLock) {
@@ -199,10 +210,8 @@ class SpeechRecognitionManager(private val context: Context) {
         preBufferRecord = null
         if (record == null) return
         try {
-            if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                record.stop()
-            }
-        } catch (_: IllegalStateException) { }
+            record.stop()
+        } catch (_: Exception) { }
         record.release()
     }
 
@@ -211,7 +220,6 @@ class SpeechRecognitionManager(private val context: Context) {
             val record: AudioRecord
             synchronized(preBufferLock) {
                 record = preBufferRecord ?: return@run
-                preBufferRecord = null
             }
             record.startRecording()
             val buffer = ShortArray((SAMPLE_RATE * BUFFER_SIZE_SECONDS).toInt())
@@ -231,14 +239,15 @@ class SpeechRecognitionManager(private val context: Context) {
                                 preBufferChunks.removeAt(0)
                             }
                         }
+                    } else {
+                        break
                     }
                 }
+            } catch (_: Exception) {
             } finally {
                 try {
-                    if (record.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
-                        record.stop()
-                    }
-                } catch (_: IllegalStateException) { }
+                    record.stop()
+                } catch (_: Exception) { }
                 record.release()
             }
         }
