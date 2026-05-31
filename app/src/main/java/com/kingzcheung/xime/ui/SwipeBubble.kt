@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalContext
@@ -55,8 +54,7 @@ private val BubbleScreenMargin = 4.dp
 private fun buildInvertedConvexPath(
     bodyLeft: Float, bodyWidth: Float, bodyHeight: Float,
     pointerLeft: Float, pointerWidth: Float, pointerHeight: Float,
-    cornerRadius: Float,
-    isLeftFlush: Boolean, isRightFlush: Boolean
+    cornerRadius: Float
 ): Path {
     val bodyRight = bodyLeft + bodyWidth
     val bodyBottom = bodyHeight
@@ -74,15 +72,10 @@ private fun buildInvertedConvexPath(
         quadraticBezierTo(bodyRight, 0f, bodyRight, r)
 
         // ── 主体右边 ──
-        if (isRightFlush) {
-            lineTo(bodyRight, bodyBottom)
-            quadraticBezierTo(pointerRight, bodyBottom, pointerRight, bodyBottom + pr)
-        } else {
-            lineTo(bodyRight, bodyBottom - r)
-            quadraticBezierTo(bodyRight, bodyBottom, bodyRight - r, bodyBottom)
-            lineTo(pointerRight + pr, bodyBottom)
-            quadraticBezierTo(pointerRight, bodyBottom, pointerRight, bodyBottom + pr)
-        }
+        lineTo(bodyRight, bodyBottom - r)
+        quadraticBezierTo(bodyRight, bodyBottom, bodyRight - r, bodyBottom)
+        lineTo(pointerRight + pr, bodyBottom)
+        quadraticBezierTo(pointerRight, bodyBottom, pointerRight, bodyBottom + pr)
 
         // ── pointer 右边 ──
         lineTo(pointerRight, pointerBottom - pr)
@@ -95,16 +88,11 @@ private fun buildInvertedConvexPath(
         // ── pointer 左边 ──
         lineTo(pointerLeft, bodyBottom + pr)
 
-        if (isLeftFlush) {
-            lineTo(bodyLeft, r)
-            quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
-        } else {
-            quadraticBezierTo(pointerLeft, bodyBottom, pointerLeft - pr, bodyBottom)
-            lineTo(bodyLeft + r, bodyBottom)
-            quadraticBezierTo(bodyLeft, bodyBottom, bodyLeft, bodyBottom - r)
-            lineTo(bodyLeft, r)
-            quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
-        }
+        quadraticBezierTo(pointerLeft, bodyBottom, pointerLeft - pr, bodyBottom)
+        lineTo(bodyLeft + r, bodyBottom)
+        quadraticBezierTo(bodyLeft, bodyBottom, bodyLeft, bodyBottom - r)
+        lineTo(bodyLeft, r)
+        quadraticBezierTo(bodyLeft, 0f, bodyLeft + r, 0f)
 
         close()
     }
@@ -125,15 +113,12 @@ private class InvertedConvexShape(
 private fun DrawScope.drawInvertedConvexShape(
     bodyLeft: Float, bodyWidth: Float, bodyHeight: Float,
     pointerLeft: Float, pointerWidth: Float, pointerHeight: Float,
-    cornerRadius: Float, color: Color,
-    isLeftFlush: Boolean = false,
-    isRightFlush: Boolean = false
+    cornerRadius: Float, color: Color
 ) {
     val path = buildInvertedConvexPath(
         bodyLeft, bodyWidth, bodyHeight,
         pointerLeft, pointerWidth, pointerHeight,
-        cornerRadius,
-        isLeftFlush, isRightFlush
+        cornerRadius
     )
     drawPath(path, color)
 }
@@ -169,9 +154,15 @@ fun SwipeBubble(
     val minBodyWidthPx = keyWidthPx + with(density) { 24.dp.toPx() }
     val totalHeightPx = bodyHeightPx + pointerHeightPx
 
-    // ── 测量文本内容宽度（上一帧结果），用于当前帧 bodyWidth ──
-    var measuredWidth by remember { mutableStateOf(0f) }
-    val bodyWidth = maxOf(measuredWidth, minBodyWidthPx)
+    // ── 用 Paint 同步测量文本宽度，避免 constrained layout 的 chicken-and-egg ──
+    val textWidthPx = with(density) {
+        val paint = android.graphics.Paint().apply {
+            textSize = 14.sp.toPx()
+            isAntiAlias = true
+        }
+        paint.measureText(displayText)
+    }
+    val bodyWidth = maxOf(textWidthPx + with(density) { 20.dp.toPx() }, minBodyWidthPx) // textWidth + 10dp*2 padding
 
     // ── pointer 居中于按键 ──
     val pointerCenterX = keyBounds.left + keyBounds.width / 2f
@@ -184,17 +175,9 @@ fun SwipeBubble(
     )
     val bodyRight = bodyLeft + bodyWidth
 
-    // ── pointer 位置 ──
-    //    默认居中于按键；靠边一侧与 body 对齐，消除肩膀间隙 ──
-    val isLeftClamped = idealBodyLeft < screenMarginPx
-    val isRightClamped = idealBodyLeft > keyboardWidth - bodyWidth - screenMarginPx
-    val basePointerLeft = pointerCenterX - keyWidthPx / 2f
-    val (pointerLeft, pointerRight) = when {
-        isLeftClamped && isRightClamped -> bodyLeft to bodyRight
-        isLeftClamped -> bodyLeft to (bodyLeft + keyWidthPx)
-        isRightClamped -> (bodyRight - keyWidthPx) to bodyRight
-        else -> basePointerLeft to (basePointerLeft + keyWidthPx)
-    }
+    // ── pointer 始终居中于按键 ──
+    val pointerLeft = pointerCenterX - keyWidthPx / 2f
+    val pointerRight = pointerLeft + keyWidthPx
 
     // ── Box 容器同时包裹 body 和 pointer ──
     val boxLeft = minOf(bodyLeft, pointerLeft)
@@ -213,8 +196,7 @@ fun SwipeBubble(
 
     // 自定义 Shape，使阴影沿倒"凸"轮廓投射
     val bubbleShape = remember(bodyLeftInBox, bodyWidth, bodyHeightPx,
-        pointerLeftInBox, keyWidthPx, pointerHeightPx, cornerRadiusPx,
-        isLeftClamped, isRightClamped) {
+        pointerLeftInBox, keyWidthPx, pointerHeightPx, cornerRadiusPx) {
         InvertedConvexShape { _ ->
             buildInvertedConvexPath(
                 bodyLeft = bodyLeftInBox,
@@ -223,9 +205,7 @@ fun SwipeBubble(
                 pointerLeft = pointerLeftInBox,
                 pointerWidth = keyWidthPx,
                 pointerHeight = pointerHeightPx,
-                cornerRadius = cornerRadiusPx,
-                isLeftFlush = isLeftClamped,
-                isRightFlush = isRightClamped
+                cornerRadius = cornerRadiusPx
             )
         }
     }
@@ -258,18 +238,12 @@ fun SwipeBubble(
                     pointerWidth = keyWidthPx,
                     pointerHeight = pointerHeightPx,
                     cornerRadius = cornerRadiusPx,
-                    color = bgColor,
-                    isLeftFlush = isLeftClamped,
-                    isRightFlush = isRightClamped
+                    color = bgColor
                 )
             }
     ) {
         Box(
             modifier = Modifier
-                .onGloballyPositioned { coordinates ->
-                    // 测量实际内容宽度，更新下一帧的 bodyWidth
-                    measuredWidth = coordinates.size.width.toFloat()
-                }
                 .align(Alignment.TopCenter)
                 .padding(horizontal = 10.dp)
                 .height(BubbleBodyHeight),
