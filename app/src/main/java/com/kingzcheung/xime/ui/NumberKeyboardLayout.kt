@@ -37,7 +37,7 @@ fun NumberKeyboardLayout(
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null
 ) {
-    val symbols = listOf("@", "+", "-")
+    val symbols = listOf("+", "-", "*")
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val commonSymbols = listOf(
@@ -164,7 +164,7 @@ private fun NumberRows(
     specialKeyBackgroundColor: Color,
     onKeyPressDown: ((String) -> Unit)? = null
 ) {
-    val symbols = listOf("@", "+", "-")
+    val symbols = listOf("+", "-", "*")
     Column(
         modifier = Modifier
             .fillMaxWidth()
