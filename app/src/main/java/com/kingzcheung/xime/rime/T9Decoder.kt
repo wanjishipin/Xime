@@ -26,6 +26,9 @@ class T9Decoder {
     /** 是否启用键盘邻居容错 */
     var neighborEnabled = true
 
+    /** decode() 结果缓存 — 避免同一次按键处理中重复调用 */
+    private var decodeCache: Pair<String, List<Path>>? = null
+
     constructor() {
         val stream = this::class.java.classLoader
             ?.getResourceAsStream("pinyin_lm.bin")
@@ -71,6 +74,20 @@ class T9Decoder {
             }
         }
 
+        /** 编码→模糊拼音映射（预计算，避免运行时重复构建） */
+        private val fuzzyCodeMap: Map<String, List<String>> by lazy {
+            val result = mutableMapOf<String, MutableList<String>>()
+            for (pinyin in FuzzyPinyin.PINYIN_LIST) {
+                val variants = FuzzyPinyin.expandAll(listOf(pinyin), FuzzyPinyin.ALL_RULES)
+                for (v in variants) {
+                    if (v == pinyin) continue
+                    val code = v.map { FuzzyPinyin.LETTER_TO_DIGIT[it] ?: it }.joinToString("")
+                    result.getOrPut(code) { mutableListOf() }.add(pinyin)
+                }
+            }
+            result.mapValues { it.value.distinct().sorted() }
+        }
+
         /** 九宫格键盘邻居 */
         private val KEYBOARD_NEIGHBORS = mapOf(
             '2' to setOf('1','2','3','4','5','6'),
@@ -92,6 +109,10 @@ class T9Decoder {
      */
     fun decode(digits: String, maxPaths: Int = 50): List<Path> {
         if (digits.isEmpty()) return emptyList()
+        // 结果缓存：连续相同输入的 decode 结果可以直接复用
+        if (decodeCache?.first == digits) {
+            return decodeCache!!.second
+        }
         val n = digits.length
 
         val dp = Array(n + 1) { mutableMapOf<String, Double>() }
@@ -108,31 +129,41 @@ class T9Decoder {
 
                 // 1. 精确匹配 + 模糊音匹配
                 val pinyins = findMatchingPinyins(code)
-                for ((lastPinyin, score) in dp[i]) {
-                    for (pinyin in pinyins) {
-                        val transLP = lm.transitionLogProb(lastPinyin, pinyin)
-                        val lenBonus = if (pinyin.length <= 2) 0.0 else (pinyin.length - 2) * 0.3
-                        val fuzzyPenalty = if (isFuzzyMatch(pinyin, code)) -0.5 else 0.0
-                        val newScore = score + transLP + lenBonus + fuzzyPenalty
-                        if (newScore > (dp[i + len][pinyin] ?: Double.NEGATIVE_INFINITY)) {
-                            dp[i + len][pinyin] = newScore
-                            back[i + len][pinyin] = Pair(i, lastPinyin)
+                val exactSet = if (len >= 2 && neighborEnabled && pinyins.isNotEmpty()) pinyins.toSet() else null
+
+                if (pinyins.isNotEmpty()) {
+                    val dpRow = dp[i]
+                    val dpNext = dp[i + len]
+                    val backRow = back[i + len]
+                    for ((lastPinyin, score) in dpRow) {
+                        for (pinyin in pinyins) {
+                            val transLP = lm.transitionLogProb(lastPinyin, pinyin)
+                            val lenBonus = if (pinyin.length <= 2) 0.0 else (pinyin.length - 2) * 0.3
+                            val fuzzyPenalty = if (isFuzzyMatch(pinyin, code)) -0.5 else 0.0
+                            val newScore = score + transLP + lenBonus + fuzzyPenalty
+                            if (newScore > (dpNext[pinyin] ?: Double.NEGATIVE_INFINITY)) {
+                                dpNext[pinyin] = newScore
+                                backRow[pinyin] = Pair(i, lastPinyin)
+                            }
                         }
                     }
                 }
 
                 // 2. 键盘邻居容错（仅对 len>=2 的编码）
                 if (len >= 2 && neighborEnabled) {
-                    val neighborPinyins = findNeighborPinyins(code, pinyins.toSet())
+                    val neighborPinyins = findNeighborPinyins(code, exactSet)
                     if (neighborPinyins.isNotEmpty()) {
-                        for ((lastPinyin, score) in dp[i]) {
+                        val dpRow = dp[i]
+                        val dpNext = dp[i + len]
+                        val backRow = back[i + len]
+                        for ((lastPinyin, score) in dpRow) {
                             for (pinyin in neighborPinyins) {
                                 val transLP = lm.transitionLogProb(lastPinyin, pinyin)
                                 val lenBonus = if (pinyin.length <= 2) 0.0 else (pinyin.length - 2) * 0.3
                                 val newScore = score + transLP + lenBonus - 1.5
-                                if (newScore > (dp[i + len][pinyin] ?: Double.NEGATIVE_INFINITY)) {
-                                    dp[i + len][pinyin] = newScore
-                                    back[i + len][pinyin] = Pair(i, lastPinyin)
+                                if (newScore > (dpNext[pinyin] ?: Double.NEGATIVE_INFINITY)) {
+                                    dpNext[pinyin] = newScore
+                                    backRow[pinyin] = Pair(i, lastPinyin)
                                 }
                             }
                         }
@@ -143,14 +174,17 @@ class T9Decoder {
             // 3. 单字母回退：每个数字对应字母作为占位
             //    让 DP 能探索更多切分可能性
             val letters = digitToLetters[digits[i]] ?: continue
-            for ((lastPinyin, score) in dp[i]) {
+            val dpRow = dp[i]
+            val dpNext = dp[i + 1]
+            val backRow = back[i + 1]
+            for ((lastPinyin, score) in dpRow) {
                 for (l in letters) {
                     val ch = l.toString()
                     val transLP = lm.transitionLogProb(lastPinyin, ch)
                     val newScore = score + transLP + 0.5
-                    if (newScore > (dp[i + 1][ch] ?: Double.NEGATIVE_INFINITY)) {
-                        dp[i + 1][ch] = newScore
-                        back[i + 1][ch] = Pair(i, lastPinyin)
+                    if (newScore > (dpNext[ch] ?: Double.NEGATIVE_INFINITY)) {
+                        dpNext[ch] = newScore
+                        backRow[ch] = Pair(i, lastPinyin)
                     }
                 }
             }
@@ -209,32 +243,15 @@ class T9Decoder {
             }
         }
 
+        // Cache the result for the next call (e.g. firstSyllableOptions + bestPinyin in same keystroke)
+        decodeCache = digits to results.toList()
         return results
-    }
-
-    /** 编码 → 模糊音变体映射（懒加载） */
-    private var fuzzyCodeCache: Map<String, List<String>>? = null
-
-    private fun getFuzzyCodeMap(): Map<String, List<String>> {
-        if (fuzzyCodeCache != null) return fuzzyCodeCache!!
-
-        val result = mutableMapOf<String, MutableList<String>>()
-        for (pinyin in FuzzyPinyin.PINYIN_LIST) {
-            val variants = FuzzyPinyin.expandAll(listOf(pinyin), enabledFuzzyRules)
-            for (v in variants) {
-                if (v == pinyin) continue
-                val code = v.map { FuzzyPinyin.LETTER_TO_DIGIT[it] ?: it }.joinToString("")
-                result.getOrPut(code) { mutableListOf() }.add(pinyin)
-            }
-        }
-        fuzzyCodeCache = result.mapValues { it.value.distinct().sorted() }
-        return fuzzyCodeCache!!
     }
 
     /** 查找匹配的拼音（精确匹配 + 模糊音扩展） */
     private fun findMatchingPinyins(code: String): List<String> {
         val exact = codeToPinyins[code]
-        val fuzzy = getFuzzyCodeMap()[code]
+        val fuzzy = fuzzyCodeMap[code]
         return when {
             exact != null && fuzzy != null ->
                 (exact + fuzzy.filter { it !in exact }).distinct()
@@ -251,7 +268,7 @@ class T9Decoder {
     }
 
     /** 查找键盘邻居匹配的拼音 */
-    private fun findNeighborPinyins(code: String, exclude: Set<String>): List<String> {
+    private fun findNeighborPinyins(code: String, exclude: Set<String>?): List<String> {
         val results = mutableListOf<String>()
         val seen = mutableSetOf<String>()
 
@@ -266,7 +283,7 @@ class T9Decoder {
                 val pinyins = codeToPinyins[modified]
                 if (pinyins != null) {
                     for (p in pinyins) {
-                        if (p !in exclude) results.add(p)
+                        if (exclude == null || p !in exclude) results.add(p)
                     }
                 }
             }

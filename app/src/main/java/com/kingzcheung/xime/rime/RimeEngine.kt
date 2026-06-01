@@ -14,6 +14,9 @@ class RimeEngine {
         private var instance: RimeEngine? = null
         private var deploymentCallback: ((Boolean, String) -> Unit)? = null
 
+        /** 全局 Rime 引擎锁 — 所有 native 调用必须通过此锁同步 */
+        val rimeLock = Any()
+
         init {
             System.loadLibrary("rime_jni")
             Log.d(TAG, "Native library loaded")
@@ -67,141 +70,186 @@ class RimeEngine {
 
     fun ensureSession(timeoutMs: Long = 60000L): Boolean {
         if (!isInitialized) return false
-        if (nativeHasSession() && getAvailableSchemas().isNotEmpty()) return true
+        synchronized(rimeLock) {
+            if (nativeHasSession() && getAvailableSchemas().isNotEmpty()) return true
 
-        var waited = 0L
-        while (waited < timeoutMs) {
-            if (!nativeHasSession()) {
-                nativeCreateSession()
-            }
-            if (getAvailableSchemas().isNotEmpty()) {
-                if (waited > 100) {
-                    Log.d(TAG, "ensureSession: schemas ready after ${waited}ms")
+            var waited = 0L
+            while (waited < timeoutMs) {
+                if (!nativeHasSession()) {
+                    nativeCreateSession()
                 }
-                return true
+                if (getAvailableSchemas().isNotEmpty()) {
+                    if (waited > 100) {
+                        Log.d(TAG, "ensureSession: schemas ready after ${waited}ms")
+                    }
+                    return true
+                }
+                try {
+                    Thread.sleep(100)
+                } catch (_: InterruptedException) {
+                    return false
+                }
+                waited += 100
+                if (waited % 5000 == 0L) {
+                    Log.d(TAG, "ensureSession: waiting for schemas... (${waited/1000}s)")
+                }
             }
-            try {
-                Thread.sleep(100)
-            } catch (_: InterruptedException) {
-                return false
-            }
-            waited += 100
-            if (waited % 5000 == 0L) {
-                Log.d(TAG, "ensureSession: waiting for schemas... (${waited/1000}s)")
-            }
+            Log.w(TAG, "ensureSession: schemas not available after ${timeoutMs}ms, deployment may still be running")
+            return false
         }
-        Log.w(TAG, "ensureSession: schemas not available after ${timeoutMs}ms, deployment may still be running")
-        return false
     }
 
     fun isMaintaining(): Boolean {
-        return nativeIsMaintaining()
+        synchronized(rimeLock) {
+            return nativeIsMaintaining()
+        }
     }
 
     fun getCurrentSchema(): String {
-        if (!nativeHasSession()) return ""
-        return nativeGetCurrentSchema() ?: ""
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return ""
+            return nativeGetCurrentSchema() ?: ""
+        }
     }
 
     fun processKey(keycode: Int, mask: Int): Boolean {
         if (!isInitialized) return false
-        if (!nativeHasSession() && !nativeCreateSession()) return false
-        return nativeProcessKey(keycode, mask)
+        synchronized(rimeLock) {
+            if (!nativeHasSession() && !nativeCreateSession()) return false
+            return nativeProcessKey(keycode, mask)
+        }
     }
 
     fun getCandidates(): Array<String> {
-        if (!nativeHasSession()) return emptyArray()
-        return nativeGetCandidates() ?: emptyArray()
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return emptyArray()
+            return nativeGetCandidates() ?: emptyArray()
+        }
     }
 
     fun getCandidatesWithComments(): Array<RimeCandidate> {
-        if (!nativeHasSession()) return emptyArray()
-        val rawCandidates = nativeGetCandidatesWithComments() ?: emptyArray()
-        return rawCandidates.map { pair ->
-            RimeCandidate(
-                text = pair.getOrElse(0) { "" },
-                comment = pair.getOrElse(1) { "" }
-            )
-        }.toTypedArray()
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return emptyArray()
+            val rawCandidates = nativeGetCandidatesWithComments() ?: emptyArray()
+            return rawCandidates.map { pair ->
+                RimeCandidate(
+                    text = pair.getOrElse(0) { "" },
+                    comment = pair.getOrElse(1) { "" }
+                )
+            }.toTypedArray()
+        }
     }
 
     fun getInput(): String {
-        return nativeGetInput() ?: ""
+        synchronized(rimeLock) {
+            return nativeGetInput() ?: ""
+        }
     }
 
     fun selectCandidate(index: Int): Boolean {
-        if (!nativeHasSession()) return false
-        return nativeSelectCandidate(index)
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return false
+            return nativeSelectCandidate(index)
+        }
     }
 
     fun pageDown(): Boolean {
-        if (!nativeHasSession()) return false
-        return nativePageDown()
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return false
+            return nativePageDown()
+        }
     }
 
     fun pageUp(): Boolean {
-        if (!nativeHasSession()) return false
-        return nativePageUp()
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return false
+            return nativePageUp()
+        }
     }
 
     fun hasNextPage(): Boolean {
-        if (!nativeHasSession()) return false
-        return nativeHasNextPage()
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return false
+            return nativeHasNextPage()
+        }
     }
 
     fun hasPrevPage(): Boolean {
-        if (!nativeHasSession()) return false
-        return nativeHasPrevPage()
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return false
+            return nativeHasPrevPage()
+        }
     }
 
     fun commit(): String {
-        return nativeCommit() ?: ""
+        synchronized(rimeLock) {
+            return nativeCommit() ?: ""
+        }
     }
 
     fun clearComposition() {
-        nativeClearComposition()
+        synchronized(rimeLock) {
+            nativeClearComposition()
+        }
     }
 
     fun toggleAsciiMode(): Boolean {
-        if (!nativeHasSession()) return false
-        return nativeToggleAsciiMode()
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return false
+            return nativeToggleAsciiMode()
+        }
     }
 
     fun isAsciiMode(): Boolean {
-        if (!nativeHasSession()) return false
-        return nativeIsAsciiMode()
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return false
+            return nativeIsAsciiMode()
+        }
     }
 
     fun switchSchema(schemaId: String): Boolean {
-        if (!nativeHasSession()) return false
-        return nativeSwitchSchema(schemaId)
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return false
+            return nativeSwitchSchema(schemaId)
+        }
     }
 
     fun startMaintenance(full: Boolean): Boolean {
         if (!isInitialized) return false
-        return nativeStartMaintenance(full)
+        synchronized(rimeLock) {
+            return nativeStartMaintenance(full)
+        }
     }
 
     fun deploy(): Boolean {
         if (!isInitialized) return false
-        return nativeDeploy()
+        synchronized(rimeLock) {
+            return nativeDeploy()
+        }
     }
 
     fun lookupText(text: String): String {
-        if (!isInitialized || text.isEmpty() || !nativeHasSession()) return ""
-        return nativeLookupText(text) ?: ""
+        if (!isInitialized || text.isEmpty()) return ""
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return ""
+            return nativeLookupText(text) ?: ""
+        }
     }
 
     fun getAvailableSchemas(): Array<String> {
-        if (!nativeHasSession()) return emptyArray()
-        return nativeGetAvailableSchemas() ?: emptyArray()
+        synchronized(rimeLock) {
+            if (!nativeHasSession()) return emptyArray()
+            return nativeGetAvailableSchemas() ?: emptyArray()
+        }
     }
 
     fun destroy() {
         if (isInitialized) {
-            Log.d(TAG, "Destroying Rime engine")
-            nativeDestroy()
-            isInitialized = false
+            synchronized(rimeLock) {
+                Log.d(TAG, "Destroying Rime engine")
+                nativeDestroy()
+                isInitialized = false
+            }
         }
     }
 
