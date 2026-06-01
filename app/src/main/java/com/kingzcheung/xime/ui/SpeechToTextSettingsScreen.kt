@@ -369,6 +369,8 @@ fun LocalAsrTab() {
                     selectedModelId = modelInfo.id
                     context.getSharedPreferences("sherpa_asr", Context.MODE_PRIVATE)
                         .edit().putString("selected_model", modelInfo.id).apply()
+                    // 选择本地模型时自动开启本地模式，无需用户手动去顶部切换
+                    SettingsPreferences.setSttUseLocal(context, true)
                 }
             )
         }
