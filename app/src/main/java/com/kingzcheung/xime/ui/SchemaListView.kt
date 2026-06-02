@@ -42,7 +42,6 @@ import com.kingzcheung.xime.settings.SettingsPreferences
 fun SchemaListView(
     schemas: List<SchemaInfo>,
     currentSchemaId: String,
-    currentLayoutId: String?,
     isDarkTheme: Boolean,
     backgroundColor: Color,
     accentColor: Color,
@@ -202,7 +201,7 @@ private fun SchemaGridItem(
     isSelected: Boolean,
     bgColor: Color,
     textColor: Color,
-    subTextColor: Color,
+    subTextColor: Color = textColor,
     accentColor: Color,
     layoutHint: String? = null,
     onSelect: () -> Unit,

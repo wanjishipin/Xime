@@ -166,7 +166,6 @@ fun KeyboardView(
             pendingAscii = false
         }
     }
-    }
 
     Box(modifier = modifier.background(keyboardBgColor)) {
         Column(
