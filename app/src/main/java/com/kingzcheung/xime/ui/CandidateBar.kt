@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
@@ -185,14 +186,14 @@ fun CandidateBar(
                     if (currentRoute is KeyboardRoute.SchemaList && onBack != null) {
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
-                                .clip(RoundedCornerShape(14.dp))
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
                                 .clickable { onBack() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = Icons.Default.KeyboardArrowLeft,
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                 contentDescription = "返回菜单",
                                 tint = accentColor,
                                 modifier = Modifier.size(24.dp)
@@ -201,8 +202,8 @@ fun CandidateBar(
                     } else {
                         Box(
                             modifier = Modifier
-                                .size(28.dp)
-                                .clip(RoundedCornerShape(14.dp))
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(16.dp))
                                 .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
                                 .clickable { onLogoClick?.invoke() },
                             contentAlignment = Alignment.Center
