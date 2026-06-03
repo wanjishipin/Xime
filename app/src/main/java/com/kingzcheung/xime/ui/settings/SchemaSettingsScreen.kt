@@ -61,6 +61,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -511,6 +512,8 @@ private fun SchemaToggleItem(
                         text = schema.name,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         color = if (enabled) MaterialTheme.colorScheme.onSurface
                         else MaterialTheme.colorScheme.outline
                     )
@@ -531,6 +534,8 @@ private fun SchemaToggleItem(
                         Text(
                             text = "v${schema.version}",
                             style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.outline
                         )
                     }
@@ -538,6 +543,9 @@ private fun SchemaToggleItem(
                         Text(
                             text = schema.author,
                             style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
                             color = MaterialTheme.colorScheme.outline
                         )
                     }
@@ -546,12 +554,6 @@ private fun SchemaToggleItem(
                             text = "已编译",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
-                        )
-                    } else {
-                        Text(
-                            text = "未编译",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }

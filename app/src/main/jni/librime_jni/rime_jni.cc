@@ -409,9 +409,9 @@ public:
         
         rime->start_maintenance(true);
         
-        // 等待部署完成（最多等待30秒）
+        // 等待部署完成（不设超时，大词库编译可能很久）
         int wait_count = 0;
-        while (rime->is_maintenance_mode() && wait_count < 300) {
+        while (rime->is_maintenance_mode()) {
             usleep(100000);  // 100ms
             wait_count++;
             if (wait_count % 10 == 0) {

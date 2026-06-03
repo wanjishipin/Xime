@@ -16,6 +16,7 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipInputStream
+import java.util.zip.ZipFile
 
 data class SchemaMeta(
     val schemaId: String,
@@ -283,40 +284,82 @@ object SchemaManager {
         }
     }
 
+    /**
+     * 找到所有 .schema.yaml 文件所在的共同父目录作为基目录。
+     * 例如 zip 结构为 rime-ice-main/rime_ice.schema.yaml，
+     * 则返回 "rime-ice-main/"，解压时剥离此前缀。
+     * 基目录下的子目录（如 cn_dicts/）会原样保留。
+     */
+    private fun findSchemaBaseDir(entryNames: List<String>): String {
+        val schemaEntries = entryNames.filter { it.endsWith(".schema.yaml") }
+        if (schemaEntries.isEmpty()) return ""
+        // 获取所有 .schema.yaml 的父目录
+        val parentDirs = schemaEntries.map { name ->
+            val idx = name.lastIndexOf('/')
+            if (idx >= 0) name.substring(0, idx + 1) else ""
+        }.distinct()
+        // 如果所有 .schema.yaml 在同一个父目录下，返回该目录作为基目录
+        if (parentDirs.size == 1) {
+            return parentDirs[0]
+        }
+        // 在不同目录下，找最长公共前缀
+        val commonPrefix = parentDirs.reduce { a, b -> a.commonPrefixWith(b) }
+        val idx = commonPrefix.lastIndexOf('/')
+        return if (idx >= 0) commonPrefix.substring(0, idx + 1) else ""
+    }
+
     private fun importZip(context: Context, uri: Uri, targetDir: File): Boolean {
         try {
-            val importedSchemas = mutableSetOf<String>()
-
+            // 第一趟：收集文件名以检测共同根目录
+            val entryNames = mutableListOf<String>()
             context.contentResolver.openInputStream(uri)?.use { input ->
                 ZipInputStream(input.buffered()).use { zis ->
                     var entry = zis.nextEntry
                     while (entry != null) {
-                        val name = entry.name
-                        if (!entry.isDirectory && (name.endsWith(".yaml") || name.endsWith(".txt") || name.endsWith(".bin"))) {
-                            val file = File(targetDir, name.substringAfterLast('/'))
-                            file.parentFile?.mkdirs()
-                            FileOutputStream(file).use { output ->
-                                zis.copyTo(output)
-                            }
-                            Log.d(TAG, "Extracted: $name -> ${file.name}")
-
-                            when {
-                                name.endsWith(".schema.yaml") ->
-                                    importedSchemas.add(name.substringAfterLast('/').removeSuffix(".schema.yaml"))
-                                name.endsWith(".dict.yaml") ->
-                                    importedSchemas.add(name.substringAfterLast('/').removeSuffix(".dict.yaml"))
-                            }
-                        }
+                        if (!entry.isDirectory) entryNames.add(entry.name)
                         zis.closeEntry()
                         entry = zis.nextEntry
                     }
                 }
             } ?: return false
 
-            if (importedSchemas.isNotEmpty()) {
-                Log.i(TAG, "Imported zip with schemas: $importedSchemas")
+            val baseDir = findSchemaBaseDir(entryNames)
+            if (baseDir.isNotEmpty()) {
+                Log.i(TAG, "Found schema base directory: $baseDir, will strip it on extraction")
             }
 
+            // 第二趟：解压文件，剥离基目录前缀
+            val importedSchemas = mutableSetOf<String>()
+            var extractedCount = 0
+            context.contentResolver.openInputStream(uri)?.use { input ->
+                ZipInputStream(input.buffered()).use { zis ->
+                    var entry = zis.nextEntry
+                    while (entry != null) {
+                        val originalName = entry.name
+                        val name = originalName.removePrefix(baseDir)
+                        if (!entry.isDirectory && (name.endsWith(".yaml") || name.endsWith(".txt") || name.endsWith(".bin"))) {
+                            val file = File(targetDir, name)
+                            file.parentFile?.mkdirs()
+                            FileOutputStream(file).use { output ->
+                                zis.copyTo(output)
+                            }
+                            extractedCount++
+                            Log.d(TAG, "Extracted: $name")
+
+                            when {
+                                name.endsWith(".schema.yaml") ->
+                                    importedSchemas.add(name.removeSuffix(".schema.yaml").substringAfterLast('/'))
+                                name.endsWith(".dict.yaml") ->
+                                    importedSchemas.add(name.removeSuffix(".dict.yaml").substringAfterLast('/'))
+                            }
+                        }
+                        zis.closeEntry()
+                        entry = zis.nextEntry
+                    }
+                }
+            }
+
+            Log.i(TAG, "Imported zip: $extractedCount files extracted, schemas: $importedSchemas")
             return true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to import zip", e)
@@ -362,49 +405,104 @@ object SchemaManager {
 
     private fun importZipFromStream(inputStream: InputStream, targetDir: File): Boolean {
         return try {
-            var count = 0
-            ZipInputStream(inputStream.buffered()).use { zis ->
-                var entry = zis.nextEntry
-                while (entry != null) {
-                    val name = entry.name
-                    if (!entry.isDirectory && (name.endsWith(".yaml") || name.endsWith(".txt") || name.endsWith(".bin"))) {
-                        val file = File(targetDir, name.substringAfterLast('/'))
-                        file.parentFile?.mkdirs()
-                        FileOutputStream(file).use { output -> zis.copyTo(output) }
-                        count++
-                        Log.d(TAG, "Extracted zip entry: ${file.name}")
-                    }
-                    zis.closeEntry()
-                    entry = zis.nextEntry
-                }
+            // 保存到临时文件，以便两趟处理（检测共同根目录 + 解压）
+            val tempFile = File.createTempFile("rime_import_", ".zip", targetDir)
+            try {
+                tempFile.outputStream().use { output -> inputStream.copyTo(output) }
+                importZipFromFile(tempFile, targetDir)
+            } finally {
+                tempFile.delete()
             }
-            Log.i(TAG, "Extracted $count files from zip stream")
-            count > 0
         } catch (e: Exception) {
             Log.e(TAG, "Failed to extract zip stream", e)
             false
         }
     }
 
-    private fun importTarGzFromStream(inputStream: InputStream, targetDir: File): Boolean {
+    private fun importZipFromFile(zipFile: File, targetDir: File): Boolean {
         return try {
-            var count = 0
-            TarArchiveInputStream(GzipCompressorInputStream(inputStream.buffered())).use { tarIn ->
-                var entry = tarIn.nextEntry
-                while (entry != null) {
-                    val name = entry.name
-                    if (!entry.isDirectory && (name.endsWith(".yaml") || name.endsWith(".txt") || name.endsWith(".bin"))) {
-                        val file = File(targetDir, name.substringAfterLast('/'))
-                        file.parentFile?.mkdirs()
-                        FileOutputStream(file).use { output -> tarIn.copyTo(output) }
-                        count++
-                        Log.d(TAG, "Extracted tar.gz entry: ${file.name}")
-                    }
-                    entry = tarIn.nextEntry
+            // 第一趟：收集文件名以检测共同根目录
+            val entryNames = mutableListOf<String>()
+            ZipFile(zipFile).use { zip ->
+                zip.entries().asSequence().forEach { entry ->
+                    if (!entry.isDirectory) entryNames.add(entry.name)
                 }
             }
-            Log.i(TAG, "Extracted $count files from tar.gz stream")
+
+            val baseDir = findSchemaBaseDir(entryNames)
+            if (baseDir.isNotEmpty()) {
+                Log.i(TAG, "Found schema base directory: $baseDir, will strip it on extraction")
+            }
+
+            // 第二趟：解压
+            var count = 0
+            ZipFile(zipFile).use { zip ->
+                zip.entries().asSequence().forEach { entry ->
+                    val originalName = entry.name
+                    val name = originalName.removePrefix(baseDir)
+                    if (!entry.isDirectory && (name.endsWith(".yaml") || name.endsWith(".txt") || name.endsWith(".bin"))) {
+                        val file = File(targetDir, name)
+                        file.parentFile?.mkdirs()
+                        zip.getInputStream(entry).use { input ->
+                            FileOutputStream(file).use { output -> input.copyTo(output) }
+                        }
+                        count++
+                        Log.d(TAG, "Extracted zip entry: $name")
+                    }
+                }
+            }
+            Log.i(TAG, "Extracted $count files from zip stream")
             count > 0
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to extract zip file", e)
+            false
+        }
+    }
+
+    private fun importTarGzFromStream(inputStream: InputStream, targetDir: File): Boolean {
+        return try {
+            // 保存到临时文件，以便两趟处理
+            val tempFile = File.createTempFile("rime_import_", ".tar.gz", targetDir)
+            try {
+                tempFile.outputStream().use { output -> inputStream.copyTo(output) }
+
+                // 第一趟：收集文件名以检测基目录
+                val entryNames = mutableListOf<String>()
+                TarArchiveInputStream(tempFile.inputStream().buffered()).use { tarIn ->
+                    var entry = tarIn.nextEntry
+                    while (entry != null) {
+                        if (!entry.isDirectory) entryNames.add(entry.name)
+                        entry = tarIn.nextEntry
+                    }
+                }
+
+                val baseDir = findSchemaBaseDir(entryNames)
+                if (baseDir.isNotEmpty()) {
+                    Log.i(TAG, "Found schema base directory in tar.gz: $baseDir, will strip it")
+                }
+
+                // 第二趟：解压
+                var count = 0
+                TarArchiveInputStream(tempFile.inputStream().buffered()).use { tarIn ->
+                    var entry = tarIn.nextEntry
+                    while (entry != null) {
+                        val originalName = entry.name
+                        val name = originalName.removePrefix(baseDir)
+                        if (!entry.isDirectory && (name.endsWith(".yaml") || name.endsWith(".txt") || name.endsWith(".bin"))) {
+                            val file = File(targetDir, name)
+                            file.parentFile?.mkdirs()
+                            FileOutputStream(file).use { output -> tarIn.copyTo(output) }
+                            count++
+                            Log.d(TAG, "Extracted tar.gz entry: $name")
+                        }
+                        entry = tarIn.nextEntry
+                    }
+                }
+                Log.i(TAG, "Extracted $count files from tar.gz stream")
+                count > 0
+            } finally {
+                tempFile.delete()
+            }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to extract tar.gz", e)
             false
