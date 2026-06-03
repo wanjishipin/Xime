@@ -15,7 +15,7 @@ enum class ToolbarButton(
     EMOJI("emoji", "表情", Icons.Default.EmojiEmotions),
     CLIPBOARD("clipboard", "剪贴板", Icons.Default.ContentPaste),
     SCHEMA("schema", "方案选择", Icons.Default.Keyboard),
-    QUICK_PHRASE("quick_phrase", "常用语", Icons.Default.Quickreply);
+    QUICK_PHRASE("quick_phrase", "快捷发送", Icons.Default.Quickreply);
 
     companion object {
         val DEFAULT_VISIBLE = emptySet<ToolbarButton>()

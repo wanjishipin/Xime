@@ -779,8 +779,11 @@ onVoiceModeChange = { enabled ->
             updateSchemaName()
         }
 
-        // 标记新一轮输入会话，用于 KeyboardView 重置导航状态
-        uiState.value = uiState.value.copy(inputSessionId = System.nanoTime())
+        // 每次打开键盘时刷新 STT 等偏好设置
+        uiState.value = uiState.value.copy(
+            inputSessionId = System.nanoTime(),
+            isSttEnabled = SettingsPreferences.isSttEnabled(this@XimeInputMethodService)
+        )
 
         // 获取最近30秒的剪切板内容
         ensureClipboardManagerInitialized()

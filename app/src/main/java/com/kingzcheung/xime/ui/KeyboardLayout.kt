@@ -314,7 +314,7 @@ fun KeyboardLayout(
                         )
                         .clip(RoundedCornerShape(8.dp))
                         .background(keyBackgroundColor)
-                        .pointerInput(Unit) {
+                        .pointerInput(isSttEnabled) {
                             awaitEachGesture {
                                 val down = awaitFirstDown(requireUnconsumed = false)
                                 currentOnKeyPressDown?.invoke("space")
