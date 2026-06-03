@@ -1,5 +1,7 @@
 package com.kingzcheung.xime.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -11,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,28 +22,34 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.clipboard.ClipboardItem
+import kotlin.math.roundToInt
 
 @Composable
 fun ClipboardView(
@@ -51,8 +60,8 @@ fun ClipboardView(
     backgroundColor: Color,
     onSelectItem: (String) -> Unit,
     onRemoveItem: (Long) -> Unit,
-    onTogglePin: (Long) -> Unit,
     onAddToQuickSend: (Long) -> Unit,
+    onSplitWords: (Long) -> Unit,
     onRemoveFromQuickSend: (Long) -> Unit,
     onBack: (() -> Unit)? = null,
     onClipboardTabChange: ((Int) -> Unit)? = null,
@@ -63,7 +72,8 @@ fun ClipboardView(
     val subTextColor = if (isDarkTheme) Color(0xFF9AA0A6) else Color(0xFF5F6368)
     val accentColor = if (isDarkTheme) Color(0xFF8AB4F8) else Color(0xFF1A73E8)
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape =
+        configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
 
     Column(
         modifier = modifier
@@ -74,7 +84,7 @@ fun ClipboardView(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal =if (isLandscape) 50.dp else 8.dp, vertical = 10.dp),
+                .padding(horizontal = if (isLandscape) 50.dp else 8.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -153,8 +163,8 @@ fun ClipboardView(
                 accentColor = accentColor,
                 onSelect = onSelectItem,
                 onRemove = onRemoveItem,
-                onTogglePin = onTogglePin,
-                onAddToQuickSend = onAddToQuickSend
+                onAddToQuickSend = onAddToQuickSend,
+                onSplitWords = onSplitWords
             )
         } else {
             QuickSendTabContent(
@@ -179,8 +189,8 @@ fun ClipboardTabContent(
     accentColor: Color,
     onSelect: (String) -> Unit,
     onRemove: (Long) -> Unit,
-    onTogglePin: (Long) -> Unit,
-    onAddToQuickSend: (Long) -> Unit
+    onAddToQuickSend: (Long) -> Unit,
+    onSplitWords: (Long) -> Unit
 ) {
     if (items.isEmpty()) {
         Box(
@@ -209,8 +219,8 @@ fun ClipboardTabContent(
                     accentColor = accentColor,
                     onSelect = { onSelect(item.text) },
                     onRemove = { onRemove(item.id) },
-                    onTogglePin = { onTogglePin(item.id) },
-                    onAddToQuickSend = { onAddToQuickSend(item.id) }
+                    onAddToQuickSend = { onAddToQuickSend(item.id) },
+                    onSplitWords = { onSplitWords(item.id) }
                 )
             }
         }
@@ -270,65 +280,140 @@ fun CompactClipboardItem(
     accentColor: Color,
     onSelect: () -> Unit,
     onRemove: () -> Unit,
-    onTogglePin: () -> Unit,
-    onAddToQuickSend: () -> Unit
+    onAddToQuickSend: () -> Unit,
+    onSplitWords: () -> Unit
 ) {
-    Row(
+    var showActions by remember { mutableStateOf(false) }
+    var actionsWidthPx by remember { mutableStateOf(0f) }
+
+    val slideOffset by animateFloatAsState(
+        targetValue = if (showActions) actionsWidthPx + 40f else 0f,
+        animationSpec = tween(durationMillis = 300),
+        label = "slideOffset"
+    )
+
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(36.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(bgColor)
-            .clickable { onSelect() },
-        verticalAlignment = Alignment.CenterVertically
+            .height(40.dp)
+            .clip(RoundedCornerShape(8.dp))
     ) {
-        Text(
-            text = item.text,
-            color = textColor,
-            fontSize = 13.sp,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .weight(1f)
-                .padding(horizontal = 8.dp)
-        )
-        
+        // 背景层：操作按钮（始终在右侧），无背景色
         Row(
-            horizontalArrangement = Arrangement.spacedBy(0.dp)
+            modifier = Modifier.fillMaxSize(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
         ) {
-            IconButton(
-                onClick = onAddToQuickSend,
-                modifier = Modifier.size(32.dp)
+            Row(
+                modifier = Modifier
+                    .height(40.dp)
+                    .padding(end = 4.dp)
+                    .onSizeChanged { actionsWidthPx = it.width.toFloat() },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.StarBorder,
-                    contentDescription = "添加到快捷发送",
-                    tint = subTextColor,
-                    modifier = Modifier.size(16.dp)
-                )
+                // 拆词：图标 + 文本
+                Row(
+                    modifier = Modifier
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable { showActions = false; onSplitWords() }
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Default.ContentCut,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        "拆词",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontSize = 14.sp
+                    )
+                }
+
+                // 添加快捷发送：图标 + 文本
+                Row(
+                    modifier = Modifier
+                        .height(38.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.primaryContainer)
+                        .clickable { showActions = false; onAddToQuickSend() }
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        Icons.Outlined.StarBorder,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        "快捷",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontSize = 14.sp
+                    )
+                }
+
+                // 删除：仅图标 + 红色浅背景
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(MaterialTheme.colorScheme.errorContainer.copy(0.5f))
+                        .clickable { showActions = false; onRemove() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Icon(
+                        Icons.Default.Delete,
+                        contentDescription = "删除",
+                        tint = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
             }
-            
+        }
+
+        // 前景层：内容区域（滑动后露出背景层的操作按钮）
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(40.dp)
+                .offset { IntOffset((-slideOffset).roundToInt(), 0) }
+                .background(bgColor, RoundedCornerShape(8.dp))
+                .clickable {
+                    if (showActions) showActions = false
+                    else onSelect()
+                },
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = item.text,
+                color = textColor,
+                fontSize = 14.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp)
+            )
+
             IconButton(
-                onClick = onTogglePin,
+                onClick = { showActions = !showActions },
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
-                    imageVector = if (item.isPinned) Icons.Filled.PushPin else Icons.Outlined.PushPin,
-                    contentDescription = if (item.isPinned) "取消置顶" else "置顶",
-                    tint = if (item.isPinned) accentColor else subTextColor,
-                    modifier = Modifier.size(16.dp)
-                )
-            }
-            
-            IconButton(
-                onClick = onRemove,
-                modifier = Modifier.size(32.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Delete,
-                    contentDescription = "删除",
-                    tint = subTextColor,
-                    modifier = Modifier.size(16.dp)
+                    imageVector = Icons.Default.MoreVert,
+                    contentDescription = "更多",
+                    tint = accentColor,
+                    modifier = Modifier.size(18.dp)
                 )
             }
         }
@@ -363,7 +448,7 @@ fun CompactQuickSendItem(
                 .size(16.dp)
                 .padding(horizontal = 4.dp)
         )
-        
+
         Text(
             text = item.text,
             color = textColor,
@@ -374,7 +459,7 @@ fun CompactQuickSendItem(
                 .weight(1f)
                 .padding(horizontal = 4.dp)
         )
-        
+
         IconButton(
             onClick = onRemove,
             modifier = Modifier.size(32.dp)

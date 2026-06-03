@@ -200,18 +200,20 @@ class ClipboardManager private constructor(private val context: Context) {
         saveItems()
     }
     
-    fun togglePin(id: Long) {
+    fun splitItem(id: Long) {
         val currentItems = _clipboardItems.value.toMutableList()
-        val index = currentItems.indexOfFirst { it.id == id }
-        if (index >= 0) {
-            val item = currentItems[index]
-            currentItems[index] = item.copy(isPinned = !item.isPinned)
-            _clipboardItems.value = currentItems.sortedWith(
-                compareByDescending<ClipboardItem> { it.isPinned }
-                    .thenByDescending { it.timestamp }
+        val item = currentItems.find { it.id == id } ?: return
+        val newItems = item.text.map { char ->
+            ClipboardItem(
+                text = char.toString(),
+                timestamp = System.currentTimeMillis()
             )
-            saveItems()
         }
+        val index = currentItems.indexOfFirst { it.id == id }
+        currentItems.removeAt(index)
+        currentItems.addAll(index, newItems)
+        _clipboardItems.value = currentItems
+        saveItems()
     }
     
     fun clearAll() {

@@ -498,8 +498,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             onClipboardRemove = { id ->
                                 removeClipboardItem(id)
                             },
-                            onClipboardTogglePin = { id ->
-                                toggleClipboardPin(id)
+                            onClipboardSplitWords = { id ->
+                                splitClipboardWords(id)
                             },
                             onAddToQuickSend = { id ->
                                 addToQuickSend(id)
@@ -1582,8 +1582,8 @@ onVoiceModeChange = { enabled ->
         clipboardManager.removeItem(id)
     }
     
-    private fun toggleClipboardPin(id: Long) {
-        clipboardManager.togglePin(id)
+    private fun splitClipboardWords(id: Long) {
+        clipboardManager.splitItem(id)
     }
     
     private fun clearClipboard() {

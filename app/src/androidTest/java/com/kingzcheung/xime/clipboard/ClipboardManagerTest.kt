@@ -127,33 +127,39 @@ class ClipboardManagerTest {
     }
     
     @Test
-    fun `togglePin should toggle pinned status`() {
-        clipboardManager.addItem("Test text")
+    fun `splitItem should split text into individual characters`() {
+        clipboardManager.addItem("你好")
         val itemId = clipboardManager.clipboardItems.value[0].id
         
-        clipboardManager.togglePin(itemId)
+        clipboardManager.splitItem(itemId)
         
         val items = clipboardManager.clipboardItems.value
-        assertTrue("Item should be pinned", items[0].isPinned)
+        assertEquals(2, items.size)
+        assertEquals("你", items[0].text)
+        assertEquals("好", items[1].text)
+    }
+
+    @Test
+    fun `splitItem should handle single character`() {
+        clipboardManager.addItem("A")
+        val itemId = clipboardManager.clipboardItems.value[0].id
         
-        clipboardManager.togglePin(itemId)
+        clipboardManager.splitItem(itemId)
         
-        assertFalse("Item should be unpinned", clipboardManager.clipboardItems.value[0].isPinned)
+        val items = clipboardManager.clipboardItems.value
+        assertEquals(1, items.size)
+        assertEquals("A", items[0].text)
     }
     
     @Test
-    fun `clearAll should keep pinned items`() {
-        clipboardManager.addItem("Pinned")
-        clipboardManager.addItem("Unpinned")
-        val pinnedId = clipboardManager.clipboardItems.value.find { it.text == "Pinned" }!!.id
-        clipboardManager.togglePin(pinnedId)
+    fun `clearAll should clear all items`() {
+        clipboardManager.addItem("Item1")
+        clipboardManager.addItem("Item2")
         
         clipboardManager.clearAll()
         
         val items = clipboardManager.clipboardItems.value
-        assertEquals(1, items.size)
-        assertEquals("Pinned", items[0].text)
-        assertTrue("Remaining item should be pinned", items[0].isPinned)
+        assertEquals(0, items.size)
     }
     
     @Test

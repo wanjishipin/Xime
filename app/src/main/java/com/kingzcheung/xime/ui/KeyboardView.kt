@@ -4,6 +4,7 @@ import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
@@ -91,7 +92,7 @@ fun KeyboardView(
     onClipboard: (() -> Unit)? = null,
     onClipboardSelect: ((String) -> Unit)? = null,
     onClipboardRemove: ((Long) -> Unit)? = null,
-    onClipboardTogglePin: ((Long) -> Unit)? = null,
+    onClipboardSplitWords: ((Long) -> Unit)? = null,
     onAddToQuickSend: ((Long) -> Unit)? = null,
     onRemoveFromQuickSend: ((Long) -> Unit)? = null,
     onQuickSend: (() -> Unit)? = null,
@@ -434,7 +435,10 @@ fun KeyboardView(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight()
-                    .clickable { } // 拦截穿透点击
+                    .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { } // 拦截穿透点击，无 ripple
             ) {
             when (currentRoute) {
                 is KeyboardRoute.Menu -> MenuBar(
@@ -466,8 +470,8 @@ fun KeyboardView(
                         currentRoute = KeyboardRoute.Keyboard
                     },
                     onRemoveItem = { id -> onClipboardRemove?.invoke(id) },
-                    onTogglePin = { id -> onClipboardTogglePin?.invoke(id) },
                     onAddToQuickSend = { id -> onAddToQuickSend?.invoke(id) },
+                    onSplitWords = { id -> onClipboardSplitWords?.invoke(id) },
                     onRemoveFromQuickSend = { id -> onRemoveFromQuickSend?.invoke(id) },
                     onBack = { currentRoute = KeyboardRoute.Keyboard },
                     onClipboardTabChange = { currentRoute = KeyboardRoute.Clipboard(it) },
