@@ -1,8 +1,8 @@
 import { defineConfig } from 'vitepress'
 
 export default defineConfig({
-  title: "Xime 五笔输入法",
-  description: "基于 Rime 引擎构建的 Android 五笔输入法",
+  title: "Xime 输入法",
+  description: "基于 Rime 引擎构建的 Android 输入法",
   lang: 'zh-CN',
   vite: {
     server: {

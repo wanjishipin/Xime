@@ -193,8 +193,8 @@ fun AboutContent(
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "五笔输入法",
-                            fontSize = 16.sp,
+                            text = "基于Rime 构建，支持五笔/拼音/自定义方案。",
+                            fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(16.dp))
