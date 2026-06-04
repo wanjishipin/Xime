@@ -38,6 +38,7 @@ import androidx.compose.material.icons.twotone.ElectricBolt
 import androidx.compose.material.icons.twotone.EmojiEmotions
 import androidx.compose.material.icons.twotone.Keyboard
 import androidx.compose.material.icons.twotone.LightMode
+import androidx.compose.material.icons.twotone.Padding
 import androidx.compose.material.icons.twotone.Quickreply
 import androidx.compose.material.icons.twotone.Rotate90DegreesCcw
 import androidx.compose.material.icons.twotone.Settings
@@ -104,7 +105,7 @@ fun MenuBar(
                 else -> "跟随系统"
             }, onToggleDarkMode),
         MenuItem(rememberVectorPainter(Icons.TwoTone.Rotate90DegreesCcw), "部署方案", onReloadConfig),
-        MenuItem(rememberVectorPainter(Icons.TwoTone.BorderTop), "定制工具栏", onToolbarCustomize),
+        MenuItem(rememberVectorPainter(Icons.TwoTone.Padding), "定制工具栏", onToolbarCustomize),
         MenuItem(rememberVectorPainter(Icons.TwoTone.Keyboard), "输入方案", onSchemaList),
         MenuItem(rememberVectorPainter(Icons.TwoTone.Settings), "设置", onSettings)
     )

@@ -124,7 +124,7 @@ fun ToolbarCustomizeView(
                             Icon(
                                 imageVector = button.icon,
                                 contentDescription = null,
-                                tint = keyTextColor,
+                                tint = keyTextColor.copy(0.6f),
                                 modifier = Modifier.size(18.dp)
                             )
                         }
@@ -173,7 +173,7 @@ fun ToolbarCustomizeView(
                                         .aspectRatio(1f)
                                         .clip(CircleShape)
                                         .background(
-                                            if (isEnabled) accentColor.copy(0.5f)
+                                            if (isEnabled) accentColor.copy(0.2f)
                                             else Color.Transparent
                                         )
                                         .border(
