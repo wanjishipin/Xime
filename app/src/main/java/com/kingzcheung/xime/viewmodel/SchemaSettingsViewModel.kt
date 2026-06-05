@@ -118,7 +118,19 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             _uiState.update { it.copy(isDeploying = true) }
             val success = withContext(Dispatchers.IO) {
-                RimeEngine.getInstance().deploy()
+                val engine = RimeEngine.getInstance()
+                engine.startMaintenance(false)
+                // 等待编译完成（最多等 120 秒）
+                var waited = 0L
+                while (engine.isMaintaining() && waited < 120_000L) {
+                    Thread.sleep(100)
+                    waited += 100
+                }
+                val done = !engine.isMaintaining()
+                if (done) {
+                    engine.updateLastBuildTime()
+                }
+                done
             }
             _uiState.update { it.copy(isDeploying = false) }
             showToast(if (success) "部署完成" else "部署失败")

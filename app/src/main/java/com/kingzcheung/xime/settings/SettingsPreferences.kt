@@ -173,7 +173,7 @@ object SettingsPreferences {
     }
     
     fun isSttEnabled(context: Context): Boolean {
-        return getPrefs(context).getBoolean(KEY_STT_ENABLED, true)
+        return getPrefs(context).getBoolean(KEY_STT_ENABLED, false)
     }
     
     fun setSttEnabled(context: Context, enabled: Boolean) {

@@ -9,10 +9,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 import java.io.FileInputStream
+import java.util.concurrent.atomic.AtomicLong
 import android.content.ClipboardManager as AndroidClipboardManager
 
 data class ClipboardItem(
-    val id: Long = System.currentTimeMillis(),
+    val id: Long = ClipboardManager.generateId(),
     val text: String,
     val timestamp: Long = System.currentTimeMillis(),
     val isPinned: Boolean = false,
@@ -28,6 +29,9 @@ class ClipboardManager private constructor(private val context: Context) {
         private const val PREFS_NAME = "clipboard_prefs"
         private const val KEY_CLIPBOARD_ITEMS = "clipboard_items"
         private const val KEY_QUICK_SEND_ITEMS = "quick_send_items"
+        private val idCounter = AtomicLong(System.currentTimeMillis())
+        
+        fun generateId(): Long = idCounter.getAndIncrement()
         
         @Volatile
         private var instance: ClipboardManager? = null
@@ -200,18 +204,21 @@ class ClipboardManager private constructor(private val context: Context) {
         saveItems()
     }
     
-    fun togglePin(id: Long) {
+    fun splitItem(id: Long) {
         val currentItems = _clipboardItems.value.toMutableList()
-        val index = currentItems.indexOfFirst { it.id == id }
-        if (index >= 0) {
-            val item = currentItems[index]
-            currentItems[index] = item.copy(isPinned = !item.isPinned)
-            _clipboardItems.value = currentItems.sortedWith(
-                compareByDescending<ClipboardItem> { it.isPinned }
-                    .thenByDescending { it.timestamp }
+        val item = currentItems.find { it.id == id } ?: return
+        val now = System.currentTimeMillis()
+        val newItems = item.text.map { char ->
+            ClipboardItem(
+                text = char.toString(),
+                timestamp = now
             )
-            saveItems()
         }
+        val idx = currentItems.indexOfFirst { it.id == id }
+        currentItems.removeAt(idx)
+        currentItems.addAll(idx, newItems)
+        _clipboardItems.value = currentItems
+        saveItems()
     }
     
     fun clearAll() {

@@ -125,6 +125,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             darkMode = SettingsPreferences.getDarkMode(this),
             themeId = SettingsPreferences.getKeyboardTheme(this),
             showBottomButtons = SettingsPreferences.showBottomButtons(this),
+            isSttEnabled = SettingsPreferences.isSttEnabled(this@XimeInputMethodService),
             keyboardHeightDp = SettingsPreferences.getKeyboardHeightDp(this, isLandscape),
             keyboardBottomPaddingDp = SettingsPreferences.getKeyboardBottomPaddingDp(this),
             toolbarButtons = SettingsPreferences.getToolbarButtons(this)
@@ -138,6 +139,10 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 "dark_mode", "keyboard_theme", "show_bottom_buttons", "keyboard_height_dp", "keyboard_bottom_padding_dp" -> {
                     loadDarkModePreference()
                     Log.d(TAG, "Settings changed: $key, updated UI state")
+                }
+                "stt_enabled" -> {
+                    uiState.value = uiState.value.copy(isSttEnabled = SettingsPreferences.isSttEnabled(this@XimeInputMethodService))
+                    Log.d(TAG, "STT setting changed: $key -> ${SettingsPreferences.isSttEnabled(this@XimeInputMethodService)}")
                 }
             }
         }
@@ -264,7 +269,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 if (needsDeployment) {
                     // 首次部署：需要完整编译词库
                     notifyDeploymentStatus(true, "正在编译词库...")
-                    val maintenanceStarted = rimeEngine.startMaintenance(true)
+
+                    // 如果所有方案已编译完成，只是 deploymentDone 标记没设（例如从设置页部署的），
+                    // 用增量刷新即可，避免不必要的全量扫描
+                    val alreadyCompiled = RimeConfigHelper.isDeploymentComplete(this@XimeInputMethodService)
+                    val maintenanceStarted = rimeEngine.startMaintenance(!alreadyCompiled)
                     if (!maintenanceStarted) {
                         Log.w(TAG, "initRimeEngine: startMaintenance returned false! " +
                                 "Deployment may not have started. Trying deploy() as fallback...")
@@ -296,11 +305,22 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             Log.w(TAG, "initRimeEngine: maintenance still running after timeout, continuing anyway")
                         } else {
                             Log.d(TAG, "initRimeEngine: maintenance completed in ${maintenanceWaited}ms")
+                            rimeEngine.updateLastBuildTime()
                         }
                     }
                 } else {
                     // 词库已存在：快速刷新 schema 注册表，不显示"编译"提示
                     rimeEngine.startMaintenance(false)
+                    // 等待 maintenance 完成（最多等 10 秒），否则 ensureSession 会因为
+                    // maintenance 还在运行而创建 session 失败
+                    var quickWaited = 0L
+                    while (rimeEngine.isMaintaining() && quickWaited < 10_000L) {
+                        Thread.sleep(100)
+                        quickWaited += 100
+                    }
+                    if (!rimeEngine.isMaintaining()) {
+                        rimeEngine.updateLastBuildTime()
+                    }
                 }
 
                 val sessionReady = rimeEngine.ensureSession()
@@ -468,8 +488,9 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                              quickSendItems = quickSendItemsState.value,
                              recentClipboardItems = recentClipboardItemsState.value,
                             candidateComments = state.candidateComments,
-                            isVoiceMode = state.isVoiceMode,
-                            voiceBottomActive = state.voiceButtonState.bottomActive,
+                             isVoiceMode = state.isVoiceMode,
+                             isSttEnabled = state.isSttEnabled,
+                             voiceBottomActive = state.voiceButtonState.bottomActive,
                             voiceLeftActive = state.voiceButtonState.leftActive,
                             voiceRightActive = state.voiceButtonState.rightActive,
                             voicePluginName = state.voicePluginName,
@@ -482,20 +503,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             },
                             onKeyPressDown = { key ->
                                 feedbackManager.performKeyPressDownEffect(key)
-                                if (key == "space" && PermissionHelper.hasRecordAudioPermission(this@XimeInputMethodService)) {
-                                    voiceRecognitionHandler.startPreBuffer()
-                                }
-                            },
-                            onT9ReplaceFullPinyin = { pinyin ->
-                                t9UpdateJob?.cancel()
-                                t9UpdateJob = serviceScope.launch(Dispatchers.Default) {
-                                    rimeEngine.clearComposition()
-                                    for (char in pinyin) {
-                                        rimeEngine.processKey(char.lowercaseChar().code, 0)
-                                    }
-                                    withContext(Dispatchers.Main) {
-                                        updateUI()
-                                    }
+                                if (key == "space") {
+                                    voiceRecognitionHandler.startDelayedPreStart()
                                 }
                             },
                             onCursorMove = { direction ->
@@ -516,14 +525,23 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             onClipboardSelect = { text ->
                                 selectClipboardItem(text)
                             },
+                            onCommitText = { text ->
+                                commitClipboardText(text)
+                            },
+                            onDeleteText = { count ->
+                                deleteClipboardChars(count)
+                            },
                             onClipboardRemove = { id ->
                                 removeClipboardItem(id)
                             },
-                            onClipboardTogglePin = { id ->
-                                toggleClipboardPin(id)
+                            onClipboardSplitWords = { id ->
+                                splitClipboardWords(id)
                             },
                             onAddToQuickSend = { id ->
                                 addToQuickSend(id)
+                            },
+                            onAddQuickSendText = { text ->
+                                clipboardManager.addQuickSendItem(text)
                             },
                             onRemoveFromQuickSend = { id ->
                                 removeFromQuickSend(id)
@@ -770,8 +788,11 @@ onVoiceModeChange = { enabled ->
             updateSchemaName()
         }
 
-        // 标记新一轮输入会话，用于 KeyboardView 重置导航状态
-        uiState.value = uiState.value.copy(inputSessionId = System.nanoTime())
+        // 每次打开键盘时刷新 STT 等偏好设置
+        uiState.value = uiState.value.copy(
+            inputSessionId = System.nanoTime(),
+            isSttEnabled = SettingsPreferences.isSttEnabled(this@XimeInputMethodService)
+        )
 
         // 获取最近30秒的剪切板内容
         ensureClipboardManagerInitialized()
@@ -858,6 +879,7 @@ onVoiceModeChange = { enabled ->
     }
     
     private fun clearInputState() {
+        calculatorEngine.clear()
         rimeEngine.clearComposition()
         uiState.value = uiState.value.copy(
             candidates = emptyArray(),
@@ -1308,6 +1330,10 @@ onVoiceModeChange = { enabled ->
                         isShowingRecentClipboard = false
                     )
                 }
+            } else {
+                withContext(Dispatchers.Main) {
+                    updateUI()
+                }
             }
         }
     }
@@ -1610,13 +1636,21 @@ onVoiceModeChange = { enabled ->
         commitText(text)
         clipboardManager.copyToSystemClipboard(text)
     }
+
+    private fun commitClipboardText(text: String) {
+        commitText(text)
+    }
+
+    private fun deleteClipboardChars(count: Int) {
+        currentInputConnection?.deleteSurroundingText(count, 0)
+    }
     
     private fun removeClipboardItem(id: Long) {
         clipboardManager.removeItem(id)
     }
     
-    private fun toggleClipboardPin(id: Long) {
-        clipboardManager.togglePin(id)
+    private fun splitClipboardWords(id: Long) {
+        clipboardManager.splitItem(id)
     }
     
     private fun clearClipboard() {

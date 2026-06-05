@@ -276,7 +276,7 @@ fun CandidateBar(
 
                 Spacer(modifier = Modifier.width(8.dp))
 
-                if (!isComposing && inputText.isEmpty() && toolbarActions.isNotEmpty()) {
+                if (!isComposing && inputText.isEmpty() && candidates.isEmpty() && associationCandidates.isEmpty() && toolbarActions.isNotEmpty()) {
                     toolbarActions.forEach { action ->
                         val interactionSource = remember { MutableInteractionSource() }
                         val isPressed by interactionSource.collectIsPressedAsState()

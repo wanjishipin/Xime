@@ -18,6 +18,7 @@ data class InputUIState(
     val darkMode: Int = 0,
     val themeId: String = "ocean_blue",
     val showBottomButtons: Boolean = false,
+    val isSttEnabled: Boolean = false,
     val keyboardHeightDp: Int = SettingsPreferences.DEFAULT_KEYBOARD_HEIGHT_DP,
     val keyboardBottomPaddingDp: Int = 0,
     val showKeyboardResize: Boolean = false,
@@ -62,6 +63,7 @@ data class InputUIState(
         if (darkMode != other.darkMode) return false
         if (themeId != other.themeId) return false
         if (showBottomButtons != other.showBottomButtons) return false
+        if (isSttEnabled != other.isSttEnabled) return false
         if (keyboardHeightDp != other.keyboardHeightDp) return false
         if (keyboardBottomPaddingDp != other.keyboardBottomPaddingDp) return false
         if (showKeyboardResize != other.showKeyboardResize) return false
@@ -104,6 +106,7 @@ data class InputUIState(
         result = 31 * result + darkMode
         result = 31 * result + themeId.hashCode()
         result = 31 * result + showBottomButtons.hashCode()
+        result = 31 * result + isSttEnabled.hashCode()
         result = 31 * result + keyboardHeightDp
         result = 31 * result + keyboardBottomPaddingDp
         result = 31 * result + showKeyboardResize.hashCode()

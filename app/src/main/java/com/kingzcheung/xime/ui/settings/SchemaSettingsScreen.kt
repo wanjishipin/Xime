@@ -5,7 +5,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -60,9 +59,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -102,7 +101,7 @@ fun SchemaSettingsContent(
             onDismissRequest = {
                 showImportWarning = false
             },
-            containerColor = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surface else Color.White,
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Text("导入方案须知", fontWeight = FontWeight.SemiBold)
             },
@@ -170,7 +169,7 @@ fun SchemaSettingsContent(
             onDismissRequest = {
                 if (!uiState.isDownloading) { showUrlDialog = false; urlInput = "" }
             },
-            containerColor = if (isSystemInDarkTheme()) MaterialTheme.colorScheme.surface else Color.White,
+            containerColor = MaterialTheme.colorScheme.surface,
             title = {
                 Text("网络导入", fontWeight = FontWeight.SemiBold)
             },
@@ -498,7 +497,7 @@ private fun SchemaToggleItem(
             containerColor = if (isCurrent)
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
             else
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                MaterialTheme.colorScheme.surface
         )
     ) {
         Row(
@@ -513,6 +512,8 @@ private fun SchemaToggleItem(
                         text = schema.name,
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         color = if (enabled) MaterialTheme.colorScheme.onSurface
                         else MaterialTheme.colorScheme.outline
                     )
@@ -533,6 +534,8 @@ private fun SchemaToggleItem(
                         Text(
                             text = "v${schema.version}",
                             style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             color = MaterialTheme.colorScheme.outline
                         )
                     }
@@ -540,6 +543,9 @@ private fun SchemaToggleItem(
                         Text(
                             text = schema.author,
                             style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
                             color = MaterialTheme.colorScheme.outline
                         )
                     }
@@ -548,12 +554,6 @@ private fun SchemaToggleItem(
                             text = "已编译",
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.primary
-                        )
-                    } else {
-                        Text(
-                            text = "未编译",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.error
                         )
                     }
                 }

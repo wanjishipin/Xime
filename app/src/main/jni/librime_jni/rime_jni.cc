@@ -10,6 +10,7 @@
 #include <unistd.h>  // for usleep
 #include <cstring>   // for strcmp
 #include <utility>   // for std::pair
+#include <ctime>     // for time
 
 #define LOG_TAG "XimeRime"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__)
@@ -409,9 +410,9 @@ public:
         
         rime->start_maintenance(true);
         
-        // 等待部署完成（最多等待30秒）
+        // 等待部署完成（不设超时，大词库编译可能很久）
         int wait_count = 0;
-        while (rime->is_maintenance_mode() && wait_count < 300) {
+        while (rime->is_maintenance_mode()) {
             usleep(100000);  // 100ms
             wait_count++;
             if (wait_count % 10 == 0) {
@@ -435,6 +436,47 @@ public:
         
         LOGI("Deployment completed successfully");
         return true;
+    }
+    
+    bool deploySchema(const char* schemaFile) {
+        if (!rime) {
+            LOGE("deploySchema: rime not available");
+            return false;
+        }
+        
+        LOGI("Deploying single schema: %s", schemaFile);
+        
+        // 先销毁旧session
+        if (session_id_) {
+            rime->destroy_session(session_id_);
+            session_id_ = 0;
+        }
+        
+        Bool result = rime->deploy_schema(schemaFile);
+        if (!result) {
+            LOGE("deploy_schema failed for: %s", schemaFile);
+            // 回退：启动完整维护等待完成
+            rime->start_maintenance(true);
+            while (rime->is_maintenance_mode()) {
+                usleep(100000);
+            }
+        }
+        
+        // 重新创建session
+        session_id_ = rime->create_session();
+        LOGI("Deploy schema completed: %s", schemaFile);
+        return true;
+    }
+
+    void updateLastBuildTime() {
+        if (!rime) return;
+        RimeConfig config;
+        if (rime->config_open("user", &config)) {
+            int now = (int)(time(nullptr));
+            rime->config_set_int(&config, "var/last_build_time", now);
+            LOGI("Updated last_build_time to %d", now);
+            rime->config_close(&config);
+        }
     }
 
     void destroy() {
@@ -726,6 +768,34 @@ Java_com_kingzcheung_xime_rime_RimeEngine_nativeStartMaintenance(
 ) {
     Bool result = Rime::Instance().startMaintenance(full == JNI_TRUE);
     return result ? JNI_TRUE : JNI_FALSE;
+}
+
+// 更新 last_build_time 为当前时间，避免下次增量检测误判
+JNIEXPORT void JNICALL
+Java_com_kingzcheung_xime_rime_RimeEngine_nativeUpdateLastBuildTime(
+    JNIEnv* env,
+    jobject thiz
+) {
+    Rime::Instance().updateLastBuildTime();
+}
+
+// 部署单个方案
+JNIEXPORT jboolean JNICALL
+Java_com_kingzcheung_xime_rime_RimeEngine_nativeDeploySchema(
+    JNIEnv* env,
+    jobject thiz,
+    jstring schema_id
+) {
+    const char* schema_id_ptr = env->GetStringUTFChars(schema_id, nullptr);
+    if (!schema_id_ptr) return JNI_FALSE;
+    
+    LOGI("Deploying schema: %s", schema_id_ptr);
+    
+    // 构建 schema 文件路径
+    Rime::Instance().deploySchema(schema_id_ptr);
+    
+    env->ReleaseStringUTFChars(schema_id, schema_id_ptr);
+    return JNI_TRUE;
 }
 
 // 查询词汇编码

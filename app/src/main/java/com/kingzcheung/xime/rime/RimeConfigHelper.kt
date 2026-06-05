@@ -69,7 +69,12 @@ object RimeConfigHelper {
         if (enabledSchemas.isEmpty()) return false
 
         for (schemaId in enabledSchemas) {
-            if (!File(buildDir, "$schemaId.prism.bin").exists()) return false
+            // 优先检查 prism.bin（每个独立方案都会生成）
+            if (File(buildDir, "$schemaId.prism.bin").exists()) continue
+            // 没有 prism.bin 可能是共享词典的多翻译器方案（如 wubi86_pinyin），
+            // 检查 schema.yaml 是否已部署到 build 目录即可
+            if (File(buildDir, "$schemaId.schema.yaml").exists()) continue
+            return false
         }
         return true
     }

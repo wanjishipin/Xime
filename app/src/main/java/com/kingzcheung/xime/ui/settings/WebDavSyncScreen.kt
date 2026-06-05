@@ -57,6 +57,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.settings.WebDavSyncHelper
+import com.kingzcheung.xime.ui.SettingsSection
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -124,18 +125,7 @@ fun WebDavSyncContent(
         ) {
             Spacer(modifier = Modifier.height(4.dp))
 
-            Text(
-                "服务器配置",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Card(
-                shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                )
-            ) {
+            SettingsSection(title = "服务器配置") {
                 Column(modifier = Modifier.padding(16.dp)) {
                     OutlinedTextField(
                         value = serverUrl,
@@ -263,19 +253,8 @@ fun WebDavSyncContent(
                 }
             }
 
-            Text(
-                "同步操作",
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            if (syncProgress != null) {
-                Card(
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
-                ) {
+            SettingsSection(title = "同步操作") {
+                if (syncProgress != null) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         if (isUploading || isDownloading) {
                             LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
@@ -287,33 +266,38 @@ fun WebDavSyncContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
+                    HorizontalDivider(
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
                 }
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                OutlinedButton(
-                    onClick = {
-                        saveConfig()
-                        isUploading = true
-                        syncProgress = null
-                        scope.launch {
-                            val ok = WebDavSyncHelper.uploadSchemas(
-                                context, serverUrl, username, password, remotePath
-                            ) { msg -> syncProgress = msg }
-                            isUploading = false
-                            if (ok) Toast.makeText(context, "上传完成", Toast.LENGTH_SHORT).show()
-                            else Toast.makeText(context, "上传失败", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp),
-                    enabled = serverUrl.isNotBlank() && !isUploading && !isDownloading,
-                    shape = RoundedCornerShape(12.dp)
-                ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                saveConfig()
+                                isUploading = true
+                                syncProgress = null
+                                scope.launch {
+                                    val ok = WebDavSyncHelper.uploadSchemas(
+                                        context, serverUrl, username, password, remotePath
+                                    ) { msg -> syncProgress = msg }
+                                    isUploading = false
+                                    if (ok) Toast.makeText(context, "上传完成", Toast.LENGTH_SHORT).show()
+                                    else Toast.makeText(context, "上传失败", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp),
+                            enabled = serverUrl.isNotBlank() && !isUploading && !isDownloading,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
                     if (isUploading) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(18.dp),
@@ -362,12 +346,14 @@ fun WebDavSyncContent(
                 }
             }
 
-            Text(
-                "同步内容：rime/ 目录下的方案文件、词典和用户配置，不含 build/ 目录。上传会覆盖远程文件，下载会覆盖本地文件。",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.outline,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        "同步内容：rime/ 目录下的方案文件、词典和用户配置，不含 build/ 目录。上传会覆盖远程文件，下载会覆盖本地文件。",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
         }

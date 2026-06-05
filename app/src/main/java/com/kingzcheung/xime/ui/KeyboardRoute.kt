@@ -8,4 +8,5 @@ sealed class KeyboardRoute {
     data object SchemaList : KeyboardRoute()
     data object CandidatePage : KeyboardRoute()
     data object ToolbarCustomize : KeyboardRoute()
+    data class SplitWords(val text: String) : KeyboardRoute()
 }

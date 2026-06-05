@@ -19,44 +19,33 @@
 
 <table align="center">
   <tr>
-    <td><img src="docs/Screenshot/全键盘_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/全键盘_dark.jpg" width="180"></td>
+    <td><img src="docs/Screenshot/keyboard_light.jpg" width="180"></td>
+    <td><img src="docs/Screenshot/keyboard_dark.jpg" width="180"></td>
     <td><img src="docs/Screenshot/全键盘_下滑_light.jpg" width="180"></td>
     <td><img src="docs/Screenshot/全键盘_下滑_dark.jpg" width="180"></td>
   </tr>
   <tr>
-    <td><img src="docs/Screenshot/数字键盘_light.jpg" width="180"></td>
     <td><img src="docs/Screenshot/数字键盘_dark.jpg" width="180"></td>
     <td><img src="docs/Screenshot/符号键盘_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/符号键盘_dark.jpg" width="180"></td>
+        <td><img src="docs/Screenshot/emoji_light.jpg" width="180"></td>
+    <td><img src="docs/Screenshot/shotcut_light.jpg" width="180"></td>
   </tr>
-  <tr>
-    <td><img src="docs/Screenshot/表情键盘_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/表情键盘_dark.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/表情键盘_插件_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/表情键盘_插件_dark.jpg" width="180"></td>
-  </tr>
+
   <tr>
     <td><img src="docs/Screenshot/theme_light.jpg" width="180"></td>
     <td><img src="docs/Screenshot/theme_dark.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/菜单_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/菜单_dark.jpg" width="180"></td>
-  </tr>
-  <tr>
-    <td><img src="docs/Screenshot/plugin_light.jpg" width="180"></td>
+        <td><img src="docs/Screenshot/plugin_light.jpg" width="180"></td>
     <td><img src="docs/Screenshot/plugin_dark.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/setting_dark.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/setting_light.jpg" width="180"></td>
   </tr>
 </table>
 
-> 这是专门为我的个人使用习惯而开发的五笔输入法，请勿用于商业用途。
+> 这是专门为我的个人使用习惯而开发的手机输入法，请勿用于商业用途。
 
 ## 功能特点
 
-- **多种输入方案** - 支持五笔86、五笔98、拼音、及五笔拼音混输方案
+- **多种输入方案** - 默认内置五笔86、五笔98、拼音、及五笔拼音混输方案,支持自定义方案(五笔98、双拼等)
 - **Rime 引擎** - 使用成熟稳定的 Rime 输入法引擎
-- **语音转文本** - 内置语音识别功能（支持阿里百炼 FunAsr）
+- **语音转文本** - 内置语音识别功能（支持阿里百炼 FunAsr 和本地模型）
 - **表情插件** - 支持扩展表情插件（颜文字、表情包等）
 - **简洁界面** - Material Design 3 风格，支持浅色/深色主题
 - **主题定制** - 多种键盘配色方案可选
@@ -173,6 +162,16 @@ python3 scripts/build_pinyin_lm.py \
 - [Trime](https://github.com/osfans/trime) - 同文输入法，部分实现参考
 - [RIME-LMDG](https://github.com/amzxyz/RIME-LMDG) - 大规模语料词典，用于构建拼音二元语言模型
 - [Linux Do](https://linux.do) - 中文开发社区
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=ximeiorg/Xime&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ## 许可证
 

@@ -22,17 +22,6 @@ class SherpaAsrEngine(private val context: Context) {
 
         val AVAILABLE_MODELS = listOf(
             AsrModelInfo(
-                id = "ctc-multi-zh-hans-int8",
-                name = "中文多方言 CTC int8",
-                description = "CTC 架构，支持多种中文方言，int8 量化",
-                language = "zh",
-                size = "13 MB",
-                downloadUrl = "https://www.modelscope.cn/models/bikeand/asr/resolve/master/sherpa-onnx-streaming-zipformer-ctc-multi-zh-hans-int8-2023-12-13.tar.bz2",
-                modelType = "ctc",
-                files = listOf("ctc-epoch-20-avg-1-chunk-16-left-128.int8.onnx", "tokens.txt"),
-                ctcModelFile = "ctc-epoch-20-avg-1-chunk-16-left-128.int8.onnx"
-            ),
-            AsrModelInfo(
                 id = "zipformer-zh-int8",
                 name = "中文 Zipformer int8",
                 description = "Zipformer 架构，适合实时语音识别，int8 量化",
@@ -60,7 +49,6 @@ class SherpaAsrEngine(private val context: Context) {
         val encoderFile: String = "",
         val decoderFile: String = "",
         val joinerFile: String = "",
-        val ctcModelFile: String = "",
         val needsAutoPunctuation: Boolean = true
     )
     
@@ -74,6 +62,7 @@ class SherpaAsrEngine(private val context: Context) {
     private var errorCallback: ((String) -> Unit)? = null
     
     private val accumulatedText = StringBuilder()
+    private var lastPartialText = ""
     
     fun isAvailable(): Boolean {
         return try {
@@ -95,13 +84,13 @@ class SherpaAsrEngine(private val context: Context) {
     
     fun getSelectedModelDir(): File {
         val sharedPrefs = context.getSharedPreferences("sherpa_asr", Context.MODE_PRIVATE)
-        val modelId = sharedPrefs.getString("selected_model", "ctc-multi-zh-hans-int8") ?: "ctc-multi-zh-hans-int8"
+        val modelId = sharedPrefs.getString("selected_model", "zipformer-zh-int8") ?: "zipformer-zh-int8"
         return File(context.filesDir, "asr_models/$modelId")
     }
 
     fun getSelectedModelInfo(): AsrModelInfo? {
         val sharedPrefs = context.getSharedPreferences("sherpa_asr", Context.MODE_PRIVATE)
-        val modelId = sharedPrefs.getString("selected_model", "ctc-multi-zh-hans-int8") ?: "ctc-multi-zh-hans-int8"
+        val modelId = sharedPrefs.getString("selected_model", "zipformer-zh-int8") ?: "zipformer-zh-int8"
         return AVAILABLE_MODELS.find { it.id == modelId }
     }
     
@@ -153,21 +142,11 @@ class SherpaAsrEngine(private val context: Context) {
             return false
         }
 
-        if (modelInfo.modelType == "ctc") {
-            if (findFile(modelDir, modelInfo.ctcModelFile) == null &&
-                modelInfo.files.none { f -> f.endsWith(".onnx") && findFile(modelDir, f) != null }) {
-                FileLogger.e(TAG, "CTC model file not found: ${modelInfo.ctcModelFile}")
-                Log.e(TAG, "CTC model file not found in ${modelDir.absolutePath}")
-                errorCallback?.invoke("模型文件不完整，请重新下载")
-                return false
-            }
-        } else {
-            if (findFile(modelDir, modelInfo.encoderFile) == null) {
-                FileLogger.e(TAG, "Encoder file not found: ${modelInfo.encoderFile}")
-                Log.e(TAG, "Encoder file not found in ${modelDir.absolutePath}")
-                errorCallback?.invoke("模型文件不完整，请重新下载")
-                return false
-            }
+        if (findFile(modelDir, modelInfo.encoderFile) == null) {
+            FileLogger.e(TAG, "Encoder file not found: ${modelInfo.encoderFile}")
+            Log.e(TAG, "Encoder file not found in ${modelDir.absolutePath}")
+            errorCallback?.invoke("模型文件不完整，请重新下载")
+            return false
         }
         
         try {
@@ -188,35 +167,22 @@ class SherpaAsrEngine(private val context: Context) {
         val tokens = findFile(modelDir, "tokens.txt")?.absolutePath
             ?: File(modelDir, "tokens.txt").absolutePath
 
-        val modelConfig = if (modelInfo.modelType == "ctc") {
-            val modelFile = findFile(modelDir, modelInfo.ctcModelFile)?.absolutePath
-                ?: modelInfo.files.firstOrNull { f -> f.endsWith(".onnx") }
-                    ?.let { findFile(modelDir, it)?.absolutePath }
-                ?: File(modelDir, modelInfo.ctcModelFile).absolutePath
-            OnlineModelConfig(
-                zipformer2Ctc = OnlineZipformer2CtcModelConfig(model = modelFile),
-                tokens = tokens,
-                numThreads = 2,
-                provider = "cpu",
-                modelType = "zipformer2"
-            )
-        } else {
-            val encoder = (findFile(modelDir, modelInfo.encoderFile) ?: modelInfo.files.firstOrNull { f -> f.startsWith("encoder") }
-                ?.let { findFile(modelDir, it) } ?: File(modelDir, modelInfo.encoderFile)).absolutePath
-            val decoder = (findFile(modelDir, modelInfo.decoderFile) ?: modelInfo.files.firstOrNull { f -> f.startsWith("decoder") }
-                ?.let { findFile(modelDir, it) } ?: File(modelDir, modelInfo.decoderFile)).absolutePath
-            val joiner = (findFile(modelDir, modelInfo.joinerFile) ?: modelInfo.files.firstOrNull { f -> f.startsWith("joiner") }
-                ?.let { findFile(modelDir, it) } ?: File(modelDir, modelInfo.joinerFile)).absolutePath
-            OnlineModelConfig(
-                transducer = OnlineTransducerModelConfig(
-                    encoder = encoder, decoder = decoder, joiner = joiner
-                ),
-                tokens = tokens,
-                numThreads = 2,
-                provider = "cpu",
-                modelType = "zipformer2"
-            )
-        }
+        val encoder = (findFile(modelDir, modelInfo.encoderFile) ?: modelInfo.files.firstOrNull { f -> f.startsWith("encoder") }
+            ?.let { findFile(modelDir, it) } ?: File(modelDir, modelInfo.encoderFile)).absolutePath
+        val decoder = (findFile(modelDir, modelInfo.decoderFile) ?: modelInfo.files.firstOrNull { f -> f.startsWith("decoder") }
+            ?.let { findFile(modelDir, it) } ?: File(modelDir, modelInfo.decoderFile)).absolutePath
+        val joiner = (findFile(modelDir, modelInfo.joinerFile) ?: modelInfo.files.firstOrNull { f -> f.startsWith("joiner") }
+            ?.let { findFile(modelDir, it) } ?: File(modelDir, modelInfo.joinerFile)).absolutePath
+
+        val modelConfig = OnlineModelConfig(
+            transducer = OnlineTransducerModelConfig(
+                encoder = encoder, decoder = decoder, joiner = joiner
+            ),
+            tokens = tokens,
+            numThreads = 2,
+            provider = "cpu",
+            modelType = "zipformer2"
+        )
 
         return OnlineRecognizerConfig(
             featConfig = FeatureConfig(sampleRate = SAMPLE_RATE, featureDim = 80),
@@ -272,6 +238,8 @@ class SherpaAsrEngine(private val context: Context) {
         
         val text = currentRecognizer.getResult(currentStream).text
         if (text.isNotEmpty()) {
+            Log.d(TAG, "Partial result: '$text'")
+            lastPartialText = text
             coroutineScope.launch(Dispatchers.Main) {
                 partialResultCallback?.invoke(text)
             }
@@ -304,10 +272,19 @@ class SherpaAsrEngine(private val context: Context) {
             }
             
             resultText = currentRecognizer.getResult(currentStream).text
+            Log.d(TAG, "Final from model: '$resultText', last partial: '$lastPartialText'")
+            
+            // 如果模型"反悔"（最终结果比部分结果短），用更长的部分结果
+            if (resultText.length < lastPartialText.length) {
+                Log.d(TAG, "Model regressed: '$resultText' < '$lastPartialText', using partial")
+                resultText = lastPartialText
+            }
             
             currentStream.release()
             stream = null
         }
+        
+        lastPartialText = ""
         
         if (resultText.isNotEmpty()) {
             val finalText = resultText
@@ -325,6 +302,7 @@ class SherpaAsrEngine(private val context: Context) {
         stream?.release()
         stream = null
         accumulatedText.clear()
+        lastPartialText = ""
         stateCallback?.invoke(RecognitionState.IDLE)
         Log.d(TAG, "Recognition canceled")
     }

@@ -71,6 +71,10 @@ object WebDavSyncHelper {
 
     private val userConfigFiles = setOf("default.custom.yaml", "user.yaml", "installation.yaml")
 
+    private fun isSyncableFile(name: String): Boolean {
+        return name.endsWith(".yaml") || name.endsWith(".txt")
+    }
+
     suspend fun uploadSchemas(
         context: Context,
         baseUrl: String,
@@ -90,13 +94,21 @@ object WebDavSyncHelper {
             ensureRemoteDir(client, remoteBase, headers)
 
             if (rimeDir.exists()) {
-                val files = rimeDir.listFiles() ?: emptyArray()
-                for (file in files) {
-                    if (file.isFile && file.name.endsWith(".yaml")) {
-                        onProgress("上传 ${file.name}")
-                        val err = uploadFile(client, "$remoteBase/${file.name}", file, headers)
+                rimeDir.walkTopDown().forEach { file ->
+                    if (file.isFile && isSyncableFile(file.name)) {
+                        val relativePath = file.relativeTo(rimeDir).path
+                        val remoteUrl = "$remoteBase/$relativePath"
+
+                        // 确保远程父目录存在
+                        val parentDir = relativePath.substringBeforeLast('/', "")
+                        if (parentDir.isNotEmpty()) {
+                            ensureRemoteDir(client, "$remoteBase/$parentDir", headers)
+                        }
+
+                        onProgress("上传 $relativePath")
+                        val err = uploadFile(client, remoteUrl, file, headers)
                         if (err != null) {
-                            onProgress("上传 ${file.name} 失败: $err")
+                            onProgress("上传 $relativePath 失败: $err")
                             return@withContext false
                         }
                     }
@@ -130,14 +142,27 @@ object WebDavSyncHelper {
             if (!rimeDir.exists()) rimeDir.mkdirs()
 
             onProgress("读取远程文件列表...")
-            val remoteFiles = listRemoteDir(client, remoteBase, headers)
+            val remoteFiles = listRemoteDirRecursive(client, remoteBase, headers)
 
-            for (remoteFile in remoteFiles.filter { !it.isDirectory && it.name.endsWith(".yaml") }) {
-                val localFile = File(rimeDir, remoteFile.name)
-                onProgress("下载 ${remoteFile.name}")
-                val err = downloadFile(client, "$remoteBase/${remoteFile.name}", localFile, headers)
+            for (remoteFile in remoteFiles.filter { !it.isDirectory && isSyncableFile(it.name) }) {
+                // 计算相对于 remoteBase 的相对路径
+                val remoteFileUrl = remoteFile.path
+                val relativePath = if (remoteFileUrl.startsWith(remoteBase)) {
+                    remoteFileUrl.removePrefix(remoteBase).trimStart('/')
+                } else {
+                    remoteFile.name
+                }
+
+                val localFile = File(rimeDir, relativePath)
+                localFile.parentFile?.mkdirs()
+
+                val fullUrl = if (remoteFileUrl.startsWith("http")) remoteFileUrl
+                    else "$remoteBase/$relativePath"
+
+                onProgress("下载 $relativePath")
+                val err = downloadFile(client, fullUrl, localFile, headers)
                 if (err != null) {
-                    onProgress("下载 ${remoteFile.name} 失败: $err")
+                    onProgress("下载 $relativePath 失败: $err")
                     return@withContext false
                 }
             }
@@ -257,6 +282,26 @@ object WebDavSyncHelper {
 
         val body = response.body?.string() ?: return emptyList()
         return parsePropfindResponse(body, url)
+    }
+
+    private fun listRemoteDirRecursive(
+        client: OkHttpClient,
+        url: String,
+        headers: Map<String, String>
+    ): List<WebDavFile> {
+        val result = mutableListOf<WebDavFile>()
+        val entries = listRemoteDir(client, url, headers)
+        for (entry in entries) {
+            if (entry.isDirectory) {
+                // 递归列出子目录
+                val subUrl = if (entry.path.startsWith("http")) entry.path
+                    else "$url/${entry.name}"
+                result.addAll(listRemoteDirRecursive(client, subUrl, headers))
+            } else {
+                result.add(entry)
+            }
+        }
+        return result
     }
 
     private fun parsePropfindResponse(xml: String, baseUrl: String): List<WebDavFile> {

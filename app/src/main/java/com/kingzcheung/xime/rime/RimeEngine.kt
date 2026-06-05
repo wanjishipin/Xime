@@ -275,7 +275,20 @@ class RimeEngine {
     private external fun nativeSwitchSchema(schemaId: String): Boolean
     private external fun nativeStartMaintenance(full: Boolean): Boolean
     private external fun nativeDeploy(): Boolean
+    private external fun nativeDeploySchema(schemaId: String): Boolean
     private external fun nativeLookupText(text: String): String
     private external fun nativeGetAvailableSchemas(): Array<String>?
+    private external fun nativeUpdateLastBuildTime()
     private external fun nativeDestroy()
+
+    fun deploySchema(schemaId: String): Boolean {
+        if (!isInitialized) return false
+        Log.d(TAG, "Deploying single schema: $schemaId")
+        return nativeDeploySchema(schemaId)
+    }
+
+    fun updateLastBuildTime() {
+        if (!isInitialized) return
+        nativeUpdateLastBuildTime()
+    }
 }

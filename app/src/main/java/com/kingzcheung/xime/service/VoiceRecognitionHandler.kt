@@ -1,6 +1,8 @@
 package com.kingzcheung.xime.service
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import android.view.inputmethod.InputConnection
 import com.kingzcheung.xime.speech.RecognitionState
@@ -97,15 +99,22 @@ class VoiceRecognitionHandler(
         }
     }
 
-    fun startPreBuffer() {
+    private val mainHandler by lazy { Handler(Looper.getMainLooper()) }
+    private val delayedPreStartRunnable = Runnable {
         if (::speechRecognitionManager.isInitialized) {
-            speechRecognitionManager.startPreBuffer()
+            speechRecognitionManager.startPreStart()
         }
     }
 
-    fun cancelPreBuffer() {
+    fun startDelayedPreStart(delayMs: Long = 150) {
+        mainHandler.removeCallbacks(delayedPreStartRunnable)
+        mainHandler.postDelayed(delayedPreStartRunnable, delayMs)
+    }
+
+    fun cancelPreStart() {
+        mainHandler.removeCallbacks(delayedPreStartRunnable)
         if (::speechRecognitionManager.isInitialized) {
-            speechRecognitionManager.cancelPreBuffer()
+            speechRecognitionManager.cancelPreStart()
         }
     }
 

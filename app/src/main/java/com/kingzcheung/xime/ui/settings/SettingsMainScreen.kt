@@ -76,7 +76,7 @@ fun SettingsMainContent(
         containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             MediumTopAppBar(
-                title = { Text("曦码设置") },
+                title = { Text("曦码输入法设置") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.background,
                     scrolledContainerColor = MaterialTheme.colorScheme.background,

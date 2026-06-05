@@ -161,6 +161,7 @@ fun EmojiKeyboardLayout(
     onBack: () -> Unit,
     backgroundColor: Color,
     textColor: Color,
+    accentColor: Color,
     bottomPaddingDp: Int = 0,
     modifier: Modifier = Modifier
 ) {
@@ -168,7 +169,6 @@ fun EmojiKeyboardLayout(
     val clipboardManager = remember { ClipboardManager.getInstance(context) }
 
     val isDarkTheme = textColor == Color(0xFFE8EAED)
-    val accentColor = if (isDarkTheme) Color(0xFF8AB4F8) else Color(0xFF1A73E8)
 
     var selectedTopTabIndex by remember { mutableStateOf(0) }
     var selectedSubCategoryIndex by remember { mutableStateOf(0) }
@@ -411,6 +411,7 @@ fun EmojiKeyboardLayout(
                             onClick = { selectedSubCategoryIndex = index },
                             backgroundColor = backgroundColor,
                             textColor = textColor,
+                            selectedBackgroundColor = accentColor,
                             modifier = Modifier.width(36.dp)
                         )
                     }
@@ -442,6 +443,7 @@ fun EmojiCategoryTab(
     onClick: () -> Unit,
     backgroundColor: Color,
     textColor: Color,
+    selectedBackgroundColor: Color = textColor.copy(alpha = 0.15f),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -451,7 +453,7 @@ fun EmojiCategoryTab(
             .height(30.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(
-                if (isSelected) textColor.copy(alpha = 0.15f)
+                if (isSelected) selectedBackgroundColor
                 else backgroundColor
             )
             .clickable(onClick = onClick),
