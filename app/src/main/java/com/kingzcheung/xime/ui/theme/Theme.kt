@@ -5,8 +5,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import com.kingzcheung.xime.settings.SettingsPreferences
 
 // ========== 统一主题系统 ==========
@@ -59,8 +62,15 @@ fun XimeTheme(
         outlineVariant = Color(0xFF49454F)
     )
 
-    MaterialTheme(
-        colorScheme = if (darkTheme) darkScheme else lightScheme,
-        content = content
-    )
+    CompositionLocalProvider(
+        LocalDensity provides Density(
+            density = LocalDensity.current.density,
+            fontScale = 1.0f
+        )
+    ) {
+        MaterialTheme(
+            colorScheme = if (darkTheme) darkScheme else lightScheme,
+            content = content
+        )
+    }
 }
