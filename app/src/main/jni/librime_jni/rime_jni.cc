@@ -831,4 +831,29 @@ Java_com_kingzcheung_xime_rime_RimeEngine_nativeLookupText(
     return env->NewStringUTF("");
 }
 
+// 检查 Rime 模块是否已注册（用于测试插件集成）
+JNIEXPORT jboolean JNICALL
+Java_com_kingzcheung_xime_rime_RimeEngine_nativeIsModuleRegistered(
+    JNIEnv* env,
+    jobject thiz,
+    jstring module_name
+) {
+    const char* name = env->GetStringUTFChars(module_name, nullptr);
+    if (!name) return JNI_FALSE;
+    
+    bool found = false;
+    RimeApi* api = rime_get_api();
+    if (api && RIME_API_AVAILABLE(api, find_module)) {
+        RimeModule* m = api->find_module(name);
+        found = (m != nullptr);
+    } else {
+        RimeModule* m = RimeFindModule(name);
+        found = (m != nullptr);
+    }
+    
+    LOGI("Module check: '%s' -> %s", name, found ? "FOUND" : "NOT FOUND");
+    env->ReleaseStringUTFChars(module_name, name);
+    return found ? JNI_TRUE : JNI_FALSE;
+}
+
 } // extern "C"

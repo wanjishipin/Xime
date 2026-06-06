@@ -13,7 +13,9 @@ target_include_directories(rime_jni PRIVATE
 
 # 链接 librime 和其他依赖库
 target_link_libraries(rime_jni
+    -Wl,--whole-archive
     rime-static
+    -Wl,--no-whole-archive
     log
 )
 

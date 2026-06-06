@@ -13,3 +13,4 @@
 [submodule "app/src/main/jni/librime-lua-deps"]
 	path = app/src/main/jni/librime-lua-deps
 	url = https://github.com/hchunhui/librime-lua.git
+	branch = thirdparty

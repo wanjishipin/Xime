@@ -27,6 +27,15 @@ class RimeEngine {
 
         fun isInitialized(): Boolean = instance?.isInitialized ?: false
 
+        /**
+         * 检查指定的 Rime 模块是否已注册（用于验证插件集成）
+         */
+        fun isModuleRegistered(moduleName: String): Boolean {
+            val engine = instance ?: return false
+            if (!engine.isInitialized) return false
+            return engine.nativeIsModuleRegistered(moduleName)
+        }
+
         fun setDeploymentCallback(callback: (isDeploying: Boolean, message: String) -> Unit) {
             deploymentCallback = callback
         }
@@ -242,6 +251,7 @@ class RimeEngine {
     private external fun nativeDeploySchema(schemaId: String): Boolean
     private external fun nativeLookupText(text: String): String
     private external fun nativeGetAvailableSchemas(): Array<String>?
+    private external fun nativeIsModuleRegistered(moduleName: String): Boolean
     private external fun nativeUpdateLastBuildTime()
     private external fun nativeDestroy()
 
