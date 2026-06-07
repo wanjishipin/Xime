@@ -52,6 +52,5 @@ plugins/kaomoji/build
 
 # Plugin APKs (development only, not packaged in main app)
 app/src/main/assets/plugins/*.apk
-docs/.vitepress/dist
-docs/.vitepress/cache
+
 /.skills
