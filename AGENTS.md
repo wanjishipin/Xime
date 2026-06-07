@@ -10,7 +10,7 @@
 ## 插件开发
 - 清除插件数据： `./gradlew clearPlugins`
 - 完全卸载主应用： `./gradlew uninstallApp`
-- [插件开发指南](docs/plugins/PLUGIN_DEVELOPMENT_GUIDE.md) - 开发插件时必读
+- [插件开发指南](https://ime.ximei.me/plugins/PLUGIN_DEVELOPMENT_GUIDE) - 开发插件时必读
 
 ## 硬性规则（必须遵守，CI 会验证）
 
