@@ -61,6 +61,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -194,11 +196,16 @@ fun SchemaSettingsContent(
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(modifier = Modifier.height(16.dp))
-                    Card(
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
-                        )
+                    var urlFocused by remember { mutableStateOf(false) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusEvent { urlFocused = it.isFocused }
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(
+                                if (urlFocused) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
+                            )
                     ) {
                         BasicTextField(
                             value = urlInput,
@@ -212,8 +219,8 @@ fun SchemaSettingsContent(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
                             decorationBox = { innerTextField ->
-                                Box {
-                                    if (urlInput.isEmpty()) {
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    if (urlInput.isEmpty() && !urlFocused) {
                                         Text(
                                             "https://example.com/schema.tar.gz",
                                             style = MaterialTheme.typography.bodyMedium,

@@ -5,6 +5,8 @@ import android.net.Uri
 import android.provider.Settings
 import android.view.inputmethod.InputMethodManager
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.twotone.LibraryBooks
 import androidx.compose.material.icons.twotone.AutoAwesome
@@ -31,8 +34,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MediumTopAppBar
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +44,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -130,31 +133,46 @@ fun SettingsMainContent(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                     var testText by remember { mutableStateOf("") }
+                    var isFocused by remember { mutableStateOf(false) }
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                     ) {
-                        OutlinedTextField(
-                            value = testText,
-                            onValueChange = { testText = it },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = { 
-                                Text(
-                                    "点击此处开始输入测试...",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                                ) 
-                            },
-                            singleLine = false,
-                            maxLines = 3,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                                focusedContainerColor = MaterialTheme.colorScheme.surface,
-                                unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .onFocusEvent { isFocused = it.isFocused }
+                                .clip(RoundedCornerShape(28.dp))
+                                .background(
+                                    if (isFocused) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                    else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
+                                )
+                                .padding(horizontal = 16.dp, vertical = 14.dp)
+                        ) {
+                            BasicTextField(
+                                value = testText,
+                                onValueChange = { testText = it },
+                                modifier = Modifier.fillMaxWidth(),
+                                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    color = MaterialTheme.colorScheme.onSurface
+                                ),
+                                singleLine = false,
+                                maxLines = 3,
+                                decorationBox = { innerTextField ->
+                                    Box {
+                                        if (testText.isEmpty() && !isFocused) {
+                                            Text(
+                                                "点击此处开始输入测试...",
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                            )
+                                        }
+                                        innerTextField()
+                                    }
+                                }
                             )
-                        )
+                        }
                         if (testText.isNotEmpty()) {
                             Row(
                                 modifier = Modifier

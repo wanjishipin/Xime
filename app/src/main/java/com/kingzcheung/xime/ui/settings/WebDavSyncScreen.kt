@@ -1,7 +1,10 @@
 package com.kingzcheung.xime.ui.settings
 
 import android.widget.Toast
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -14,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -52,6 +56,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -130,76 +136,164 @@ fun WebDavSyncContent(
 
             SettingsSection(title = "服务器配置") {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    OutlinedTextField(
-                        value = serverUrl,
-                        onValueChange = { serverUrl = it; connectionOk = null; connectionStatus = null },
-                        label = { Text("服务器地址") },
-                        placeholder = { Text("https://example.com/dav") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    var urlFocused by remember { mutableStateOf(false) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusEvent { urlFocused = it.isFocused }
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                if (urlFocused) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
+                            )
+                    ) {
+                        BasicTextField(
+                            value = serverUrl,
+                            onValueChange = { serverUrl = it; connectionOk = null; connectionStatus = null },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            decorationBox = { innerTextField ->
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    if (serverUrl.isEmpty() && !urlFocused) {
+                                        Text(
+                                            "服务器地址",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
                         )
-                    )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = username,
-                        onValueChange = { username = it; connectionOk = null; connectionStatus = null },
-                        label = { Text("用户名") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    var userFocused by remember { mutableStateOf(false) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusEvent { userFocused = it.isFocused }
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                if (userFocused) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
+                            )
+                    ) {
+                        BasicTextField(
+                            value = username,
+                            onValueChange = { username = it; connectionOk = null; connectionStatus = null },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            decorationBox = { innerTextField ->
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    if (username.isEmpty() && !userFocused) {
+                                        Text(
+                                            "用户名",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
                         )
-                    )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = { password = it; connectionOk = null; connectionStatus = null },
-                        label = { Text("密码") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
-                        ),
-                        visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { showPassword = !showPassword }) {
-                                Icon(
-                                    if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                    contentDescription = null
+                    var pwdFocused by remember { mutableStateOf(false) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusEvent { pwdFocused = it.isFocused }
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                if (pwdFocused) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
+                            )
+                            .padding(horizontal = 16.dp, vertical = 14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                BasicTextField(
+                                    value = password,
+                                    onValueChange = { password = it; connectionOk = null; connectionStatus = null },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    ),
+                                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
+                                    decorationBox = { innerTextField ->
+                                        Box {
+                                            if (password.isEmpty() && !pwdFocused) {
+                                                Text(
+                                                    "密码",
+                                                    style = MaterialTheme.typography.bodyMedium,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                                )
+                                            }
+                                            innerTextField()
+                                        }
+                                    }
                                 )
                             }
+                            Icon(
+                                imageVector = if (showPassword) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                contentDescription = if (showPassword) "隐藏密码" else "显示密码",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .clickable { showPassword = !showPassword }
+                            )
                         }
-                    )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = remotePath,
-                        onValueChange = { remotePath = it; connectionOk = null; connectionStatus = null },
-                        label = { Text("远程路径") },
-                        placeholder = { Text("xime") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        shape = RoundedCornerShape(12.dp),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.primary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                            focusedContainerColor = MaterialTheme.colorScheme.surface,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    var pathFocused by remember { mutableStateOf(false) }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusEvent { pathFocused = it.isFocused }
+                            .clip(RoundedCornerShape(14.dp))
+                            .background(
+                                if (pathFocused) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                                else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.04f)
+                            )
+                    ) {
+                        BasicTextField(
+                            value = remotePath,
+                            onValueChange = { remotePath = it; connectionOk = null; connectionStatus = null },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                color = MaterialTheme.colorScheme.onSurface
+                            ),
+                            decorationBox = { innerTextField ->
+                                Box(modifier = Modifier.fillMaxWidth()) {
+                                    if (remotePath.isEmpty() && !pathFocused) {
+                                        Text(
+                                            "远程路径",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                        )
+                                    }
+                                    innerTextField()
+                                }
+                            }
                         )
-                    )
+                    }
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
                         modifier = Modifier.fillMaxWidth(),
