@@ -350,23 +350,26 @@ fun KeyboardLayout(
                                 // 跟踪水平滑动控制光标
                                 var isHorizontalSwipe = false
                                 val cursorThreshold = 60f
+                                var totalDx = 0f
 
                                 // 使用 drag 检测水平滑动，drag 会在手指抬起后自动结束
                                 drag(down.id) { change ->
                                     val dx = change.position.x - down.position.x
                                     val dy = change.position.y - down.position.y
+                                    totalDx = dx
 
-                                    // 判断是否为水平滑动（水平位移远大于垂直位移）
-                                    if (kotlin.math.abs(dx) > cursorThreshold &&
-                                        kotlin.math.abs(dx) > kotlin.math.abs(dy) * 2f
-                                    ) {
+                                    // 只要水平位移超过阈值就视为滑动意图，防止误触上屏空格
+                                    if (kotlin.math.abs(dx) > cursorThreshold) {
                                         if (!isHorizontalSwipe) {
                                             isHorizontalSwipe = true
                                             longPressJob.cancel()
                                         }
-                                        val steps = (dx / cursorThreshold).toInt()
-                                        if (steps != 0) {
-                                            currentOnCursorMove?.invoke(if (steps > 0) 1 else -1)
+                                        // 光标移动需要更严格的条件：水平远大于垂直
+                                        if (kotlin.math.abs(dx) > kotlin.math.abs(dy) * 2f) {
+                                            val steps = (dx / cursorThreshold).toInt()
+                                            if (steps != 0) {
+                                                currentOnCursorMove?.invoke(if (steps > 0) 1 else -1)
+                                            }
                                         }
                                     }
                                 }
