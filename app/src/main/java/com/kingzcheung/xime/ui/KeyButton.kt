@@ -1,6 +1,8 @@
 package com.kingzcheung.xime.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -36,12 +38,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
 
 data class SwipeState(
     val isSwiping: Boolean = false,
@@ -50,7 +55,11 @@ data class SwipeState(
     val charInfos: List<CharInfo> = emptyList(),
     val isPressed: Boolean = false,
     val pressedText: String? = null,
-    val isDanger: Boolean = false
+    val isDanger: Boolean = false,
+    // 长按弹出选择
+    val isLongPress: Boolean = false,
+    val longPressItems: List<String> = emptyList(),
+    val selectedLongPressIndex: Int = 0
 )
 
 @Composable
@@ -218,6 +227,8 @@ fun SwipeableKeyButton(
     onSwipeDown: ((String) -> Unit)? = null,
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)? = null,
     onPress: (() -> Unit)? = null,
+    onLongPressSelect: ((String) -> Unit)? = null,
+    longPressItems: List<String>? = null,
     fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
     swipeFontSize: androidx.compose.ui.unit.TextUnit = 9.sp
 ) {
@@ -237,6 +248,10 @@ fun SwipeableKeyButton(
     val currentOnSwipeStateChange by rememberUpdatedState(onSwipeStateChange)
     val currentOnPress by rememberUpdatedState(onPress)
     val currentOnClick by rememberUpdatedState(onClick)
+    val currentOnLongPressSelect by rememberUpdatedState(onLongPressSelect)
+    val currentLongPressItems by rememberUpdatedState(longPressItems)
+    val scope = rememberCoroutineScope()
+    val view = LocalView.current
     
     val density = LocalDensity.current
     val swipeUpThreshold = with(density) { (-15).dp.toPx() }
@@ -325,20 +340,118 @@ fun SwipeableKeyButton(
                     }
                 )
             }
-            .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        currentOnSwipeStateChange?.invoke(SwipeState(isPressed = true, pressedText = currentText), buttonBounds)
-                        currentOnPress?.invoke()
-                        tryAwaitRelease()
-                        isPressed = false
-                        currentOnSwipeStateChange?.invoke(SwipeState(false, null, false, emptyList(), false, null), buttonBounds)
-                    },
-                    onTap = {
-                        if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) currentOnClick?.invoke()
+            .pointerInput(currentLongPressItems) {
+                if (currentLongPressItems.isNullOrEmpty()) {
+                    // 无长按选项时使用简单点击检测
+                    detectTapGestures(
+                        onPress = {
+                            isPressed = true
+                            currentOnSwipeStateChange?.invoke(SwipeState(isPressed = true, pressedText = currentText), buttonBounds)
+                            currentOnPress?.invoke()
+                            tryAwaitRelease()
+                            isPressed = false
+                            currentOnSwipeStateChange?.invoke(SwipeState(false, null, false, emptyList(), false, null), buttonBounds)
+                        },
+                        onTap = {
+                            if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) currentOnClick?.invoke()
+                        }
+                    )
+                    return@pointerInput
+                }
+                
+                // 有长按选项：自定义手势处理
+                awaitEachGesture {
+                    val down = awaitFirstDown(requireUnconsumed = false)
+                    isPressed = true
+                    var localLongPressTriggered = false
+                    var selectedIdx = 0
+                    val downX = down.position.x
+                    val items = currentLongPressItems ?: return@awaitEachGesture
+                    
+                    currentOnSwipeStateChange?.invoke(
+                        SwipeState(isPressed = true, pressedText = currentText), buttonBounds
+                    )
+                    currentOnPress?.invoke()
+                    
+                    val longPressJob = scope.launch {
+                        delay(400L)
+                        localLongPressTriggered = true
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                        currentOnSwipeStateChange?.invoke(
+                            SwipeState(
+                                isPressed = true,
+                                isLongPress = true,
+                                longPressItems = items,
+                                selectedLongPressIndex = 0
+                            ),
+                            buttonBounds
+                        )
                     }
-                )
+                    
+                    val swipeThresholdPx = with(density) { 15.dp.toPx() }
+                    val downY = down.position.y
+                    var swipeDetected = false
+                    
+                    try {
+                        var lastReportedIdx = -1
+                        var completed = false
+                        while (!completed) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull() ?: break
+                            
+                            if (change.isConsumed) continue
+                            
+                            // 长按触发前检测到垂直滑动则取消长按
+                            if (!localLongPressTriggered) {
+                                val deltaY = change.position.y - downY
+                                if (kotlin.math.abs(deltaY) > swipeThresholdPx) {
+                                    swipeDetected = true
+                                    longPressJob.cancel()
+                                }
+                            }
+                            
+                            if (localLongPressTriggered) {
+                                // 水平滑动选择
+                                val deltaX = change.position.x - downX
+                                val itemWidth = buttonBounds.width / items.size
+                                selectedIdx = ((deltaX / itemWidth) + if (items.size > 1) 0.5f else 0f).toInt()
+                                    .coerceIn(0, items.size - 1)
+                                
+                                if (selectedIdx != lastReportedIdx) {
+                                    lastReportedIdx = selectedIdx
+                                    currentOnSwipeStateChange?.invoke(
+                                        SwipeState(
+                                            isPressed = true,
+                                            isLongPress = true,
+                                            longPressItems = items,
+                                            selectedLongPressIndex = selectedIdx
+                                        ),
+                                        buttonBounds
+                                    )
+                                }
+                                change.consume()
+                            }
+                            
+                            if (event.type == androidx.compose.ui.input.pointer.PointerEventType.Release) {
+                                completed = true
+                                if (localLongPressTriggered) {
+                                    // 长按选择后抬起 → 上屏选中项
+                                    val selected = items.getOrNull(selectedIdx)
+                                    if (selected != null) {
+                                        currentOnLongPressSelect?.invoke(selected)
+                                    }
+                                } else if (!swipeDetected) {
+                                    // 长按未触发且非滑动 → 普通点击
+                                    currentOnClick?.invoke()
+                                }
+                            }
+                        }
+                    } finally {
+                        longPressJob.cancel()
+                        isPressed = false
+                        currentOnSwipeStateChange?.invoke(SwipeState(), buttonBounds)
+                    }
+                }
             },
         contentAlignment = Alignment.Center
     ) {

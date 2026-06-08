@@ -60,7 +60,7 @@ color_schemes:
 #   tap:        点按
 #   swipe_up:   上滑
 #   swipe_down: 下滑
-#   long_press: 长按（数组，支持多个值轮换）
+#   long_press: 长按（数组，弹出气泡后左右滑动选择）
 #
 # 每个手势的值格式：
 #   - 字符串 "a" → 上屏该文本，显示也是它
@@ -70,7 +70,7 @@ color_schemes:
 #             paste, clipboard, line_start, line_end, undo, none, repeat
 #     value:  上屏时的输出文本（不指定则用 label）
 #
-# long_press 示例（多值轮换）：
+# long_press 示例（弹出多个选项供滑动选择）：
 #   long_press:
 #     - { label: "大写", action: "commit", value: "A" }
 #     - { label: "Ä",    action: "commit", value: "ä" }

@@ -221,6 +221,9 @@ fun KeyboardLayout(
                             } else null
                             val swipeDownAction = if (swipeDownText != null) KeysConfigHelper.getSwipeDownAction(key) else null
                             
+                            val longPressGesture = KeysConfigHelper.getKeyGesture(key)?.longPress
+                            val longPressLabels = longPressGesture?.map { it.label }?.filter { it.isNotEmpty() }?.ifEmpty { null }
+                            
                             SwipeableKeyButton(
                                 text = if (isShifted || !isAsciiMode) key.uppercase() else key,
                                 onClick = { onKeyPress(key) },
@@ -232,7 +235,9 @@ fun KeyboardLayout(
                                 onSwipe = if (swipeUpText != null) onKeyPress else null,
                                 onSwipeDown = if (swipeDownAction == "commit" && swipeDownText != null) onKeyPress else null,
                                 onSwipeStateChange = { state, bounds -> processSwipeState(state, bounds) },
-                                onPress = { onKeyPressDown?.invoke(key) }
+                                onPress = { onKeyPressDown?.invoke(key) },
+                                onLongPressSelect = onKeyPress,
+                                longPressItems = longPressLabels
                             )
                         }
                     }
@@ -586,6 +591,10 @@ fun KeyboardRowWithConfig(
             } else null
             val swipeDownAction = if (swipeDownText != null) KeysConfigHelper.getSwipeDownAction(key) else null
             
+            // 长按选项
+            val longPressGesture = KeysConfigHelper.getKeyGesture(key)?.longPress
+            val longPressLabels = longPressGesture?.map { it.label }?.filter { it.isNotEmpty() }?.ifEmpty { null }
+            
             SwipeableKeyButton(
                 text = if (isShifted || !isAsciiMode) key.uppercase() else key,
                 onClick = { onKeyPress(key) },
@@ -598,6 +607,8 @@ fun KeyboardRowWithConfig(
                 onSwipeDown = if (swipeDownAction == "commit" && swipeDownText != null) onKeyPress else null,
                 onSwipeStateChange = onSwipeStateChange,
                 onPress = { onKeyPressDown?.invoke(key) },
+                onLongPressSelect = onKeyPress,
+                longPressItems = longPressLabels,
                 fontSize = fontSize,
                 swipeFontSize = swipeFontSize
             )

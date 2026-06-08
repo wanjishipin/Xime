@@ -1,11 +1,16 @@
 package com.kingzcheung.xime.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -149,9 +154,14 @@ fun SwipeBubble(
     keyboardWidth: Float,
     modifier: Modifier = Modifier
 ) {
-    val shouldShowBubble = swipeState.isSwiping || swipeState.isPressed
-    val displayText = if (swipeState.isPressed) swipeState.pressedText else swipeState.swipeText
-    if (!shouldShowBubble || displayText == null) return
+    val shouldShowBubble = swipeState.isSwiping || swipeState.isPressed || swipeState.isLongPress
+    val isLongPressMode = swipeState.isLongPress && swipeState.longPressItems.isNotEmpty()
+
+    val displayText = if (isLongPressMode) null
+        else if (swipeState.isPressed) swipeState.pressedText
+        else swipeState.swipeText
+    if (!shouldShowBubble) return
+    if (!isLongPressMode && displayText == null) return
 
     val density = LocalDensity.current
     val context = LocalContext.current
@@ -171,65 +181,58 @@ fun SwipeBubble(
     val minBodyWidthPx = keyWidthPx + with(density) { 24.dp.toPx() }
     val totalHeightPx = bodyHeightPx + pointerHeightPx
 
-    // ── 用 Paint 同步测量文本宽度，避免 constrained layout 的 chicken-and-egg ──
-    val textWidthPx = with(density) {
-        val paint = android.graphics.Paint().apply {
-            textSize = 14.sp.toPx()
-            isAntiAlias = true
+    // ── 计算气泡宽度 ──
+    val bodyWidth = if (isLongPressMode) {
+        // 长按：多个选项，宽度 = 按键宽度 × max(选项数, 3)
+        val cellCount = maxOf(swipeState.longPressItems.size, 3)
+        cellCount * keyWidthPx
+    } else {
+        // 单文本：测量文本宽度
+        val textWidthPx = with(density) {
+            val paint = android.graphics.Paint().apply {
+                textSize = 14.sp.toPx()
+                isAntiAlias = true
+            }
+            paint.measureText(displayText!!)
         }
-        paint.measureText(displayText)
+        maxOf(textWidthPx + with(density) { 20.dp.toPx() }, minBodyWidthPx)
     }
-    val bodyWidth = maxOf(textWidthPx + with(density) { 20.dp.toPx() }, minBodyWidthPx) // textWidth + 10dp*2 padding
 
     // ── pointer 居中于按键 ──
     val pointerCenterX = keyBounds.left + keyBounds.width / 2f
 
-    // ── body 居中于 pointerCenterX，但 clamp 到键盘边界内 ──
+    // ── body 居中于 pointerCenterX ──
     val idealBodyLeft = pointerCenterX - bodyWidth / 2f
     val bodyLeft = idealBodyLeft.coerceIn(
         screenMarginPx,
         keyboardWidth - bodyWidth - screenMarginPx
     )
     val bodyRight = bodyLeft + bodyWidth
-
-    // ── pointer 始终居中于按键 ──
     val pointerLeft = pointerCenterX - keyWidthPx / 2f
     val pointerRight = pointerLeft + keyWidthPx
-
-    // ── Box 容器同时包裹 body 和 pointer ──
     val boxLeft = minOf(bodyLeft, pointerLeft)
     val boxRight = maxOf(bodyRight, pointerRight)
     val boxWidth = boxRight - boxLeft
-    // 气泡底部与按键底部对齐，窄体覆盖整个按键
     val boxTop = keyBounds.top + keyBounds.height - totalHeightPx
-
-    // ── 检测宽窄体是否对齐（贴边时边缘侧肩膀应为直角直线） ──
     val isLeftFlush = kotlin.math.abs(bodyLeft - pointerLeft) < 1f
-    val isRightFlush = kotlin.math.abs(bodyRight - pointerRight) < 1f
-
-    // ── Box 内部相对坐标 ──
+    val isRightFlush = if (isLongPressMode)
+        kotlin.math.abs((bodyLeft + bodyWidth) - (pointerLeft + keyWidthPx)) < 1f
+    else
+        kotlin.math.abs(bodyRight - pointerRight) < 1f
     val bodyLeftInBox = bodyLeft - boxLeft
     val pointerLeftInBox = pointerLeft - boxLeft
-
-    // ── dp 值（Modifier 需要） ──
     val boxWidthDp = with(density) { boxWidth.toDp() }
     val totalHeightDp = with(density) { totalHeightPx.toDp() }
 
-    // 自定义 Shape，使阴影沿倒"凸"轮廓投射
     val bubbleShape = remember(bodyLeftInBox, bodyWidth, bodyHeightPx,
         pointerLeftInBox, keyWidthPx, pointerHeightPx, cornerRadiusPx,
         isLeftFlush, isRightFlush) {
         InvertedConvexShape { _ ->
             buildInvertedConvexPath(
-                bodyLeft = bodyLeftInBox,
-                bodyWidth = bodyWidth,
-                bodyHeight = bodyHeightPx,
-                pointerLeft = pointerLeftInBox,
-                pointerWidth = keyWidthPx,
-                pointerHeight = pointerHeightPx,
-                cornerRadius = cornerRadiusPx,
-                isLeftFlush = isLeftFlush,
-                isRightFlush = isRightFlush
+                bodyLeft = bodyLeftInBox, bodyWidth = bodyWidth, bodyHeight = bodyHeightPx,
+                pointerLeft = pointerLeftInBox, pointerWidth = keyWidthPx,
+                pointerHeight = pointerHeightPx, cornerRadius = cornerRadiusPx,
+                isLeftFlush = isLeftFlush, isRightFlush = isRightFlush
             )
         }
     }
@@ -237,9 +240,7 @@ fun SwipeBubble(
     val chaiFontFamily = remember {
         FontFamily(
             androidx.compose.ui.text.font.Typeface(
-                android.graphics.Typeface.createFromAsset(
-                    context.assets, "ChaiPUA-0.2.7-snow.ttf"
-                )
+                android.graphics.Typeface.createFromAsset(context.assets, "ChaiPUA-0.2.7-snow.ttf")
             )
         )
     }
@@ -249,41 +250,68 @@ fun SwipeBubble(
             .offset { IntOffset(boxLeft.roundToInt(), boxTop.roundToInt()) }
             .width(boxWidthDp)
             .height(totalHeightDp)
-            .shadow(
-                10.dp, shape = bubbleShape, clip = false,
-                ambientColor = Color(0x88000000), spotColor = Color(0x88000000)
-            )
+            .shadow(10.dp, shape = bubbleShape, clip = false,
+                ambientColor = Color(0x88000000), spotColor = Color(0x88000000))
             .drawBehind {
                 drawInvertedConvexShape(
-                    bodyLeft = bodyLeftInBox,
-                    bodyWidth = bodyWidth,
-                    bodyHeight = bodyHeightPx,
-                    pointerLeft = pointerLeftInBox,
-                    pointerWidth = keyWidthPx,
-                    pointerHeight = pointerHeightPx,
-                    cornerRadius = cornerRadiusPx,
-                    color = bgColor,
-                    isLeftFlush = isLeftFlush,
-                    isRightFlush = isRightFlush
+                    bodyLeft = bodyLeftInBox, bodyWidth = bodyWidth, bodyHeight = bodyHeightPx,
+                    pointerLeft = pointerLeftInBox, pointerWidth = keyWidthPx,
+                    pointerHeight = pointerHeightPx, cornerRadius = cornerRadiusPx,
+                    color = bgColor, isLeftFlush = isLeftFlush, isRightFlush = isRightFlush
                 )
             }
     ) {
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .padding(horizontal = 10.dp)
+                .then(
+                    if (isLongPressMode) Modifier
+                        .width(with(density) { bodyWidth.toDp() })
+                    else Modifier.padding(horizontal = 10.dp)
+                )
                 .height(BubbleBodyHeight),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = displayText,
-                color = textColor,
-                fontSize = 14.sp,
-                fontFamily = chaiFontFamily,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center,
-                softWrap = false
-            )
+            if (isLongPressMode) {
+                // 长按：横向排列多个选项
+                val accentColor = Color(0xFF8F73E2)
+                val selectedBgColor = Color(0x338F73E2)
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    swipeState.longPressItems.forEachIndexed { index, item ->
+                        val isSelected = index == swipeState.selectedLongPressIndex.toInt()
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .then(
+                                    if (isSelected) Modifier
+                                        .background(selectedBgColor, RoundedCornerShape(6.dp))
+                                    else Modifier
+                                )
+                                .padding(vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = item,
+                                color = if (isSelected) accentColor else textColor,
+                                fontSize = if (isSelected) 18.sp else 14.sp,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                textAlign = TextAlign.Center,
+                                softWrap = false
+                            )
+                        }
+                    }
+                }
+            } else {
+                Text(
+                    text = displayText!!, color = textColor, fontSize = 14.sp,
+                    fontFamily = chaiFontFamily, fontWeight = FontWeight.Medium,
+                    textAlign = TextAlign.Center, softWrap = false
+                )
+            }
         }
     }
 }

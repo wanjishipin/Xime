@@ -318,6 +318,8 @@ fun CompactSwipeableKeyButton(
     onSwipe: ((String) -> Unit)? = null,
     onSwipeDown: ((String) -> Unit)? = null,
     onPress: (() -> Unit)? = null,
+    onLongPressSelect: ((String) -> Unit)? = null,
+    longPressItems: List<String>? = null,
     fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
     swipeFontSize: androidx.compose.ui.unit.TextUnit = 8.sp
 ) {
@@ -327,6 +329,7 @@ fun CompactSwipeableKeyButton(
     var hasTriggeredSwipeDown by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var isSwiping by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     var isSwipeDown by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
+    var longPressCycleIndex by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(0) }
 
     val density = androidx.compose.ui.platform.LocalDensity.current
     val swipeUpThreshold = with(density) { (-15).dp.toPx() }
@@ -347,18 +350,38 @@ fun CompactSwipeableKeyButton(
             .shadow(1.dp, RoundedCornerShape(8.dp), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
             .clip(RoundedCornerShape(8.dp))
             .background(if (isPressed) darkenColor(backgroundColor) else backgroundColor)
-            .pointerInput(onClick, swipeText, swipeDownText) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        onPress?.invoke()
-                        tryAwaitRelease()
-                        isPressed = false
-                    },
-                    onTap = {
-                        if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) onClick()
-                    }
-                )
+            .pointerInput(onClick, swipeText, swipeDownText, longPressItems, onLongPressSelect) {
+                if (longPressItems.isNullOrEmpty() || onLongPressSelect == null) {
+                    detectTapGestures(
+                        onPress = {
+                            isPressed = true
+                            onPress?.invoke()
+                            tryAwaitRelease()
+                            isPressed = false
+                        },
+                        onTap = {
+                            if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) onClick()
+                        }
+                    )
+                } else {
+                    detectTapGestures(
+                        onPress = {
+                            isPressed = true
+                            onPress?.invoke()
+                            tryAwaitRelease()
+                            isPressed = false
+                        },
+                        onLongPress = {
+                            val items = longPressItems
+                            val idx = longPressCycleIndex % items.size
+                            longPressCycleIndex = (idx + 1) % items.size
+                            onLongPressSelect(items[idx])
+                        },
+                        onTap = {
+                            if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) onClick()
+                        }
+                    )
+                }
             }
             .pointerInput(Unit) {
                 detectDragGestures(
@@ -479,6 +502,9 @@ fun CompactKeyboardRowWithConfig(
             } else null
             val swipeDownAction = if (swipeDownText != null) KeysConfigHelper.getSwipeDownAction(key) else null
             
+            val longPressGesture = KeysConfigHelper.getKeyGesture(key)?.longPress
+            val longPressLabels = longPressGesture?.map { it.label }?.filter { it.isNotEmpty() }?.ifEmpty { null }
+            
             CompactSwipeableKeyButton(
                 text = if (isShifted || !isAsciiMode) key.uppercase() else key,
                 onClick = { onKeyPress(key) },
@@ -490,6 +516,8 @@ fun CompactKeyboardRowWithConfig(
                 onSwipe = if (swipeUpText != null) onKeyPress else null,
                 onSwipeDown = if (swipeDownAction == "commit" && swipeDownText != null) onKeyPress else null,
                 onPress = { onKeyPressDown?.invoke(key) },
+                onLongPressSelect = onKeyPress,
+                longPressItems = longPressLabels,
                 fontSize = fontSize,
                 swipeFontSize = swipeFontSize
             )
