@@ -287,14 +287,8 @@ fun SchemaSettingsContent(
         }
     }
 
-    if (showStore) {
-        SchemaStoreScreen(
-            onBack = { showStore = false },
-            onRefreshSchemas = { viewModel.refresh() }
-        )
-    } else {
-        Scaffold(
-            topBar = {
+    Scaffold(
+        topBar = {
             TopAppBar(
                 title = { Text("输入方案") },
                 navigationIcon = {
@@ -352,22 +346,6 @@ fun SchemaSettingsContent(
                                         tint = MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(20.dp))
                                 }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("方案市场") },
-                                onClick = {
-                                    showMenu = false
-                                    showStore = true
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Default.Add, null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(20.dp))
-                                }
-                            )
-                            HorizontalDivider(
-                                modifier = Modifier.padding(horizontal = 12.dp),
-                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                             )
                             DropdownMenuItem(
                                 text = { Text("从文件选择") },
@@ -496,7 +474,6 @@ fun SchemaSettingsContent(
             }
         }
         }
-    }
     }
 }
 
