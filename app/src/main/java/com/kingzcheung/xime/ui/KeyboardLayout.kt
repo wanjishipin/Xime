@@ -2,6 +2,7 @@ package com.kingzcheung.xime.ui
 
 import android.widget.Toast
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -42,7 +44,6 @@ import com.kingzcheung.xime.ui.LocalStretchFactor
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.keyboard.GestureAction
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
@@ -64,6 +65,8 @@ import com.kingzcheung.xime.util.PermissionHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.TextUnit
 
 @Composable
 fun KeyboardLayout(
@@ -183,7 +186,9 @@ fun KeyboardLayout(
             ) {
 
                 Column(
-                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     // 第一行
@@ -222,7 +227,11 @@ fun KeyboardLayout(
 
                     // 第二行
                     if (isVoiceMode) {
-                        Box(modifier = Modifier.weight(1f).padding(horizontal = 16.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .padding(horizontal = 16.dp)
+                        ) {
                             DummyKeyboardRow(
                                 keysCount = 9,
                                 keyBackgroundColor = keyBackgroundColor.copy(alpha = 0.5f),
@@ -277,7 +286,9 @@ fun KeyboardLayout(
                                 onClick = { onKeyPress("emoji") },
                                 backgroundColor = specialKeyBackgroundColor,
                                 iconColor = keyTextColor,
-                                modifier = Modifier.width(40.dp).fillMaxHeight(),
+                                modifier = Modifier
+                                    .width(40.dp)
+                                    .fillMaxHeight(),
                                 onPress = { onKeyPressDown?.invoke("emoji") }
                             )
 
@@ -366,7 +377,9 @@ fun KeyboardLayout(
                                 onClick = { onKeyPress("delete") },
                                 backgroundColor = specialKeyBackgroundColor,
                                 iconColor = keyTextColor,
-                                modifier = Modifier.width(48.dp).fillMaxHeight(),
+                                modifier = Modifier
+                                    .width(48.dp)
+                                    .fillMaxHeight(),
                                 swipeText = "清空",
                                 onSwipe = { onKeyPress("clear_composition") },
                                 onLongClick = { onKeyPress("delete") },
@@ -667,7 +680,9 @@ private fun DummyBottomRow(
             modifier = Modifier.weight(1.2f)
         )
         Row(
-            modifier = Modifier.weight(7f).fillMaxHeight(),
+            modifier = Modifier
+                .weight(7f)
+                .fillMaxHeight(),
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             repeat(7) {
@@ -848,7 +863,11 @@ private fun LandscapeKeyboardContent(
                     onGestureAction = onGestureAction,
                 )
             }
-            Box(modifier = Modifier.weight(1f).padding(start = staggerStep)) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = staggerStep)
+            ) {
                 CompactKeyboardRowWithConfig(
                     keys = listOf("a", "s", "d", "f", "g"),
                     onKeyPress = onKeyPress,
@@ -866,7 +885,11 @@ private fun LandscapeKeyboardContent(
                     onGestureAction = onGestureAction,
                 )
             }
-            Box(modifier = Modifier.weight(1f).padding(start = staggerStep * 2)) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = staggerStep * 2)
+            ) {
                 CompactKeyboardRowWithConfig(
                     keys = listOf("z", "x", "c", "v"),
                     onKeyPress = onKeyPress,
@@ -885,7 +908,9 @@ private fun LandscapeKeyboardContent(
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 IconKeyButton(
@@ -936,7 +961,11 @@ private fun LandscapeKeyboardContent(
                     onGestureAction = onGestureAction,
                 )
             }
-            Box(modifier = Modifier.weight(1f).padding(end = staggerStep)) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(end = staggerStep)
+            ) {
                 CompactKeyboardRowWithConfig(
                     keys = listOf("g", "h", "j", "k", "l"),
                     onKeyPress = onKeyPress,
@@ -984,7 +1013,9 @@ private fun LandscapeKeyboardContent(
                     onClick = { onKeyPress("delete") },
                     backgroundColor = specialKeyBackgroundColor,
                     iconColor = keyTextColor,
-                    modifier = Modifier.width(48.dp).fillMaxHeight(),
+                    modifier = Modifier
+                        .width(48.dp)
+                        .fillMaxHeight(),
                     onSwipe = { onKeyPress("clear_composition") },
                     onLongClick = { onKeyPress("delete") },
                     onPress = { onKeyPressDown?.invoke("delete") },
@@ -996,7 +1027,9 @@ private fun LandscapeKeyboardContent(
                 )
             }
             Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 SplitSpaceKey(
@@ -1169,9 +1202,14 @@ fun CompactSwipeableKeyButton(
                     }
                 )
             },
-        contentAlignment = Alignment.Center
+        contentAlignment = Alignment.TopStart
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
             Text(
                 text = text,
                 color = textColor,
@@ -1179,34 +1217,37 @@ fun CompactSwipeableKeyButton(
                 fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
-                modifier = Modifier.align(Alignment.Center)
+                lineHeight = TextUnit.Unspecified
             )
-            if (!swipeText.isNullOrEmpty()) {
-                Text(
-                    text = swipeText,
-                    color = textColor.copy(alpha = 0.5f),
-                    fontSize = swipeFontSize,
-                    fontWeight = FontWeight.Normal,
-                    textAlign = TextAlign.End,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(top = 0.dp, end = 4.dp)
-                )
-            }
-            if (!swipeDownText.isNullOrEmpty()) {
-                Text(
-                    text = swipeDownText,
-                    color = textColor.copy(alpha = 0.5f),
-                    fontSize = swipeFontSize,
-                    fontWeight = FontWeight.Normal,
-                    textAlign = TextAlign.Start,
-                    maxLines = 1,
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(start = 4.dp, bottom = 0.dp)
-                )
-            }
+        }
+
+        if (swipeText != null) {
+            Text(
+                text = swipeText,
+                color = textColor.copy(alpha = 0.5f),
+                fontSize = swipeFontSize,
+                fontWeight = FontWeight.Normal,
+                textAlign = TextAlign.End,
+                maxLines = 1,
+                lineHeight = 8.sp,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 2.dp, end = 4.dp)
+            )
+        }
+        if (swipeDownText != null) {
+            Text(
+                text = swipeDownText,
+                color = textColor.copy(alpha = 0.5f),
+                fontSize = swipeFontSize,
+                fontWeight = FontWeight.Normal,
+                textAlign = TextAlign.Start,
+                maxLines = 1,
+                lineHeight = 8.sp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(start = 4.dp, bottom = 2.dp)
+            )
         }
     }
 }
@@ -1234,7 +1275,7 @@ fun CompactKeyboardRowWithConfig(
 ) {
     Row(
         modifier = modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .background(keyboardBackgroundColor),
         horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
