@@ -1,6 +1,7 @@
 package com.kingzcheung.xime.settings
 
 import com.charleskorn.kaml.Yaml
+import com.kingzcheung.xime.keyboard.GestureAction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
@@ -15,7 +16,7 @@ class KeyboardGestureConfigTest {
         """.trimIndent())
         val kc = keys["q"]!!
         assertEquals("q", kc.tap!!.label)
-        assertEquals("commit", kc.tap!!.action)
+        assertEquals(GestureAction.COMMIT, kc.tap!!.action)
         assertEquals("q", kc.tap!!.value)
     }
 
@@ -26,7 +27,7 @@ class KeyboardGestureConfigTest {
         """.trimIndent())
         val kc = keys["a"]!!
         assertEquals("!", kc.swipeUp!!.label)
-        assertEquals("commit", kc.swipeUp!!.action)
+        assertEquals(GestureAction.COMMIT, kc.swipeUp!!.action)
         assertEquals("!", kc.swipeUp!!.value)
         assertEquals("A", kc.swipeDown!!.label)
     }
@@ -39,7 +40,7 @@ class KeyboardGestureConfigTest {
         """.trimIndent())
         val su = keys["c"]!!.swipeUp!!
         assertEquals("复制", su.label)
-        assertEquals("copy", su.action)
+        assertEquals(GestureAction.COPY, su.action)
     }
 
     @Test
@@ -77,7 +78,7 @@ class KeyboardGestureConfigTest {
         """.trimIndent())
         val lp = keys["backspace"]!!.longPress!!
         assertEquals(1, lp.values.size)
-        assertEquals("command", lp.values[0].action)
+        assertEquals(GestureAction.COMMAND, lp.values[0].action)
     }
 
     @Test
@@ -127,10 +128,10 @@ class KeyboardGestureConfigTest {
         val lp = keys["q"]!!.longPress!!
         assertEquals(2, lp.values.size)
         assertEquals("q", lp.values[0].label)
-        assertEquals("commit", lp.values[0].action)
+        assertEquals(GestureAction.COMMIT, lp.values[0].action)
         assertEquals("q", lp.values[0].value)
         assertEquals("Q", lp.values[1].label)
-        assertEquals("commit", lp.values[1].action)
+        assertEquals(GestureAction.COMMIT, lp.values[1].action)
         assertEquals("Q", lp.values[1].value)
         assertEquals("bubble", lp.display)
     }
@@ -144,14 +145,14 @@ class KeyboardGestureConfigTest {
         assertEquals(3, lp.values.size)
         // 对象格式
         assertEquals("全选", lp.values[0].label)
-        assertEquals("select_all", lp.values[0].action)
+        assertEquals(GestureAction.SELECT_ALL, lp.values[0].action)
         assertEquals("", lp.values[0].value)
         // 字符串简写
         assertEquals("a", lp.values[1].label)
-        assertEquals("commit", lp.values[1].action)
+        assertEquals(GestureAction.COMMIT, lp.values[1].action)
         assertEquals("a", lp.values[1].value)
         assertEquals("A", lp.values[2].label)
-        assertEquals("commit", lp.values[2].action)
+        assertEquals(GestureAction.COMMIT, lp.values[2].action)
         assertEquals("A", lp.values[2].value)
     }
 
@@ -300,7 +301,7 @@ class KeyboardGestureConfigTest {
             expectedLabels.size, lp.values.size)
         for (i in expectedLabels.indices) {
             assertEquals("索引 $i 的 label 不匹配", expectedLabels[i], lp.values[i].label)
-            assertEquals("索引 $i 的动作应为 commit", "commit", lp.values[i].action)
+            assertEquals("索引 $i 的动作应为 commit", GestureAction.COMMIT, lp.values[i].action)
         }
     }
 
@@ -360,11 +361,11 @@ class KeyboardGestureConfigTest {
     private fun parseGestureNode(node: com.charleskorn.kaml.YamlNode): GestureDef {
         if (node is com.charleskorn.kaml.YamlScalar) {
             val text = node.content
-            return GestureDef(label = text, action = "commit", value = text)
+            return GestureDef(label = text, action = GestureAction.COMMIT, value = text)
         }
         if (node is com.charleskorn.kaml.YamlMap) {
             var label = ""
-            var action: String? = "commit"
+            var action: GestureAction? = GestureAction.COMMIT
             var value = ""
             var display = "bubble"
             for ((k, v) in node.entries) {
@@ -372,7 +373,7 @@ class KeyboardGestureConfigTest {
                 val vStr = (v as? com.charleskorn.kaml.YamlScalar)?.content
                 when (key) {
                     "label" -> if (vStr != null) label = vStr
-                    "action" -> action = vStr // YAML null → null
+                    "action" -> action = if (vStr == null) null else GestureAction.fromValue(vStr)
                     "value" -> if (vStr != null) value = vStr
                     "display" -> if (vStr != null) display = vStr
                 }

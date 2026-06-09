@@ -356,9 +356,9 @@ fun SwipeableKeyButton(
                                 
                                 val swipeDownTextValue = currentSwipeDownText
                                 val onSwipeDownValue = currentOnSwipeDown
-                                if (dragOffsetY > swipeDownThreshold && !hasTriggeredSwipeDown && swipeDownTextValue != null && onSwipeDownValue != null) {
+                                if (dragOffsetY > swipeDownThreshold && !hasTriggeredSwipeDown && onSwipeDownValue != null) {
                                     hasTriggeredSwipeDown = true
-                                    onSwipeDownValue(swipeDownTextValue)
+                                    onSwipeDownValue(swipeDownTextValue ?: "")
                                 }
                             }
                         }

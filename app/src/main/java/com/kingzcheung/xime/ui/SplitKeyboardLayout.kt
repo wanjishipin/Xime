@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.settings.SettingsPreferences
+import com.kingzcheung.xime.keyboard.GestureAction
 import androidx.compose.ui.platform.LocalContext
 
 /**
@@ -58,7 +59,8 @@ fun SplitKeyboardLayout(
     specialKeyBackgroundColor: Color,
     keyboardBackgroundColor: Color = Color.Transparent,
     modifier: Modifier = Modifier,
-    onKeyPressDown: ((String) -> Unit)? = null
+    onKeyPressDown: ((String) -> Unit)? = null,
+    onGestureAction: ((GestureAction, String) -> Unit)? = null
 ) {
     val staggerStep = 10.dp
     val context = LocalContext.current
@@ -101,7 +103,8 @@ fun SplitKeyboardLayout(
                         fontSize = landscapeFontSize,
                         swipeFontSize = landscapeSwipeFontSize,
                         onKeyPressDown = onKeyPressDown,
-                        swipeDownHintsEnabled = swipeDownHintsEnabled
+                        swipeDownHintsEnabled = swipeDownHintsEnabled,
+                        onGestureAction = onGestureAction
                     )
                 }
 
@@ -118,7 +121,8 @@ fun SplitKeyboardLayout(
                         fontSize = landscapeFontSize,
                         swipeFontSize = landscapeSwipeFontSize,
                         onKeyPressDown = onKeyPressDown,
-                        swipeDownHintsEnabled = swipeDownHintsEnabled
+                        swipeDownHintsEnabled = swipeDownHintsEnabled,
+                        onGestureAction = onGestureAction
                     )
                 }
 
@@ -135,7 +139,8 @@ fun SplitKeyboardLayout(
                         fontSize = landscapeFontSize,
                         swipeFontSize = landscapeSwipeFontSize,
                         onKeyPressDown = onKeyPressDown,
-                        swipeDownHintsEnabled = swipeDownHintsEnabled
+                        swipeDownHintsEnabled = swipeDownHintsEnabled,
+                        onGestureAction = onGestureAction
                     )
                 }
 
@@ -194,7 +199,8 @@ fun SplitKeyboardLayout(
                         swipeFontSize = landscapeSwipeFontSize,
                         keyboardBackgroundColor = keyboardBackgroundColor,
                         onKeyPressDown = onKeyPressDown,
-                        swipeDownHintsEnabled = swipeDownHintsEnabled
+                        swipeDownHintsEnabled = swipeDownHintsEnabled,
+                        onGestureAction = onGestureAction
                     )
                 }
 
@@ -211,7 +217,8 @@ fun SplitKeyboardLayout(
                         swipeFontSize = landscapeSwipeFontSize,
                         keyboardBackgroundColor = keyboardBackgroundColor,
                         onKeyPressDown = onKeyPressDown,
-                        swipeDownHintsEnabled = swipeDownHintsEnabled
+                        swipeDownHintsEnabled = swipeDownHintsEnabled,
+                        onGestureAction = onGestureAction
                     )
                 }
 
@@ -235,7 +242,8 @@ fun SplitKeyboardLayout(
                             fontSize = landscapeFontSize,
                             swipeFontSize = landscapeSwipeFontSize,
                             onKeyPressDown = onKeyPressDown,
-                            swipeDownHintsEnabled = swipeDownHintsEnabled
+                            swipeDownHintsEnabled = swipeDownHintsEnabled,
+                            onGestureAction = onGestureAction
                         )
                     }
                     SwipeableIconKeyButton(
@@ -488,6 +496,7 @@ fun CompactKeyboardRowWithConfig(
     swipeDownHintsEnabled: Boolean = true,
     swipeUpHintsEnabled: Boolean = true,
     onCommitText: ((String) -> Unit)? = null,
+    onGestureAction: ((GestureAction, String) -> Unit)? = null,
     fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
     swipeFontSize: androidx.compose.ui.unit.TextUnit = 9.sp
 ) {
@@ -503,15 +512,19 @@ fun CompactKeyboardRowWithConfig(
             val swipeDownRaw = KeysConfigHelper.getKeyGesture(key)?.swipeDown
             val swipeDownLabel = swipeDownRaw?.label?.takeIf { it.isNotEmpty() }
             val swipeDownAction = swipeDownRaw?.action
+            val swipeDownValue = swipeDownRaw?.value
             val swipeDownDisplay = swipeDownRaw?.display ?: "key"
             val swipeDownBubbleText = if (swipeDownDisplay != "key" && swipeDownHintsEnabled) swipeDownLabel else null
-            
+
             val longPressConfig = KeysConfigHelper.getKeyGesture(key)?.longPress
             val longPressDisplay = longPressConfig?.display ?: "key"
             val longPressLabels = if (longPressDisplay == "bubble") {
                 longPressConfig?.values?.map { it.label }?.filter { it.isNotEmpty() }?.ifEmpty { null }
             } else null
-            
+            val longPressGestureMap = if (longPressDisplay == "bubble") {
+                longPressConfig?.values?.associateBy { it.label }
+            } else null
+
             CompactSwipeableKeyButton(
                 text = if (isShifted || !isAsciiMode) key.uppercase() else key,
                 onClick = { onKeyPress(key) },
@@ -521,9 +534,24 @@ fun CompactKeyboardRowWithConfig(
                 swipeText = swipeUpText,
                 swipeDownText = swipeDownBubbleText,
                 onSwipe = if (swipeUpText != null) onKeyPress else null,
-                onSwipeDown = if (swipeDownAction == "commit" && swipeDownHintsEnabled && swipeDownLabel != null) onKeyPress else null,
+                onSwipeDown = if (swipeDownAction != null && swipeDownHintsEnabled && swipeDownLabel != null) {
+                    { _ ->
+                        if (swipeDownAction == GestureAction.COMMIT) {
+                            onKeyPress(key)
+                        } else {
+                            onGestureAction?.invoke(swipeDownAction, swipeDownValue?.ifEmpty { swipeDownLabel!! } ?: swipeDownLabel!!)
+                        }
+                    }
+                } else null,
                 onPress = { onKeyPressDown?.invoke(key) },
-                onLongPressSelect = onCommitText ?: onKeyPress,
+                onLongPressSelect = { selectedLabel ->
+                    val gesture = longPressGestureMap?.get(selectedLabel)
+                    if (gesture != null && gesture.action != GestureAction.COMMIT) {
+                        onGestureAction?.invoke(gesture.action!!, gesture.value.ifEmpty { selectedLabel!! })
+                    } else {
+                        (onCommitText ?: onKeyPress)(selectedLabel)
+                    }
+                },
                 longPressItems = longPressLabels,
                 fontSize = fontSize,
                 swipeFontSize = swipeFontSize

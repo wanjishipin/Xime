@@ -7,6 +7,7 @@ import com.charleskorn.kaml.YamlMap
 import com.charleskorn.kaml.YamlNode
 import com.charleskorn.kaml.YamlScalar
 import com.charleskorn.kaml.YamlList
+import com.kingzcheung.xime.keyboard.GestureAction
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
 import java.io.BufferedReader
@@ -16,7 +17,7 @@ import java.io.InputStreamReader
 
 data class GestureDef(
     val label: String = "",
-    val action: String? = "commit",
+    val action: GestureAction? = GestureAction.COMMIT,
     val value: String = "",
     val display: String = "key", // "key"（默认）显示在按键上, "bubble" 气泡显示
 )
@@ -104,12 +105,12 @@ private fun parseGestureNode(node: com.charleskorn.kaml.YamlNode): GestureDef {
     // 字符串 → commit
     if (node is com.charleskorn.kaml.YamlScalar) {
         val text = node.content
-        return GestureDef(label = text, action = "commit", value = text)
+        return GestureDef(label = text, action = GestureAction.COMMIT, value = text)
     }
     // 映射 → 完整定义
     if (node is com.charleskorn.kaml.YamlMap) {
         var label = ""
-        var action: String? = "commit"
+        var action: GestureAction? = GestureAction.COMMIT
         var value = ""
         var display = "key"
         for ((k, v) in node.entries) {
@@ -117,7 +118,7 @@ private fun parseGestureNode(node: com.charleskorn.kaml.YamlNode): GestureDef {
             val vStr = (v as? com.charleskorn.kaml.YamlScalar)?.content ?: continue
             when (key) {
                 "label" -> label = vStr
-                "action" -> action = if (vStr == "null") null else vStr
+                "action" -> action = if (vStr == "null") null else GestureAction.fromValue(vStr)
                 "value" -> value = vStr
                 "display" -> display = vStr
             }
@@ -283,8 +284,8 @@ object KeysConfigHelper {
         return config.swipeDownEnglish[key.lowercase()]
     }
 
-    /** 获取下滑动作类型：commit（默认上屏）或 none（仅显示） */
-    fun getSwipeDownAction(key: String): String? {
+    /** 获取下滑动作类型 */
+    fun getSwipeDownAction(key: String): GestureAction? {
         return keyGestureConfig[key.lowercase()]?.swipeDown?.action
     }
 

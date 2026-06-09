@@ -60,6 +60,7 @@ import com.kingzcheung.xime.ui.theme.KeyboardBackground
 import com.kingzcheung.xime.ui.theme.KeyboardBackgroundDark
 import com.kingzcheung.xime.ui.theme.KeyboardThemes
 import com.kingzcheung.xime.ui.SplitWordsView
+import com.kingzcheung.xime.keyboard.GestureAction
 
 val LocalStretchFactor = compositionLocalOf { 1f }
 
@@ -123,6 +124,7 @@ fun KeyboardView(
     onPageDown: (() -> Unit)? = null,
     onPageUp: (() -> Unit)? = null,
     onCursorMove: ((Int) -> Unit)? = null,
+    onGestureAction: ((GestureAction, String) -> Unit)? = null,
     toolbarButtons: List<String> = ToolbarButton.DEFAULT_VISIBLE.map { it.id },
     onUpdateToolbarButtons: ((List<String>) -> Unit)? = null,
     modifier: Modifier = Modifier
@@ -298,7 +300,8 @@ fun KeyboardView(
                                     specialKeyBackgroundColor = specialKeyBgColor,
                                     keyboardBackgroundColor = keyboardBgColor,
                                     modifier = Modifier.weight(1f).then(cursorMod),
-                                    onKeyPressDown = onKeyPressDown
+                                    onKeyPressDown = onKeyPressDown,
+                                    onGestureAction = onGestureAction
                                 )
                             } else {
                                 KeyboardLayout(
@@ -326,7 +329,8 @@ fun KeyboardView(
                                     isSttEnabled = isSttEnabled,
                                     isVoiceMode = isVoiceMode,
                                     onKeyPressDown = onKeyPressDown,
-                                    onCursorMove = onCursorMove
+                                    onCursorMove = onCursorMove,
+                                    onGestureAction = onGestureAction
                                 )
                             }
                         }

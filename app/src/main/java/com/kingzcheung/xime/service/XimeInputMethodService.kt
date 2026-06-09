@@ -4,6 +4,7 @@ import android.content.Intent
 import android.inputmethodservice.InputMethodService
 import android.os.Build
 import android.os.Handler
+import android.os.SystemClock
 import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
@@ -50,6 +51,7 @@ import com.kingzcheung.xime.ui.KeyboardView
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.ui.theme.XimeTheme
 import com.kingzcheung.xime.util.FileLogger
+import com.kingzcheung.xime.keyboard.ActionExecutor
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -60,7 +62,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 
-class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner {
+class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner, ActionExecutor {
 
     companion object {
         private const val TAG = "XimeInputMethodService"
@@ -511,6 +513,9 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                     sendDownUpKeyEvents(keyCode)
                                 }
                             },
+                            onGestureAction = { action, value ->
+                                action.execute(this@XimeInputMethodService, value)
+                            },
                             onCandidateSelect = { index ->
                                 selectCandidate(index)
                             },
@@ -733,6 +738,48 @@ onVoiceModeChange = { enabled ->
         return keyboardContainer
     }
     
+    // ── ActionExecutor 实现 ──
+
+    override fun performEditorMenuAction(actionId: Int) {
+        when (actionId) {
+            android.R.id.undo -> {
+                // performContextMenuAction 对 undo 支持不一致，改用 Ctrl+Z 键盘快捷键
+                val now = SystemClock.uptimeMillis()
+                currentInputConnection?.sendKeyEvent(
+                    KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_Z, 0, KeyEvent.META_CTRL_ON)
+                )
+                currentInputConnection?.sendKeyEvent(
+                    KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_Z, 0, KeyEvent.META_CTRL_ON)
+                )
+            }
+            else -> currentInputConnection?.performContextMenuAction(actionId)
+        }
+    }
+
+    override fun sendKeyEvent(keyCode: Int) {
+        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+    }
+
+    override fun executeCommand(name: String) {
+        when (name) {
+            "clear_composition" -> {
+                rimeEngine.clearComposition()
+                mainHandler.post { updateUI() }
+            }
+            else -> Log.w(TAG, "Unknown command: $name")
+        }
+    }
+
+    override fun repeatLastInput() {
+        val lastText = predictionManager.lastCommittedText
+        if (lastText.isNotEmpty()) {
+            currentInputConnection?.commitText(lastText, 1)
+        }
+    }
+
+    // ── 原有方法 ──
+
     private fun performUndo() {
         val currentTextBeforeCursor = currentInputConnection?.getTextBeforeCursor(1000, 0)?.toString() ?: ""
         val currentLength = currentTextBeforeCursor.length
@@ -1575,7 +1622,7 @@ onVoiceModeChange = { enabled ->
         Toast.makeText(this, "键盘高度已调整", Toast.LENGTH_SHORT).show()
     }
 
-    private fun commitText(text: String) {
+    override fun commitText(text: String) {
         currentInputConnection?.commitText(text, 1)
         predictionManager.appendCommittedText(text)
         

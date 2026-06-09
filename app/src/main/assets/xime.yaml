@@ -66,14 +66,16 @@ color_schemes:
 #   - 字符串 "a" → 上屏该文本，显示也是它
 #   - { label, action, value }
 #     label:  按键上显示的文字
-#     action: commit（上屏）, command（内置命令）, select_all, copy, cut,
-#             paste, clipboard, line_start, line_end, undo, none, repeat
+#     action: commit（上屏）, command（内置命令，value 为命令名）, select_all, copy, cut,
+#             paste, line_start, line_end, undo, none, repeat
+#     command 可用命令：
+#       clear_composition - 清空当前输入编码和候选词
 #     value:  上屏时的输出文本（不指定则用 label）
 #
 # long_press 示例（弹出多个选项供滑动选择）：
-#   long_press:
-#     - { label: "大写", action: "commit", value: "A" }
-#     - { label: "Ä",    action: "commit", value: "ä" }
+#   long_press: { display: "bubble", values: [ { label: "大写", action: "commit", value: "A" }, { label: "Ä", action: "commit", value: "ä" } ] }
+#   # 也支持字符串简写：
+#   long_press: { display: "bubble", values: ["q", "Q"] }
 keyboard:
   keys:
     # ── 第一行 ──
@@ -103,7 +105,7 @@ keyboard:
     l: { tap: "l", swipe_up: ")", swipe_down: { label: "田甲囗四罒车皿力", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["l", "L"] } }
 
     # ── 第三行 ──
-    z: { tap: "z", swipe_up: "|", swipe_down: { label: "测试", display: "key" }, long_press: { display: "bubble", values: ["z", "Z"] } }
+    z: { tap: "z", swipe_up: "|", swipe_down: { label: "粘贴", action: "clipboard", display: "key" }, long_press: { display: "bubble", values: [ { label: "清空", action: "command", value: "clear_composition" } ] } }
     x: { tap: "x", swipe_up: "*", swipe_down: { label: "弓匕纟幺弓𠤎", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["x", "X"] } }
     c: { tap: "c", swipe_up: "\\", swipe_down: { label: "又巴马厶龴ス", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["c", "C", "ç"] } }
     v: { tap: "v", swipe_up: "?", swipe_down: { label: "女刀九臼巛彐", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["v", "V"] } }
