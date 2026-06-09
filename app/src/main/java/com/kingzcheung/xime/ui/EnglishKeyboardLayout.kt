@@ -243,7 +243,7 @@ fun EnglishKeyboardLayout(
                         )
 
                         KeyButton(
-                            text = "中",
+                            text = "英",
                             onClick = { onKeyPress("ime_switch") },
                             backgroundColor = specialKeyBackgroundColor,
                             textColor = keyTextColor,
