@@ -62,15 +62,15 @@ fun WirelessImportSheet(
     var error by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        val port = helper.findAvailablePort()
-        val url = helper.start(port)
-        if (url != null) {
-            serverUrl = url
-            qrBitmap = withContext(Dispatchers.Default) {
-                helper.generateQrCode(url)
+        withContext(Dispatchers.Default) {
+            val port = helper.findAvailablePort()
+            val url = helper.start(port)
+            if (url != null) {
+                serverUrl = url
+                qrBitmap = helper.generateQrCode(url)
+            } else {
+                error = "无法获取 IP 地址，请确保已连接 WiFi"
             }
-        } else {
-            error = "无法获取 IP 地址，请确保已连接 WiFi"
         }
     }
 
