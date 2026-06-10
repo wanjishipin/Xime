@@ -3,7 +3,7 @@ package com.kingzcheung.xime.service
 import com.kingzcheung.xime.settings.SchemaInfo
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.speech.RecognitionState
-import com.kingzcheung.xime.ui.ToolbarButton
+import com.kingzcheung.xime.keyboard.ToolbarButton
 
 data class InputUIState(
     val candidates: Array<String> = emptyArray(),

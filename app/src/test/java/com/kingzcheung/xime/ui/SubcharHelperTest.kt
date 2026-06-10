@@ -1,5 +1,7 @@
 package com.kingzcheung.xime.ui
 
+import com.kingzcheung.xime.util.CharInfo
+import com.kingzcheung.xime.util.SubcharHelper
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse

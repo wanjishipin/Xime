@@ -38,6 +38,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kingzcheung.xime.util.CharInfo
 
 /**
  * 纯英文键盘布局，无中文字根/手势配置，跟随 Shift 切换大小写。

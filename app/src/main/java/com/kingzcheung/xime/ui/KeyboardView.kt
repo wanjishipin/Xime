@@ -47,6 +47,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.clipboard.ClipboardItem
+import com.kingzcheung.xime.keyboard.KeyboardRoute
+import com.kingzcheung.xime.keyboard.ToolbarAction
+import com.kingzcheung.xime.keyboard.ToolbarButton
 import com.kingzcheung.xime.service.InputUIState
 import com.kingzcheung.xime.settings.SchemaInfo
 import com.kingzcheung.xime.speech.RecognitionState
@@ -181,6 +184,7 @@ fun KeyboardView(
                         is KeyboardRoute.CandidatePage -> KeyboardRoute.Keyboard
                         is KeyboardRoute.ToolbarCustomize -> KeyboardRoute.Keyboard
                         is KeyboardRoute.Emoji -> KeyboardRoute.Keyboard
+                        is KeyboardRoute.Symbol -> KeyboardRoute.Keyboard
                         is KeyboardRoute.SplitWords -> KeyboardRoute.Keyboard
                         else -> KeyboardRoute.Keyboard
                     }
@@ -297,9 +301,7 @@ fun KeyboardView(
                             "abc" -> keyboardState = keyboardState.transition(
                                 KeyboardLayoutAction.SwitchToFull, isAsciiMode
                             )
-                            "symbol" -> keyboardState = keyboardState.transition(
-                                KeyboardLayoutAction.SwitchToSymbol, isAsciiMode
-                            )
+                            "symbol" -> currentRoute = KeyboardRoute.Symbol
                             "emoji" -> currentRoute = KeyboardRoute.Emoji
                             else -> onKeyPress(key, false)
                         }
@@ -548,6 +550,20 @@ fun KeyboardView(
                     onSelectChar = { char -> onCommitText?.invoke(char) },
                     onDeleteText = { count -> onDeleteText?.invoke(count) },
                     bottomPaddingDp = keyboardBottomPaddingDp,
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight()
+                )
+                is KeyboardRoute.Symbol -> SymbolKeyboardLayout(
+                    onSelect = { symbol ->
+                        if (symbol == "delete") {
+                            onKeyPress("delete", false)
+                        } else {
+                            onCommitText?.invoke(symbol)
+                        }
+                    },
+                    onBack = { currentRoute = KeyboardRoute.Keyboard },
+                    backgroundColor = candidateBarBg,
+                    textColor = keyTextColor,
+                    accentColor = accentColor,
                     modifier = Modifier.fillMaxWidth().fillMaxHeight()
                 )
                 is KeyboardRoute.Emoji -> EmojiKeyboardLayout(

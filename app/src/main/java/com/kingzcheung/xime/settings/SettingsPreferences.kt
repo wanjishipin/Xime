@@ -44,7 +44,7 @@ object SettingsPreferences {
     private const val DEFAULT_KEYBOARD_BOTTOM_PADDING_DP = 0
 
     private const val KEY_TOOLBAR_BUTTONS = "toolbar_buttons"
-    private val DEFAULT_TOOLBAR_BUTTONS = com.kingzcheung.xime.ui.ToolbarButton.DEFAULT_VISIBLE.joinToString(",") { it.id }
+    private val DEFAULT_TOOLBAR_BUTTONS = com.kingzcheung.xime.keyboard.ToolbarButton.DEFAULT_VISIBLE.joinToString(",") { it.id }
 
     fun getToolbarButtons(context: Context): List<String> {
         val raw = getPrefs(context).getString(KEY_TOOLBAR_BUTTONS, DEFAULT_TOOLBAR_BUTTONS) ?: DEFAULT_TOOLBAR_BUTTONS

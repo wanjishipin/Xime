@@ -90,15 +90,7 @@ fun KeyboardLayoutScreen(
         }
 
         is KeyboardLayoutState.Symbol -> {
-            SymbolKeyboardLayout(
-                onKeyPress = onKeyPress,
-                keyBackgroundColor = keyBackgroundColor,
-                keyTextColor = keyTextColor,
-                specialKeyBackgroundColor = specialKeyBackgroundColor,
-                keyboardBackgroundColor = keyboardBackgroundColor,
-                modifier = modifier,
-                onKeyPressDown = onKeyPressDown,
-            )
+            // 符号键盘已改为路由，此处不应到达
         }
     }
 }

@@ -1,4 +1,4 @@
-package com.kingzcheung.xime.ui
+package com.kingzcheung.xime.util
 
 import android.content.Context
 import android.util.Log
