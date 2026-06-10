@@ -555,7 +555,7 @@ fun KeyboardView(
                         if (emoji == "delete") {
                             onKeyPress("delete", false)
                         } else {
-                            onClipboardSelect?.invoke(emoji)
+                            onCommitText?.invoke(emoji)
                         }
                     },
                     onImageEmojiSelect = onCommitImage,
