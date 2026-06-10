@@ -58,6 +58,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -1132,6 +1134,10 @@ fun CompactSwipeableKeyButton(
     val currentOnSwipeStateChange by rememberUpdatedState(onSwipeStateChange)
     val scope = rememberCoroutineScope()
     val view = LocalView.current
+    val context = LocalContext.current
+    val chaiPuaFontFamily = remember {
+        FontFamily(Font(context.assets, "ChaiPUA-0.2.7-snow.ttf"))
+    }
 
     val density = LocalDensity.current
     val swipeUpThreshold = with(density) { (-15).dp.toPx() }
@@ -1383,6 +1389,7 @@ fun CompactSwipeableKeyButton(
                 color = textColor.copy(alpha = 0.5f),
                 fontSize = swipeFontSize,
                 fontWeight = FontWeight.Normal,
+                fontFamily = chaiPuaFontFamily,
                 textAlign = TextAlign.Start,
                 maxLines = 1,
                 lineHeight = 8.sp,
