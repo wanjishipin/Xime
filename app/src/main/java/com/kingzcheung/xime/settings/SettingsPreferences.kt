@@ -63,6 +63,15 @@ object SettingsPreferences {
     private const val KEY_SCHEMA_IMPORT_WARNING_DISMISSED = "schema_import_warning_dismissed"
 
     private const val KEY_INSTALLED_MARKET_IDS = "installed_market_ids"
+    private const val KEY_COMPACT_MODE = "compact_mode"
+
+    fun isCompactModeEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_COMPACT_MODE, true)
+    }
+
+    fun setCompactModeEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_COMPACT_MODE, enabled).apply()
+    }
 
     private fun getPrefs(context: Context): SharedPreferences {
         return context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)

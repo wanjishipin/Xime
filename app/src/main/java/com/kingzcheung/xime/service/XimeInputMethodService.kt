@@ -14,19 +14,39 @@ import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
 import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import com.kingzcheung.xime.ui.LocalStretchFactor
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.ui.KeyboardResizeOverlay
+import com.kingzcheung.xime.ui.FloatingCandidateBar
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -96,6 +116,9 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private val clipboardItemsState = mutableStateOf<List<com.kingzcheung.xime.clipboard.ClipboardItem>>(emptyList())
     private val quickSendItemsState = mutableStateOf<List<com.kingzcheung.xime.clipboard.ClipboardItem>>(emptyList())
     private val recentClipboardItemsState = mutableStateOf<List<com.kingzcheung.xime.clipboard.ClipboardItem>>(emptyList())
+    private var hasHardwareKeyboard = false
+    private var floatingWinX = 100
+    private var floatingWinY = 300
     
     private var isTrackingVoiceButtons = false
     private var voiceRecordingStarted = false
@@ -193,6 +216,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         window.window?.decorView?.setViewTreeSavedStateRegistryOwner(this)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
+        
         
         FileLogger.init(this)
         FileLogger.i(TAG, "XimeInputMethodService created")
@@ -440,6 +464,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         )
         
         val composeView = ComposeView(this).apply {
+            isFocusable = true
+            isFocusableInTouchMode = true
             setContent {
                 val state = uiState.value
                 val isDarkTheme = isDarkTheme()
@@ -458,13 +484,36 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .onPreviewKeyEvent { keyEvent ->
+                                Log.d(TAG, "Compose keyEvent received")
+                                val native = keyEvent.nativeKeyEvent ?: return@onPreviewKeyEvent false
+                                if (native.action != KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
+                                val key = keyCodeToKey(native.keyCode, native.isShiftPressed)
+                                if (key != null) {
+                                    Log.d(TAG, "Compose HW key: ${native.keyCode} -> $key")
+                                    handleKeyPress(key, native.isShiftPressed)
+                                    true
+                                } else {
+                                    false
+                                }
+                            }
                             .height(
-                                if (state.showKeyboardResize)
-                                    (maxHeightDp + 100).dp
-                                else
-                                    (keyboardHeight + state.keyboardBottomPaddingDp).dp
+                                if (state.isCompact) {
+                                    if (state.isComposing) 110.dp else 1.dp
+                                } else if (state.showKeyboardResize) (maxHeightDp + 100).dp
+                                else (keyboardHeight + state.keyboardBottomPaddingDp).dp
                             )
                     ) {
+                        if (state.isCompact && state.isComposing) {
+                            FloatingCandidateBar(
+                                inputText = state.inputText,
+                                candidates = state.candidates,
+                                candidateComments = state.candidateComments,
+                                isComposing = state.isComposing,
+                                onCandidateSelect = { index -> selectCandidate(index) },
+                                onDrag = { dx, dy -> moveFloatingWindow(dx, dy) }
+                            )
+                        } else {
                         Surface(
                             modifier = Modifier
                                 .align(androidx.compose.ui.Alignment.BottomCenter)
@@ -672,7 +721,7 @@ onVoiceModeChange = { enabled ->
                                 )
                          }
                      }
-                     
+                     }
                          if (state.showKeyboardResize) {
                             KeyboardResizeOverlay(
                                 initialHeightDp = state.resizePreviewHeightDp,
@@ -759,6 +808,18 @@ onVoiceModeChange = { enabled ->
             }
             else -> currentInputConnection?.performContextMenuAction(actionId)
         }
+    }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        val e = event ?: return super.onKeyDown(keyCode, event)
+        Log.d(TAG, "onKeyDown: keyCode=$keyCode")
+        val isShifted = e.isShiftPressed
+        val key = keyCodeToKey(keyCode, isShifted)
+        if (key != null) {
+            handleKeyPress(key, isShifted)
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
     }
 
     override fun sendKeyEvent(keyCode: Int) {
@@ -906,12 +967,66 @@ onVoiceModeChange = { enabled ->
     
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
-        // 作为 onStartInput 的补充，某些 ROM/Android 版本可能不保证 onStartInput 中 EditorInfo 完整
         info?.let { updateEnterKeyText(it) }
+        hasHardwareKeyboard = resources.configuration.keyboard != android.content.res.Configuration.KEYBOARD_NOKEYS
+        applyCompactMode()
     }
 
     override fun onEvaluateFullscreenMode(): Boolean {
         return false
+    }
+
+    override fun onEvaluateInputViewShown(): Boolean {
+        return true
+    }
+
+    override fun onShowInputRequested(flags: Int, configChange: Boolean): Boolean {
+        return true
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        hasHardwareKeyboard = newConfig.keyboard != android.content.res.Configuration.KEYBOARD_NOKEYS
+        super.onConfigurationChanged(newConfig)
+        applyCompactMode()
+    }
+
+    private fun applyCompactMode() {
+        val current = uiState.value
+        val isCompact = hasHardwareKeyboard
+        if (current.isCompact != isCompact) {
+            uiState.value = current.copy(isCompact = isCompact)
+        }
+        if (isCompact) {
+            initFloatingPosition()
+        }
+    }
+
+    private fun initFloatingPosition() {
+        window.window?.let { win ->
+            val lp = win.attributes
+            // 切换到左上重力，使 x/y 成为屏幕绝对坐标
+            if (lp.gravity != (android.view.Gravity.TOP or android.view.Gravity.START)) {
+                val decor = win.decorView
+                val loc = IntArray(2)
+                decor.getLocationOnScreen(loc)
+                lp.gravity = android.view.Gravity.TOP or android.view.Gravity.START
+                lp.x = loc[0]
+                lp.y = loc[1]
+                win.attributes = lp
+            }
+        }
+    }
+
+    private fun moveFloatingWindow(dx: Int, dy: Int) {
+        window.window?.let { win ->
+            val lp = win.attributes
+            if (lp.gravity != (android.view.Gravity.TOP or android.view.Gravity.START)) {
+                lp.gravity = android.view.Gravity.TOP or android.view.Gravity.START
+            }
+            lp.x = (lp.x + dx).coerceAtLeast(0)
+            lp.y = (lp.y + dy).coerceAtLeast(0)
+            win.attributes = lp
+        }
     }
 
     private fun updateEnterKeyText(editorInfo: EditorInfo) {
@@ -1005,6 +1120,8 @@ onVoiceModeChange = { enabled ->
             hasNextPage = hasNextPage,
             hasPrevPage = hasPrevPage
         )
+
+        // 悬浮候选栏通过 Compose 内联显示（见 onCreateInputView），拖拽由 pointerInput 处理
         
         if (pendingEnglish.isNotEmpty()) {
             serviceScope.launch {
@@ -1016,7 +1133,7 @@ onVoiceModeChange = { enabled ->
             }
         }
     }
-    
+
     private fun updateSchemaName() {
         serviceScope.launch(Dispatchers.IO) {
             val context = this@XimeInputMethodService
@@ -1696,6 +1813,63 @@ onVoiceModeChange = { enabled ->
         }
     }
     
+    private fun keyCodeToKey(keyCode: Int, isShifted: Boolean): String? {
+        return when (keyCode) {
+            KeyEvent.KEYCODE_A -> if (isShifted) "A" else "a"
+            KeyEvent.KEYCODE_B -> if (isShifted) "B" else "b"
+            KeyEvent.KEYCODE_C -> if (isShifted) "C" else "c"
+            KeyEvent.KEYCODE_D -> if (isShifted) "D" else "d"
+            KeyEvent.KEYCODE_E -> if (isShifted) "E" else "e"
+            KeyEvent.KEYCODE_F -> if (isShifted) "F" else "f"
+            KeyEvent.KEYCODE_G -> if (isShifted) "G" else "g"
+            KeyEvent.KEYCODE_H -> if (isShifted) "H" else "h"
+            KeyEvent.KEYCODE_I -> if (isShifted) "I" else "i"
+            KeyEvent.KEYCODE_J -> if (isShifted) "J" else "j"
+            KeyEvent.KEYCODE_K -> if (isShifted) "K" else "k"
+            KeyEvent.KEYCODE_L -> if (isShifted) "L" else "l"
+            KeyEvent.KEYCODE_M -> if (isShifted) "M" else "m"
+            KeyEvent.KEYCODE_N -> if (isShifted) "N" else "n"
+            KeyEvent.KEYCODE_O -> if (isShifted) "O" else "o"
+            KeyEvent.KEYCODE_P -> if (isShifted) "P" else "p"
+            KeyEvent.KEYCODE_Q -> if (isShifted) "Q" else "q"
+            KeyEvent.KEYCODE_R -> if (isShifted) "R" else "r"
+            KeyEvent.KEYCODE_S -> if (isShifted) "S" else "s"
+            KeyEvent.KEYCODE_T -> if (isShifted) "T" else "t"
+            KeyEvent.KEYCODE_U -> if (isShifted) "U" else "u"
+            KeyEvent.KEYCODE_V -> if (isShifted) "V" else "v"
+            KeyEvent.KEYCODE_W -> if (isShifted) "W" else "w"
+            KeyEvent.KEYCODE_X -> if (isShifted) "X" else "x"
+            KeyEvent.KEYCODE_Y -> if (isShifted) "Y" else "y"
+            KeyEvent.KEYCODE_Z -> if (isShifted) "Z" else "z"
+            KeyEvent.KEYCODE_SPACE -> "space"
+            KeyEvent.KEYCODE_ENTER -> "enter"
+            KeyEvent.KEYCODE_DEL -> "delete"
+            KeyEvent.KEYCODE_0 -> "0"
+            KeyEvent.KEYCODE_1 -> "1"
+            KeyEvent.KEYCODE_2 -> "2"
+            KeyEvent.KEYCODE_3 -> "3"
+            KeyEvent.KEYCODE_4 -> "4"
+            KeyEvent.KEYCODE_5 -> "5"
+            KeyEvent.KEYCODE_6 -> "6"
+            KeyEvent.KEYCODE_7 -> "7"
+            KeyEvent.KEYCODE_8 -> "8"
+            KeyEvent.KEYCODE_9 -> "9"
+            KeyEvent.KEYCODE_COMMA -> ","
+            KeyEvent.KEYCODE_PERIOD -> "."
+            KeyEvent.KEYCODE_MINUS -> "-"
+            KeyEvent.KEYCODE_EQUALS -> "="
+            KeyEvent.KEYCODE_SLASH -> "/"
+            KeyEvent.KEYCODE_BACKSLASH -> "\\"
+            KeyEvent.KEYCODE_SEMICOLON -> ";"
+            KeyEvent.KEYCODE_APOSTROPHE -> "'"
+            KeyEvent.KEYCODE_LEFT_BRACKET -> "["
+            KeyEvent.KEYCODE_RIGHT_BRACKET -> "]"
+            KeyEvent.KEYCODE_GRAVE -> "`"
+            KeyEvent.KEYCODE_TAB -> "\t"
+            else -> null
+        }
+    }
+
     private fun selectClipboardItem(text: String) {
         if (uiState.value.isComposing) {
             rimeEngine.clearComposition()

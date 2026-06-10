@@ -42,7 +42,8 @@ data class InputUIState(
     val hasNextPage: Boolean = false,
     val hasPrevPage: Boolean = false,
     val inputSessionId: Long = 0,
-    val toolbarButtons: List<String> = ToolbarButton.DEFAULT_VISIBLE.map { it.id }
+    val toolbarButtons: List<String> = ToolbarButton.DEFAULT_VISIBLE.map { it.id },
+    val isCompact: Boolean = false
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -87,6 +88,7 @@ if (showBottomButtons != other.showBottomButtons) return false
         if (hasPrevPage != other.hasPrevPage) return false
         if (inputSessionId != other.inputSessionId) return false
         if (toolbarButtons != other.toolbarButtons) return false
+        if (isCompact != other.isCompact) return false
 
         return true
     }
@@ -128,6 +130,7 @@ result = 31 * result + showBottomButtons.hashCode()
         result = 31 * result + hasNextPage.hashCode()
         result = 31 * result + hasPrevPage.hashCode()
         result = 31 * result + toolbarButtons.hashCode()
+        result = 31 * result + isCompact.hashCode()
         return result
     }
 }
