@@ -4,6 +4,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -33,6 +35,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -156,28 +159,52 @@ fun ClipboardView(
             }
         }
 
-        if (selectedTab == 0) {
-            ClipboardTabContent(
-                items = clipboardItems,
-                itemBgColor = itemBgColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                accentColor = accentColor,
-                onSelect = onSelectItem,
-                onRemove = onRemoveItem,
-                onAddToQuickSend = onAddToQuickSend,
-                onSplitWords = onSplitWords
-            )
-        } else {
-            QuickSendTabContent(
-                items = quickSendItems,
-                itemBgColor = itemBgColor,
-                textColor = textColor,
-                subTextColor = subTextColor,
-                accentColor = accentColor,
-                onSelect = onSelectItem,
-                onRemove = onRemoveFromQuickSend
-            )
+        val pagerState = rememberPagerState(
+            initialPage = selectedTab,
+            pageCount = { 2 }
+        )
+
+        // 外部切换标签时同步到 Pager
+        LaunchedEffect(selectedTab) {
+            pagerState.animateScrollToPage(selectedTab)
+        }
+
+        // Pager 滑动时同步到外部
+        LaunchedEffect(pagerState.currentPage) {
+            if (pagerState.currentPage != selectedTab) {
+                onClipboardTabChange?.invoke(pagerState.currentPage)
+            }
+        }
+
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+        ) { page ->
+            if (page == 0) {
+                ClipboardTabContent(
+                    items = clipboardItems,
+                    itemBgColor = itemBgColor,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    accentColor = accentColor,
+                    onSelect = onSelectItem,
+                    onRemove = onRemoveItem,
+                    onAddToQuickSend = onAddToQuickSend,
+                    onSplitWords = onSplitWords
+                )
+            } else {
+                QuickSendTabContent(
+                    items = quickSendItems,
+                    itemBgColor = itemBgColor,
+                    textColor = textColor,
+                    subTextColor = subTextColor,
+                    accentColor = accentColor,
+                    onSelect = onSelectItem,
+                    onRemove = onRemoveFromQuickSend
+                )
+            }
         }
 
         // 底部留空（竖屏至少 40dp）

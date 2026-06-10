@@ -4,6 +4,8 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +28,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -177,6 +180,14 @@ fun EmojiKeyboardLayout(
     val pluginCategories = allCategories.filter { it.isPlugin }
     val builtinCategories = allCategories.filter { !it.isPlugin }
 
+    // 所有页面的扁平索引（用于动画过渡）
+    val currentPageIndex = if (selectedTopTabIndex == 0) {
+        selectedSubCategoryIndex.coerceIn(0, maxOf(0, builtinCategories.lastIndex))
+    } else {
+        builtinCategories.size + (selectedTopTabIndex - 1).coerceIn(0, maxOf(0, pluginCategories.lastIndex))
+    }
+    val totalPages = builtinCategories.size + pluginCategories.size
+
     val configuration = LocalConfiguration.current
     val isLandscape =
         configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
@@ -291,28 +302,59 @@ fun EmojiKeyboardLayout(
             }
         }
 
-        Box(
+        val pagerState = rememberPagerState(
+            initialPage = currentPageIndex,
+            pageCount = { totalPages }
+        )
+
+        // 外部切换分类时同步到 Pager
+        LaunchedEffect(currentPageIndex) {
+            pagerState.animateScrollToPage(currentPageIndex)
+        }
+
+        // Pager 滑动时同步到外部状态
+        LaunchedEffect(pagerState.currentPage) {
+            val page = pagerState.currentPage
+            if (page != currentPageIndex) {
+                if (page < builtinCategories.size) {
+                    selectedTopTabIndex = 0
+                    selectedSubCategoryIndex = page
+                } else {
+                    selectedTopTabIndex = page - builtinCategories.size + 1
+                    selectedSubCategoryIndex = 0
+                }
+            }
+        }
+
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
                 .padding(horizontal = if (isLandscape) 50.dp else 4.dp)
                 .padding(bottom = 4.dp)
-        ) {
+        ) { pageIndex ->
+            val category = if (pageIndex < builtinCategories.size) {
+                builtinCategories[pageIndex]
+            } else {
+                pluginCategories[pageIndex - builtinCategories.size]
+            }
+
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                if (currentCategory.isPlugin && currentCategory.emojiItems != null) {
-                    val config = currentCategory.layoutConfig
+                if (category.isPlugin && category.emojiItems != null) {
+                    val config = category.layoutConfig
                     val defaultCols =
-                        if (currentCategory.emojiItems.any { it.imageUrl != null }) 6 else 8
+                        if (category.emojiItems.any { it.imageUrl != null }) 6 else 8
                     val columns = config?.columns ?: if (isLandscape) 15 else defaultCols
                     val itemHeightDp = config?.itemHeightDp
-                        ?: (if (currentCategory.emojiItems.any { it.imageUrl != null }) 60 else 40)
+                        ?: (if (category.emojiItems.any { it.imageUrl != null }) 60 else 40)
 
-                    currentCategory.emojiItems.chunked(columns).forEach { rowItems ->
+                    category.emojiItems.chunked(columns).forEach { rowItems ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -362,7 +404,7 @@ fun EmojiKeyboardLayout(
                         Spacer(modifier = Modifier.height(2.dp))
                     }
                 } else {
-                    val emojis = currentCategory.emojis
+                    val emojis = category.emojis
                     val columns = if (isLandscape) 15 else 8
 
                     emojis.chunked(columns).forEach { rowEmojis ->
