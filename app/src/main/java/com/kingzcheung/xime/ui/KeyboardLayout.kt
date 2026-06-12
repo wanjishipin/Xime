@@ -1219,6 +1219,11 @@ fun CompactSwipeableKeyButton(
     val bubbleShowThresholdUp = swipeUpThreshold * 0.3f
     val bubbleShowThresholdDown = swipeDownThreshold * 0.3f
 
+    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    }
+
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
         return Color(
             red = (color.red * (1 - factor)).coerceIn(0f, 1f),
@@ -1231,14 +1236,11 @@ fun CompactSwipeableKeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(
-                if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
-                else Modifier
-            )
+            .then(shadowModifier)
             .onGloballyPositioned { coordinates ->
                 buttonBounds = coordinates.boundsInRoot()
             }
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .clip(shadowShape)
             .background(if (isPressed) darkenColor(backgroundColor) else backgroundColor)
             .pointerInput(currentLongPressItems, currentOnLongPressSelect) {
                 if (currentLongPressItems.isNullOrEmpty() || currentOnLongPressSelect == null) {
@@ -1583,14 +1585,16 @@ private fun SplitSpaceKey(
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
 ) {
+    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    }
+
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(
-                if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
-                else Modifier
-            )
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .then(shadowModifier)
+            .clip(shadowShape)
             .background(backgroundColor)
             .clickable(
                 interactionSource = null,

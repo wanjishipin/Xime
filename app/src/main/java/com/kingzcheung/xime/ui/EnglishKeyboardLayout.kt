@@ -612,14 +612,16 @@ private fun SplitSpaceKey(
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
 ) {
+    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    }
+
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(
-                if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
-                else Modifier
-            )
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .then(shadowModifier)
+            .clip(shadowShape)
             .background(backgroundColor)
             .clickable(
                 interactionSource = null,

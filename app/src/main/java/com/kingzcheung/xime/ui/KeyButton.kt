@@ -96,6 +96,11 @@ fun KeyButton(
     val swipeDownThreshold = with(density) { 30.dp.toPx() }
     val bubbleShowThresholdUp = swipeUpThreshold * 0.3f
     val bubbleShowThresholdDown = swipeDownThreshold * 0.3f
+
+    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    }
     
     // 辅助函数：生成更深的颜色（混合黑色）
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
@@ -110,11 +115,8 @@ fun KeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(
-                if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
-                else Modifier
-            )
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .then(shadowModifier)
+            .clip(shadowShape)
             .background(
                 if (isPressed) darkenColor(backgroundColor, 0.2f)
                 else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
@@ -284,18 +286,20 @@ fun SwipeableKeyButton(
     val swipeDownThreshold = with(density) { 30.dp.toPx() }
     val bubbleShowThresholdUp = swipeUpThreshold * 0.3f
     val bubbleShowThresholdDown = swipeDownThreshold * 0.3f
+
+    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    }
     
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(
-                if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
-                else Modifier
-            )
+            .then(shadowModifier)
             .onGloballyPositioned { coordinates ->
                 buttonBounds = coordinates.boundsInRoot()
             }
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .clip(shadowShape)
             .background(
                 if (isPressed) backgroundColor.copy(alpha = 0.7f)
                 else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
@@ -586,6 +590,11 @@ fun IconKeyButton(
     shadowShapeRadius: Dp = 8.dp,
 ) {
     var isPressed by remember { mutableStateOf(false) }
+
+    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    }
     
     // 辅助函数：生成更深的颜色（混合黑色）
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
@@ -600,11 +609,8 @@ fun IconKeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(
-                if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
-                else Modifier
-            )
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .then(shadowModifier)
+            .clip(shadowShape)
             .background(
                 if (isPressed) darkenColor(backgroundColor, 0.1f)
                 else if (isHighlighted) darkenColor(backgroundColor, 0.2f)
@@ -706,6 +712,11 @@ fun SwipeableIconKeyButton(
             }
         }
     }
+
+    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    }
     
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
         return Color(
@@ -719,14 +730,11 @@ fun SwipeableIconKeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(
-                if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
-                else Modifier
-            )
+            .then(shadowModifier)
             .onGloballyPositioned { coordinates ->
                 buttonBounds = coordinates.boundsInRoot()
             }
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .clip(shadowShape)
             .background(
                 if (isPressed) darkenColor(backgroundColor, 0.2f)
                 else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)

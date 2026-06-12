@@ -30,3 +30,8 @@
 1. 更新 PROGRESS.md
 2. 跑 `./gradlew assembleDebug --quiet` 确认一致状态
 3. 提交所有已完成的工作
+
+## Jetpack Compose
+For all Compose/Android UI tasks, follow the instructions in
+`.skills/compose-expert/SKILL.md` and consult the reference
+files in `.skills/compose-expert/references/` before answering.
