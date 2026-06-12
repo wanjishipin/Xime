@@ -4,6 +4,11 @@ project(kime VERSION 1.0.0)
 
 set(CMAKE_CXX_STANDARD 17)
 
+# Debug 构建也启用优化，解决大词典查询性能问题
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O2 -g")
+endif()
+
 option(BUILD_SHARED_LIBS "" OFF)
 option(BUILD_TESTING "" OFF)
 

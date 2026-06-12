@@ -15,9 +15,9 @@ import io.ktor.server.engine.*
 import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import io.ktor.utils.io.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.channels.Channel
-import java.io.ByteArrayInputStream
 import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
@@ -77,90 +77,121 @@ class WirelessImportHelper(private val context: Context) {
                     call.respondText(HTML_PAGE, ContentType.Text.Html)
                 }
                 post("/upload") {
-                    val bytes = call.receive<ByteArray>()
-
                     val rimeDir = File(context.filesDir, "rime")
                     rimeDir.mkdirs()
-
-                    val ctHeader = call.request.headers["Content-Type"] ?: ""
-                    val boundary = ctHeader.split("boundary=").getOrNull(1)?.trim()
-                    if (boundary.isNullOrEmpty()) {
-                        call.respondText("""{"success":false,"error":"No boundary"}""",
-                            ContentType.Application.Json, HttpStatusCode.BadRequest)
-                        return@post
-                    }
-                    val boundaryMarker = ("--$boundary").toByteArray()
-                    val crlfBoundary = ("\r\n--$boundary").toByteArray()
-
-                    var saved = false
+                    val tmpFile = File.createTempFile("upload_", ".tmp", rimeDir)
                     var lastName = ""
-                    var pos = 0
-                    while (true) {
-                        // 只匹配前面有 \r\n 的 boundary，避免二进制内容中的误匹配
-                        val partStart = if (pos == 0) {
-                            bytes.indexOfPattern(boundaryMarker, pos)
+
+                    try {
+                        // 1. 流式写入临时文件（不占堆内存）
+                        val ch = call.receiveChannel()
+                        java.io.FileOutputStream(tmpFile).use { fos ->
+                            val buf = ByteArray(8192)
+                            while (!ch.isClosedForRead) {
+                                val n = ch.readAvailable(buf, 0, buf.size)
+                                if (n <= 0) break
+                                fos.write(buf, 0, n)
+                            }
+                        }
+
+                        // 2. 从临时文件解析 multipart（RandomAccessFile 流式读取）
+                        val ctHeader = call.request.headers["Content-Type"] ?: ""
+                        val boundary = ctHeader.split("boundary=").getOrNull(1)?.trim()
+                        if (boundary.isNullOrEmpty()) {
+                            call.respondText("""{"success":false,"error":"No boundary"}""",
+                                ContentType.Application.Json, HttpStatusCode.BadRequest)
+                            return@post
+                        }
+                        val boundaryBytes = ("\r\n--$boundary").toByteArray()
+                        val firstBoundary = ("--$boundary").toByteArray()
+                        val headerEndMarker = "\r\n\r\n".toByteArray()
+
+                        var saved = false
+                        java.io.RandomAccessFile(tmpFile, "r").use { raf ->
+                            var pos = findBytes(raf, firstBoundary, 0)
+                            if (pos < 0) return@use
+
+                            while (true) {
+                                val partStart = pos + firstBoundary.size
+                                val nextB = findBytes(raf, boundaryBytes, partStart)
+                                if (nextB < 0) break
+                                val partEnd = nextB
+
+                                // 解析 part header
+                                raf.seek(partStart.toLong())
+                                val hdr = ByteArray(4096)
+                                val hdrLen = readUntil(raf, hdr, headerEndMarker)
+                                if (hdrLen < 0) { pos = nextB + 2; continue }
+
+                                val headerStr = hdr.decodeToString(0, hdrLen)
+                                val fn = Regex("""filename="([^"]*)"""").find(headerStr)
+                                val name = fn?.groupValues?.getOrNull(1)
+                                if (name.isNullOrEmpty() || name == "blob") { pos = nextB + 2; continue }
+
+                                lastName = name
+                                val contentStart = raf.filePointer
+                                val contentLen = partEnd - contentStart
+
+                                when {
+                                    name.endsWith(".zip", ignoreCase = true) ||
+                                    name.endsWith(".tar.gz", ignoreCase = true) ||
+                                    name.endsWith(".tgz", ignoreCase = true) -> {
+                                        val isTarGz = name.endsWith(".tar.gz", ignoreCase = true) || name.endsWith(".tgz", ignoreCase = true)
+                                        val istream = object : java.io.InputStream() {
+                                            var remaining = contentLen
+                                            var buf8 = ByteArray(8192)
+                                            override fun read(): Int {
+                                                if (remaining <= 0) return -1
+                                                val n = raf.read(buf8, 0, 1)
+                                                if (n <= 0) return -1
+                                                remaining--
+                                                return buf8[0].toInt() and 0xff
+                                            }
+                                            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                                                if (remaining <= 0) return -1
+                                                val cnt = if (remaining < len) remaining.toInt() else len
+                                                val n = raf.read(b, off, cnt)
+                                                if (n <= 0) return -1
+                                                remaining -= n
+                                                return n
+                                            }
+                                            override fun available() = minOf(remaining, Int.MAX_VALUE.toLong()).toInt()
+                                        }
+                                        val ok = if (isTarGz)
+                                            SchemaManager.importTarGzFromStream(istream, rimeDir)
+                                        else
+                                            SchemaManager.importZipFromStream(istream, rimeDir)
+                                        if (ok) {
+                                            saved = true
+                                            _uploadResults.trySend(UploadResult(fileName = name, success = true))
+                                        } else {
+                                            _uploadResults.trySend(UploadResult(fileName = name, success = false, error = "解压失败"))
+                                        }
+                                    }
+                                    name.endsWith(".yaml") || name.endsWith(".schema.yaml") || name.endsWith(".dict.yaml") -> {
+                                        raf.seek(contentStart)
+                                        val data = ByteArray(contentLen.toInt())
+                                        raf.readFully(data)
+                                        File(rimeDir, name).writeBytes(data)
+                                        saved = true
+                                        _uploadResults.trySend(UploadResult(fileName = name, success = true))
+                                    }
+                                    else -> {
+                                        _uploadResults.trySend(UploadResult(fileName = name, success = false, error = "不支持的文件类型"))
+                                    }
+                                }
+                                pos = nextB + 2
+                            }
+                        }
+
+                        if (saved) {
+                            call.respondText("""{"success":true,"file":"$lastName"}""", ContentType.Application.Json)
                         } else {
-                            val idx = bytes.indexOfPattern(crlfBoundary, pos)
-                            if (idx < 0) -1 else idx + 2
+                            call.respondText("""{"success":false,"error":"No valid file (supported: .yaml, .zip, .tar.gz)"}""",
+                                ContentType.Application.Json, HttpStatusCode.BadRequest)
                         }
-                        if (partStart < 0) break
-                        val partEnd = bytes.indexOfPattern(crlfBoundary, partStart + boundaryMarker.size)
-                        if (partEnd < 0) break
-                        // partEnd 指向 \r\n--boundary 的 \r，内容到 partEnd - 2 的 \r\n 为止
-                        // 但第一个 part 不需要，因为它在 pos=0 时直接找 boundaryMarker
-
-                        val partSlice = bytes.copyOfRange(partStart + boundaryMarker.size, partEnd)
-                        val leading = partSlice.indexOfPattern("\r\n".toByteArray(), 0)
-                        if (leading < 0) { pos = partEnd + 2; continue }
-
-                        // 在字节数组中查找 \r\n\r\n 来定位头部结束（避免使用 String.indexOf
-                        // 的字符索引与字节偏移之间的不匹配问题）
-                        val headerEndIdx = partSlice.indexOfPattern("\r\n\r\n".toByteArray(), leading + 2)
-                        if (headerEndIdx < 0) { pos = partEnd + 2; continue }
-                        val headerBytes = partSlice.copyOfRange(leading + 2, headerEndIdx)
-                        val partHeaders = headerBytes.toString(Charsets.UTF_8)
-
-                        val fnMatch = Regex("""filename="([^"]*)"""").find(partHeaders)
-                        val name = fnMatch?.groupValues?.getOrNull(1)
-                        if (name.isNullOrEmpty() || name == "blob") { pos = partEnd + 2; continue }
-
-                        lastName = name
-                        val contentStart = headerEndIdx + 4
-                        val contentBytes = partSlice.copyOfRange(contentStart, partSlice.size)
-
-                        when {
-                            name.endsWith(".zip", ignoreCase = true) || name.endsWith(".tar.gz", ignoreCase = true) || name.endsWith(".tgz", ignoreCase = true) -> {
-                                val isTarGz = name.endsWith(".tar.gz", ignoreCase = true) || name.endsWith(".tgz", ignoreCase = true)
-                                val ok = if (isTarGz) {
-                                    SchemaManager.importTarGzFromStream(ByteArrayInputStream(contentBytes), rimeDir)
-                                } else {
-                                    SchemaManager.importZipFromStream(ByteArrayInputStream(contentBytes), rimeDir)
-                                }
-                                if (ok) {
-                                    saved = true
-                                    _uploadResults.trySend(UploadResult(fileName = name, success = true))
-                                } else {
-                                    _uploadResults.trySend(UploadResult(fileName = name, success = false, error = "解压失败"))
-                                }
-                            }
-                            name.endsWith(".yaml") || name.endsWith(".schema.yaml") || name.endsWith(".dict.yaml") -> {
-                                File(rimeDir, name).writeBytes(contentBytes)
-                                saved = true
-                                _uploadResults.trySend(UploadResult(fileName = name, success = true))
-                            }
-                            else -> {
-                                _uploadResults.trySend(UploadResult(fileName = name, success = false, error = "不支持的文件类型"))
-                            }
-                        }
-
-                        pos = partEnd + crlfBoundary.size
-                    }
-
-                    if (saved) {
-                        call.respondText("""{"success":true,"file":"$lastName"}""", ContentType.Application.Json)
-                    } else {
-                        call.respondText("""{"success":false,"error":"No valid file (supported: .yaml, .zip, .tar.gz)"}""",
-                            ContentType.Application.Json, HttpStatusCode.BadRequest)
+                    } finally {
+                        tmpFile.delete()
                     }
                 }
             }
@@ -178,12 +209,47 @@ class WirelessImportHelper(private val context: Context) {
 
     val isRunning: Boolean get() = server != null
 
-    private fun ByteArray.indexOfPattern(pattern: ByteArray, start: Int = 0): Int {
-        outer@ for (i in start..this.size - pattern.size) {
-            for (j in pattern.indices) {
-                if (this[i + j] != pattern[j]) continue@outer
+    /** 在 RandomAccessFile 中查找字节模式，返回起始位置，未找到返回 -1 */
+    private fun findBytes(raf: java.io.RandomAccessFile, pattern: ByteArray, startPos: Long): Long {
+        val buf = ByteArray(8192)
+        var pos = startPos
+        while (pos < raf.length()) {
+            raf.seek(pos)
+            val n = raf.read(buf)
+            if (n <= 0) break
+            val end = n - pattern.size
+            for (i in 0..end) {
+                var match = true
+                for (j in pattern.indices) {
+                    if (buf[i + j] != pattern[j]) { match = false; break }
+                }
+                if (match) return pos + i
             }
-            return i
+            pos += maxOf(1, n - pattern.size + 1)
+        }
+        return -1
+    }
+
+    /** 从 RandomAccessFile 当前位置读取到 endMarker 为止，返回读取的字节数 */
+    private fun readUntil(raf: java.io.RandomAccessFile, buf: ByteArray, endMarker: ByteArray): Int {
+        var bufPos = 0
+        while (bufPos < buf.size) {
+            val b = raf.read()
+            if (b < 0) break
+            buf[bufPos++] = b.toByte()
+            // 检查是否匹配 endMarker
+            if (bufPos >= endMarker.size) {
+                var match = true
+                for (i in endMarker.indices) {
+                    if (buf[bufPos - endMarker.size + i] != endMarker[i]) {
+                        match = false
+                        break
+                    }
+                }
+                if (match) {
+                    return bufPos - endMarker.size
+                }
+            }
         }
         return -1
     }

@@ -18,6 +18,16 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
+extern void rime_require_module_lua();
+extern void rime_require_module_octagram();
+extern void rime_require_module_predict();
+
+static void declare_librime_module_dependencies() {
+  rime_require_module_lua();
+  rime_require_module_octagram();
+  rime_require_module_predict();
+}
+
 struct ProcessResult {
     bool processed;
     std::string committedText;
@@ -45,7 +55,9 @@ public:
             LOGE("Rime API not available");
             return;
         }
-        
+
+        declare_librime_module_dependencies();
+
         user_data_dir_ = user_data_dir;
         shared_data_dir_ = shared_data_dir;
 

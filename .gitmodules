@@ -14,3 +14,9 @@
 	path = app/src/main/jni/librime-lua-deps
 	url = https://github.com/hchunhui/librime-lua.git
 	branch = thirdparty
+[submodule "app/src/main/jni/librime-octagram"]
+	path = app/src/main/jni/librime-octagram
+	url = https://github.com/lotem/librime-octagram.git
+[submodule "app/src/main/jni/librime-predict"]
+	path = app/src/main/jni/librime-predict
+	url = https://github.com/rime/librime-predict.git

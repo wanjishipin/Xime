@@ -38,16 +38,21 @@ if(EXISTS "${LUA_LIOLIB_SRC}")
 endif()
 
 # 已集成的插件
-# 注意：librime-lua 官方文档要求插件目录名为 lua
-set(RIME_PLUGINS librime-lua)
+set(RIME_PLUGINS librime-octagram librime-predict)
 
-# 将插件复制到 plugins/ 目录（Windows 不支持符号链接，故用复制）
+# 将插件复制到 plugins/ 目录
 foreach(plugin ${RIME_PLUGINS})
-  if(NOT EXISTS "${CMAKE_SOURCE_DIR}/librime/plugins/lua")
+  if(NOT EXISTS "${CMAKE_SOURCE_DIR}/librime/plugins/${plugin}")
     file(COPY "${CMAKE_SOURCE_DIR}/${plugin}/"
-         DESTINATION "${CMAKE_SOURCE_DIR}/librime/plugins/lua")
+         DESTINATION "${CMAKE_SOURCE_DIR}/librime/plugins/${plugin}")
   endif()
 endforeach()
+
+# librime-lua 需要特殊命名 lua
+if(NOT EXISTS "${CMAKE_SOURCE_DIR}/librime/plugins/lua")
+  file(COPY "${CMAKE_SOURCE_DIR}/librime-lua/"
+       DESTINATION "${CMAKE_SOURCE_DIR}/librime/plugins/lua")
+endif()
 
 # librime-lua thirdparty 依赖（Lua 5.4 源码）
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/librime/plugins/lua/thirdparty")

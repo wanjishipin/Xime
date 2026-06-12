@@ -323,7 +323,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                     // 不等待的话 ensureSession 读到的是空 schema 列表
                     if (maintaining) {
                         var maintenanceWaited = 0L
-                        val maintenanceTimeoutMs = 120_000L
+                        val maintenanceTimeoutMs = 300_000L
                         while (rimeEngine.isMaintaining() && maintenanceWaited < maintenanceTimeoutMs) {
                             Thread.sleep(100)
                             maintenanceWaited += 100
@@ -1480,9 +1480,12 @@ onVoiceModeChange = { enabled ->
                         val char = if (isShifted) key.uppercase() else key
                         val keyCode = key.lowercase()[0].code
                         val mask = if (isShifted) KeyEvent.META_SHIFT_ON else 0
-                        
+
+                        val t0 = System.nanoTime()
                         val result = rimeEngine.processKeyAndGetResult(keyCode, mask)
-                        
+                        val elapsed = (System.nanoTime() - t0) / 1_000_000
+                        if (elapsed > 10) Log.w(TAG, "Key '$key' processed in ${elapsed}ms")
+
                         if (result.processed) {
                             needsUIUpdate = true
                             pendingResult = result

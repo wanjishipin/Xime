@@ -114,10 +114,10 @@ object SchemaManager {
         MessageDigest.getInstance("SHA-256").digest(bytes)
             .joinToString("") { "%02x".format(it.toInt() and 0xff) }
 
-    /** 导入归档时禁止覆盖的文件：default.yaml 与任何 *.custom.* （保护用户配置 + F1 写入）。 */
+    /** 导入归档时禁止覆盖 default.yaml（保护用户配置）。 */
     fun isProtectedImportName(name: String): Boolean {
         val base = name.substringAfterLast('/')
-        return base == "default.yaml" || base.contains(".custom.")
+        return base == "default.yaml"
     }
 
     /** 把归档条目解析到 targetDir 下，越界（zip-slip，如 ../../x）返回 null。 */
@@ -430,8 +430,7 @@ object SchemaManager {
                     while (entry != null) {
                         val originalName = entry.name
                         val name = originalName.removePrefix(baseDir)
-                        if (!entry.isDirectory && !isProtectedImportName(name) &&
-                            (name.endsWith(".yaml") || name.endsWith(".txt") || name.endsWith(".bin"))) {
+                        if (!entry.isDirectory && !isProtectedImportName(name)) {
                             val file = safeChild(targetDir, name)
                             if (file == null) {
                                 Log.w(TAG, "Skip unsafe path: $name")
@@ -441,6 +440,14 @@ object SchemaManager {
                                     zis.copyTo(output)
                                 }
                                 extractedCount++
+
+                                when {
+                                    name.endsWith(".schema.yaml") ->
+                                        importedSchemas.add(name.removeSuffix(".schema.yaml").substringAfterLast('/'))
+                                    name.endsWith(".dict.yaml") ->
+                                        importedSchemas.add(name.removeSuffix(".dict.yaml").substringAfterLast('/'))
+                                }
+
                                 Log.d(TAG, "Extracted: $name")
 
                                 when {
@@ -568,7 +575,7 @@ object SchemaManager {
                 zip.entries().asSequence().forEach { entry ->
                     val originalName = entry.name
                     val name = originalName.removePrefix(baseDir)
-                    if (!entry.isDirectory && (name.endsWith(".yaml") || name.endsWith(".txt") || name.endsWith(".bin"))) {
+                    if (!entry.isDirectory) {
                         val file = if (isProtectedImportName(name)) null else safeChild(targetDir, name)
                         if (file == null) {
                             Log.d(TAG, "Skip protected/unsafe entry: $name")
@@ -630,7 +637,7 @@ object SchemaManager {
                 var entry = tarIn.nextEntry
                 while (entry != null) {
                     val name = entry.name.removePrefix(baseDir)
-                    if (!entry.isDirectory && (name.endsWith(".yaml") || name.endsWith(".txt") || name.endsWith(".bin"))) {
+                    if (!entry.isDirectory) {
                         val file = if (isProtectedImportName(name)) null else safeChild(targetDir, name)
                         if (file == null) {
                             Log.d(TAG, "Skip protected/unsafe entry: $name")
