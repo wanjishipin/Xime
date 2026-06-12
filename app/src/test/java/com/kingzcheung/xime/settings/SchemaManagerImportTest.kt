@@ -25,18 +25,18 @@ class SchemaManagerImportTest {
     }
 
     @Test
-    fun `protects default_yaml and custom files from import`() {
+    fun `protects default_yaml from import`() {
         assertTrue(SchemaManager.isProtectedImportName("default.yaml"))
-        assertTrue(SchemaManager.isProtectedImportName("default.custom.yaml"))
-        assertTrue(SchemaManager.isProtectedImportName("wubi86.custom.yaml"))
         assertTrue(SchemaManager.isProtectedImportName("sub/dir/default.yaml"))
     }
 
     @Test
-    fun `allows normal schema and dict files`() {
+    fun `allows normal schema, dict and custom files`() {
         assertFalse(SchemaManager.isProtectedImportName("cangjie5.schema.yaml"))
         assertFalse(SchemaManager.isProtectedImportName("cangjie5.dict.yaml"))
         assertFalse(SchemaManager.isProtectedImportName("essay.txt"))
+        assertFalse(SchemaManager.isProtectedImportName("default.custom.yaml"))
+        assertFalse(SchemaManager.isProtectedImportName("wubi86.custom.yaml"))
     }
 
     // ── findSchemaBaseDir：剥 GitHub 归档壳目录(修 essay.txt 落进 rime-essay-master/ 子目录) ──
