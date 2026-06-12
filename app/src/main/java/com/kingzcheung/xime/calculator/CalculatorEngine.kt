@@ -16,8 +16,8 @@ class CalculatorEngine {
     private var leftOperand = ""
     private var operator_ = ""
     private var rightOperand = ""
-    /** 完整的用户输入表达式，如 "44-70+35-70" */
-    private var fullExpression = ""
+    /** 完整的用户原始输入，如 "44-70+35-70"，不受链式计算影响。 */
+    private var rawInput = ""
 
     fun isActive(): Boolean =
         leftOperand.isNotEmpty() && operator_.isNotEmpty() && rightOperand.isNotEmpty()
@@ -27,29 +27,29 @@ class CalculatorEngine {
         return computeResult() ?: ""
     }
 
-    /** 完整的用户输入表达式。 */
-    fun getExpression(): String = fullExpression
+    /** 完整的用户原始输入。 */
+    fun getExpression(): String = rawInput
 
     fun getFormulaResult(): String {
         if (!isActive()) return ""
         val result = getResult()
         if (result.isEmpty()) return ""
-        return "$fullExpression=$result"
+        return "$rawInput=$result"
     }
 
-    /** 完整表达式候选，如 "44 - 70 + 35 - 70 = -61"。 */
+    /** 完整原始表达式候选，如 "44-70+35-70 = -61"。 */
     fun getCandidate(): String? {
         if (!isActive()) return null
         val result = getResult()
         if (result.isEmpty()) return null
-        return "$fullExpression = $result"
+        return "$rawInput = $result"
     }
 
     fun clear() {
         leftOperand = ""
         operator_ = ""
         rightOperand = ""
-        fullExpression = ""
+        rawInput = ""
     }
 
     fun handleDigit(input: String): Boolean {
@@ -61,7 +61,7 @@ class CalculatorEngine {
             } else {
                 leftOperand += input
             }
-            fullExpression = "$leftOperand$operator_$rightOperand"
+            rawInput += input
             return false
         } else {
             if (input == ".") {
@@ -71,48 +71,17 @@ class CalculatorEngine {
             } else {
                 rightOperand += input
             }
-            fullExpression = "$leftOperand$operator_$rightOperand"
+            rawInput += input
             return true
         }
     }
 
     fun handleOperator(op: String): Boolean {
         if (leftOperand.isEmpty()) return false
-        if (isActive()) {
-            val numericResult = computeNumericResult()
-            if (numericResult != null) {
-                leftOperand = numericResult
-                operator_ = op
-                rightOperand = ""
-                fullExpression = "$leftOperand$operator_$rightOperand"
-                return false
-            }
-        }
         operator_ = op
         rightOperand = ""
-        fullExpression = "$leftOperand$operator_$rightOperand"
+        rawInput += op
         return false
-    }
-
-    /** 链式计算用 BigDecimal 高精度，保留完整精度供后续运算。 */
-    private fun computeNumericResult(): String? {
-        val l = leftOperand.toBigDecimalOrNull() ?: return null
-        val r = rightOperand.toBigDecimalOrNull() ?: return null
-        return try {
-            val result = when (operator_) {
-                "+" -> l + r
-                "-" -> l - r
-                "*" -> l * r
-                "/" -> {
-                    if (r.compareTo(BigDecimal.ZERO) == 0) return null
-                    l.divide(r, 15, RoundingMode.HALF_UP)
-                }
-                else -> return null
-            }
-            result.stripTrailingZeros().toPlainString()
-        } catch (_: Exception) {
-            null
-        }
     }
 
     fun handleDelete(): Boolean {
@@ -123,7 +92,7 @@ class CalculatorEngine {
         } else if (leftOperand.isNotEmpty()) {
             leftOperand = leftOperand.dropLast(1)
         }
-        fullExpression = "$leftOperand$operator_$rightOperand"
+        rawInput = rawInput.dropLast(1)
         return isActive()
     }
 
@@ -174,10 +143,9 @@ class CalculatorEngine {
         }
     }
 
-    private fun computeResult(): String? {
-        if (leftOperand.isEmpty() || operator_.isEmpty() || rightOperand.isEmpty()) return null
-        return calculate(leftOperand, operator_, rightOperand)
-    }
+    /** 用 exp4j 评估完整原始输入，尊重运算符优先级。 */
+    private fun computeResult(): String? =
+        evaluate(rawInput)
 
     /** 格式化：整数去 .0，小数最多 10 位。 */
     private fun formatBigDecimal(value: BigDecimal): String {

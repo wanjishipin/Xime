@@ -69,8 +69,8 @@ class CalculatorEngineTest {
 
         engine.handleOperator("*")
         engine.handleDigit("4")
-        assertEquals("5*4 = 20", engine.getCandidate())
-        assertEquals("20", engine.getResult())
+        assertEquals("2+3*4 = 14", engine.getCandidate())
+        assertEquals("14", engine.getResult())
     }
 
     @Test
@@ -444,7 +444,7 @@ class CalculatorEngineTest {
     // ===================== 链式计算测试 =====================
 
     @Test
-    fun `链式计算 5+3=8 再 *2=16`() {
+    fun `链式计算 5+3=8 再 *2=11`() {
         val engine = CalculatorEngine()
         engine.handleDigit("5")
         engine.handleOperator("+")
@@ -453,8 +453,8 @@ class CalculatorEngineTest {
 
         engine.handleOperator("*")
         engine.handleDigit("2")
-        assertEquals("8*2 = 16", engine.getCandidate())
-        assertEquals("16", engine.getResult())
+        assertEquals("5+3*2 = 11", engine.getCandidate())
+        assertEquals("11", engine.getResult())
     }
 
     @Test
@@ -468,10 +468,8 @@ class CalculatorEngineTest {
 
         engine.handleOperator("*")
         engine.handleDigit("3")
+        assertEquals("10/3*3 = 10", engine.getCandidate())
         assertEquals("10", engine.getResult())
-        assertNotNull(engine.getCandidate())
-        assertTrue("候选应包含 *3 = 10，实际: ${engine.getCandidate()}",
-            engine.getCandidate()!!.endsWith("*3 = 10"))
     }
 
     // ===================== evaluate() 混合运算测试 =====================
