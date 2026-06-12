@@ -454,6 +454,9 @@ dependencies {
     // Kaml for YAML parsing
     implementation(libs.kaml)
 
+    // exp4j for calculator expression evaluation
+    implementation(libs.exp4j)
+
     // ZXing for QR code generation
     implementation("com.google.zxing:core:3.5.3")
 

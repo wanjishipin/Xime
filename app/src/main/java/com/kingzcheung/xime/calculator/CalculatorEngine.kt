@@ -1,72 +1,57 @@
 package com.kingzcheung.xime.calculator
 
+import net.objecthunter.exp4j.ExpressionBuilder
 import java.math.BigDecimal
 import java.math.RoundingMode
 
 /**
- * 简易计算器引擎
+ * 计算器引擎
  *
- * 状态机：
- * - 空闲: 等待数字或运算符
- * - 已输入左操作数: 可继续输入数字或运算符
- * - 已输入运算符: 等待右操作数
- * - 活跃 (有右操作数): 实时显示计算结果在候选栏
- *
- * 触发计算器：用户在输入数字后按了 + - * / 中的一个
- * 候选栏显示：左操作数 + 运算符 + 右操作数 = 结果
- * 选择候选后：结果替换输入框内容
- *
- * 运算规则：
- * - 使用 BigDecimal 进行精确运算，避免浮点数精度问题
- * - 除法结果为无限小数时，以分数形式显示（如 "10/3"）
- * - 除法结果为有限小数时，以十进制形式显示（如 "0.25"）
+ * 状态机：二操作数输入（左 op 右）→ 实时候选。
+ * [calculate] 二操作数用 BigDecimal 保证精度。
+ * [evaluate] 完整表达式用 exp4j 支持混合运算/括号/优先级。
  */
 class CalculatorEngine {
 
     private var leftOperand = ""
     private var operator_ = ""
     private var rightOperand = ""
+    /** 完整的用户输入表达式，如 "44-70+35-70" */
+    private var fullExpression = ""
 
-    /** 计算器是否处于活跃状态（即有完整表达式和结果） */
     fun isActive(): Boolean =
         leftOperand.isNotEmpty() && operator_.isNotEmpty() && rightOperand.isNotEmpty()
 
-    /** 获取计算结果文本，为空表示无法计算（如除零） */
     fun getResult(): String {
         if (!isActive()) return ""
         return computeResult() ?: ""
     }
 
-    /** 获取已在输入框中提交的表达式文本，如 "12+35" */
-    fun getExpression(): String = "$leftOperand$operator_$rightOperand"
+    /** 完整的用户输入表达式。 */
+    fun getExpression(): String = fullExpression
 
-    /** 获取带公式的结果文本，如 "12+35=47"，用于候选栏直接提交 */
     fun getFormulaResult(): String {
         if (!isActive()) return ""
         val result = getResult()
         if (result.isEmpty()) return ""
-        return "$leftOperand$operator_$rightOperand=$result"
+        return "$fullExpression=$result"
     }
 
-    /** 获取候选栏显示文本，如 "12 + 35 = 47"，null 表示不显示 */
+    /** 完整表达式候选，如 "44 - 70 + 35 - 70 = -61"。 */
     fun getCandidate(): String? {
         if (!isActive()) return null
         val result = getResult()
         if (result.isEmpty()) return null
-        return "$leftOperand $operator_ $rightOperand = $result"
+        return "$fullExpression = $result"
     }
 
-    /** 清除所有状态 */
     fun clear() {
         leftOperand = ""
         operator_ = ""
         rightOperand = ""
+        fullExpression = ""
     }
 
-    /**
-     * 处理数字或小数点输入
-     * @return 计算器是否处于活跃状态（有候选结果）
-     */
     fun handleDigit(input: String): Boolean {
         if (operator_.isEmpty()) {
             if (input == ".") {
@@ -76,6 +61,7 @@ class CalculatorEngine {
             } else {
                 leftOperand += input
             }
+            fullExpression = "$leftOperand$operator_$rightOperand"
             return false
         } else {
             if (input == ".") {
@@ -85,41 +71,30 @@ class CalculatorEngine {
             } else {
                 rightOperand += input
             }
+            fullExpression = "$leftOperand$operator_$rightOperand"
             return true
         }
     }
 
-    /**
-     * 处理运算符输入 (+ - * /)
-     * 首次按运算符：保存并等待右操作数
-     * 已有结果时按运算符：结果作为新的左操作数继续计算
-     */
     fun handleOperator(op: String): Boolean {
         if (leftOperand.isEmpty()) return false
-
         if (isActive()) {
-            // 链式计算：直接用数值计算结果作为新左操作数（避免分数"10/3"无法参与后续运算）
             val numericResult = computeNumericResult()
             if (numericResult != null) {
                 leftOperand = numericResult
                 operator_ = op
                 rightOperand = ""
+                fullExpression = "$leftOperand$operator_$rightOperand"
                 return false
             }
         }
-
         operator_ = op
         rightOperand = ""
+        fullExpression = "$leftOperand$operator_$rightOperand"
         return false
     }
 
-    /**
-     * 链式计算时使用高精度数值结果，避免分数字符串无法参与后续运算。
-     */
-    /**
-     * 链式计算时使用高精度数值结果，避免分数字符串无法参与后续运算。
-     * 使用 15 位精度确保链式运算如 10/3*3 能正确得到 10。
-     */
+    /** 链式计算用 BigDecimal 高精度，保留完整精度供后续运算。 */
     private fun computeNumericResult(): String? {
         val l = leftOperand.toBigDecimalOrNull() ?: return null
         val r = rightOperand.toBigDecimalOrNull() ?: return null
@@ -134,16 +109,12 @@ class CalculatorEngine {
                 }
                 else -> return null
             }
-            formatBigDecimal(result.stripTrailingZeros())
+            result.stripTrailingZeros().toPlainString()
         } catch (_: Exception) {
             null
         }
     }
 
-    /**
-     * 处理退格
-     * @return 计算器是否仍处于活跃状态
-     */
     fun handleDelete(): Boolean {
         if (rightOperand.isNotEmpty()) {
             rightOperand = rightOperand.dropLast(1)
@@ -152,67 +123,68 @@ class CalculatorEngine {
         } else if (leftOperand.isNotEmpty()) {
             leftOperand = leftOperand.dropLast(1)
         }
+        fullExpression = "$leftOperand$operator_$rightOperand"
         return isActive()
     }
 
     /**
-     * 直接计算表达式，独立于内部状态机。
-     * 用于测试和外部直接调用。
-     *
-     * @param left 左操作数字符串，如 "10", "-5", "3.14"
-     * @param op 运算符 + - * /
-     * @param right 右操作数字符串
-     * @return 结果字符串，null 表示计算错误（格式错误、除零等）
+     * 二操作数计算。用 BigDecimal 保证精度（避免 0.3/0.1=2.999…）。
+     * 无限小数精确到 10 位显示。
      */
     fun calculate(left: String, op: String, right: String): String? {
         val l = left.toBigDecimalOrNull() ?: return null
         val r = right.toBigDecimalOrNull() ?: return null
         return try {
-            when (op) {
-                "+" -> formatBigDecimal(l + r)
-                "-" -> formatBigDecimal(l - r)
-                "*" -> formatBigDecimal(l * r)
+            val result = when (op) {
+                "+" -> l + r
+                "-" -> l - r
+                "*" -> l * r
                 "/" -> {
                     if (r.compareTo(BigDecimal.ZERO) == 0) return null
                     try {
-                        // 尝试精确除法
-                        formatBigDecimal(l.divide(r))
+                        l.divide(r)
                     } catch (_: ArithmeticException) {
-                        // 无限小数，以分数形式显示
-                        "$left/$right"
+                        l.divide(r, 10, RoundingMode.HALF_UP)
                     }
                 }
-                else -> null
+                else -> return null
             }
+            formatBigDecimal(result.stripTrailingZeros())
         } catch (_: Exception) {
             null
         }
     }
 
     /**
-     * 计算结果，返回格式化后的字符串。
-     * @return null 表示无法计算
+     * 完整表达式计算，支持混合运算、括号、优先级。
+     * 使用 exp4j 引擎，适合 `2+3*4`、`(10+5)/3`、`2^10` 等。
      */
+    fun evaluate(expression: String): String? {
+        // 过滤连续运算符等 exp4j 容忍但非法输入
+        if (expression.matches(Regex(".*[+\\-*/]{2,}.*")) &&
+            !expression.matches(Regex(".*[eE].*"))) return null
+        return try {
+            val raw = ExpressionBuilder(expression).build().evaluate()
+            if (raw.isInfinite() || raw.isNaN()) return null
+            // 四舍五入到 10 位消除浮点误差
+            val bd = BigDecimal(raw).setScale(10, RoundingMode.HALF_UP).stripTrailingZeros()
+            bd.toPlainString()
+        } catch (_: Exception) {
+            null
+        }
+    }
+
     private fun computeResult(): String? {
         if (leftOperand.isEmpty() || operator_.isEmpty() || rightOperand.isEmpty()) return null
         return calculate(leftOperand, operator_, rightOperand)
     }
 
-    /**
-     * 格式化 BigDecimal：
-     * - 限制最多 10 位小数，避免浮点运算的尾数误差
-     * - 接近整数的值（如 9.9999999999）四舍五入为整数
-     * - 整数去掉 ".0" 后缀
-     * - 去掉尾部多余零
-     */
+    /** 格式化：整数去 .0，小数最多 10 位。 */
     private fun formatBigDecimal(value: BigDecimal): String {
         val rounded = value.setScale(10, RoundingMode.HALF_UP)
-        // 检查是否接近整数（处理 9.9999999999 ≈ 10 等链式运算尾数问题）
-        val intPart = rounded.setScale(0, RoundingMode.HALF_UP)
-        if (rounded.subtract(intPart).abs() < BigDecimal("0.000000001")) {
-            return intPart.stripTrailingZeros().toPlainString()
+        if (rounded.scale() <= 0 || rounded.stripTrailingZeros().scale() <= 0) {
+            return rounded.setScale(0, RoundingMode.HALF_UP).toPlainString()
         }
-        val stripped = rounded.stripTrailingZeros()
-        return stripped.toPlainString()
+        return rounded.stripTrailingZeros().toPlainString()
     }
 }

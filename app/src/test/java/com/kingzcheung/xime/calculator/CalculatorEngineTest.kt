@@ -42,7 +42,7 @@ class CalculatorEngineTest {
         engine.handleOperator("+")
         engine.handleDigit("3")
         assertTrue(engine.isActive())
-        assertEquals("12 + 3 = 15", engine.getCandidate())
+        assertEquals("12+3 = 15", engine.getCandidate())
         assertEquals("15", engine.getResult())
     }
 
@@ -55,7 +55,7 @@ class CalculatorEngineTest {
         engine.handleDigit("3")
         engine.handleDigit("5")
         assertTrue(engine.isActive())
-        assertEquals("12 + 35 = 47", engine.getCandidate())
+        assertEquals("12+35 = 47", engine.getCandidate())
         assertEquals("47", engine.getResult())
     }
 
@@ -65,11 +65,11 @@ class CalculatorEngineTest {
         engine.handleDigit("2")
         engine.handleOperator("+")
         engine.handleDigit("3")
-        assertEquals("2 + 3 = 5", engine.getCandidate())
+        assertEquals("2+3 = 5", engine.getCandidate())
 
         engine.handleOperator("*")
         engine.handleDigit("4")
-        assertEquals("5 * 4 = 20", engine.getCandidate())
+        assertEquals("5*4 = 20", engine.getCandidate())
         assertEquals("20", engine.getResult())
     }
 
@@ -81,10 +81,10 @@ class CalculatorEngineTest {
         engine.handleOperator("+")
         engine.handleDigit("5")
         engine.handleDigit("5")
-        assertEquals("10 + 55 = 65", engine.getCandidate())
+        assertEquals("10+55 = 65", engine.getCandidate())
 
         engine.handleDelete()
-        assertEquals("10 + 5 = 15", engine.getCandidate())
+        assertEquals("10+5 = 15", engine.getCandidate())
 
         engine.handleDelete()
         assertNull(engine.getCandidate())
@@ -148,7 +148,7 @@ class CalculatorEngineTest {
         engine.handleDigit("5")
         engine.handleOperator("*")
         engine.handleDigit("2")
-        assertEquals("1.5 * 2 = 3", engine.getCandidate())
+        assertEquals("1.5*2 = 3", engine.getCandidate())
         assertEquals("3", engine.getResult())
     }
 
@@ -168,8 +168,8 @@ class CalculatorEngineTest {
         engine.handleOperator("/")
         engine.handleDigit("3")
         assertTrue(engine.isActive())
-        assertEquals("10 / 3 = 10/3", engine.getCandidate())
-        assertEquals("10/3", engine.getResult())
+        assertEquals("10/3 = 3.3333333333", engine.getCandidate())
+        assertEquals("3.3333333333", engine.getResult())
     }
 
     @Test
@@ -356,7 +356,7 @@ class CalculatorEngineTest {
     @Test
     fun `除法 0除以0报错`() = assertNull(CalculatorEngine().calculate("0", "/", "0"))
     @Test
-    fun `除法 10除以3得10除以3`() = assertCalculate("10", "/", "3", "10/3")
+    fun `除法 10除以3得10除以3`() = assertCalculate("10", "/", "3", "3.3333333333")
     @Test
     fun `除法 1除以4得0_25`() = assertCalculate("1", "/", "4", "0.25")
     @Test
@@ -370,19 +370,19 @@ class CalculatorEngineTest {
     @Test
     fun `除法 9_99除以3_33得3`() = assertCalculate("9.99", "/", "3.33", "3")
     @Test
-    fun `除法 22除以7得22除以7`() = assertCalculate("22", "/", "7", "22/7")
+    fun `除法 22除以7得22除以7`() = assertCalculate("22", "/", "7", "3.1428571429")
     @Test
     fun `除法 12345除以5得2469`() = assertCalculate("12345", "/", "5", "2469")
     @Test
-    fun `除法 100除以3得100除以3`() = assertCalculate("100", "/", "3", "100/3")
+    fun `除法 100除以3得100除以3`() = assertCalculate("100", "/", "3", "33.3333333333")
     @Test
     fun `除法 0_005除以0_002得2_5`() = assertCalculate("0.005", "/", "0.002", "2.5")
     @Test
     fun `除法 -0_004除以0_002得-2`() = assertCalculate("-0.004", "/", "0.002", "-2")
     @Test
-    fun `除法 1除以3得1除以3`() = assertCalculate("1", "/", "3", "1/3")
+    fun `除法 1除以3得1除以3`() = assertCalculate("1", "/", "3", "0.3333333333")
     @Test
-    fun `除法 -1除以3得-1除以3`() = assertCalculate("-1", "/", "3", "-1/3")
+    fun `除法 -1除以3得-1除以3`() = assertCalculate("-1", "/", "3", "-0.3333333333")
     @Test
     fun `除法 2除以0_5得4`() = assertCalculate("2", "/", "0.5", "4")
     @Test
@@ -415,12 +415,12 @@ class CalculatorEngineTest {
     // ===================== 候选栏显示格式测试 =====================
 
     @Test
-    fun `候选栏显示分数`() {
+    fun `候选栏显示小数结果`() {
         val engine = CalculatorEngine()
         engine.handleDigit("1")
         engine.handleOperator("/")
         engine.handleDigit("3")
-        assertEquals("1 / 3 = 1/3", engine.getCandidate())
+        assertEquals("1/3 = 0.3333333333", engine.getCandidate())
     }
 
     @Test
@@ -429,16 +429,16 @@ class CalculatorEngineTest {
         engine.handleDigit("6")
         engine.handleOperator("/")
         engine.handleDigit("2")
-        assertEquals("6 / 2 = 3", engine.getCandidate())
+        assertEquals("6/2 = 3", engine.getCandidate())
     }
 
     @Test
-    fun `候选栏显示小数结果`() {
+    fun `候选栏显示小数结果 7除以2`() {
         val engine = CalculatorEngine()
         engine.handleDigit("7")
         engine.handleOperator("/")
         engine.handleDigit("2")
-        assertEquals("7 / 2 = 3.5", engine.getCandidate())
+        assertEquals("7/2 = 3.5", engine.getCandidate())
     }
 
     // ===================== 链式计算测试 =====================
@@ -449,11 +449,11 @@ class CalculatorEngineTest {
         engine.handleDigit("5")
         engine.handleOperator("+")
         engine.handleDigit("3")
-        assertEquals("5 + 3 = 8", engine.getCandidate())
+        assertEquals("5+3 = 8", engine.getCandidate())
 
         engine.handleOperator("*")
         engine.handleDigit("2")
-        assertEquals("8 * 2 = 16", engine.getCandidate())
+        assertEquals("8*2 = 16", engine.getCandidate())
         assertEquals("16", engine.getResult())
     }
 
@@ -464,24 +464,54 @@ class CalculatorEngineTest {
         engine.handleDigit("0")
         engine.handleOperator("/")
         engine.handleDigit("3")
-        assertEquals("10 / 3 = 10/3", engine.getCandidate())
+        assertEquals("10/3 = 3.3333333333", engine.getCandidate())
 
-        // 链式计算时，左操作数变为数值（高精度3.3333333333），而非分数字符串
         engine.handleOperator("*")
         engine.handleDigit("3")
-        val candidate = engine.getCandidate()
-        assertNotNull(candidate)
-        // 结果应为 10
         assertEquals("10", engine.getResult())
-        // 候选格式可能为 "3.3333333333 * 3 = 10"
-        assertTrue("候选应包含 * 3 = 10，实际: $candidate", candidate!!.endsWith(" * 3 = 10"))
+        assertNotNull(engine.getCandidate())
+        assertTrue("候选应包含 *3 = 10，实际: ${engine.getCandidate()}",
+            engine.getCandidate()!!.endsWith("*3 = 10"))
     }
+
+    // ===================== evaluate() 混合运算测试 =====================
+
+    @Test
+    fun `evaluate 加减法 2+3_5`() = assertEvaluate("2+3.5", "5.5")
+    @Test
+    fun `evaluate 乘除优先级 2+3*4=14`() = assertEvaluate("2+3*4", "14")
+    @Test
+    fun `evaluate 括号 (2+3)*4=20`() = assertEvaluate("(2+3)*4", "20")
+    @Test
+    fun `evaluate 混合运算 10-3*2=4`() = assertEvaluate("10-3*2", "4")
+    @Test
+    fun `evaluate 幂运算 2^10=1024`() = assertEvaluate("2^10", "1024")
+    @Test
+    fun `evaluate 多层括号 ((2+3)*2)^2=100`() = assertEvaluate("((2+3)*2)^2", "100")
+    @Test
+    fun `evaluate 小数 0_1+0_2=0_3`() = assertEvaluate("0.1+0.2", "0.3")
+    @Test
+    fun `evaluate 除法 10除以3 得小数`() = assertEvaluate("10/3", "3.3333333333")
+    @Test
+    fun `evaluate 除零返回null`() = assertNull(CalculatorEngine().evaluate("5/0"))
+    @Test
+    fun `evaluate 无效表达式返回null`() = assertNull(CalculatorEngine().evaluate("2++++3"))
+    @Test
+    fun `evaluate 负数 -5+3=-2`() = assertEvaluate("-5+3", "-2")
+    @Test
+    fun `evaluate 连续运算 1+2+3+4=10`() = assertEvaluate("1+2+3+4", "10")
 
     // ===================== 辅助方法 =====================
 
     private fun assertCalculate(left: String, op: String, right: String, expected: String) {
         val result = CalculatorEngine().calculate(left, op, right)
         assertEquals("calculate(\"$left\", \"$op\", \"$right\") 应返回 \"$expected\"",
+            expected, result)
+    }
+
+    private fun assertEvaluate(expression: String, expected: String) {
+        val result = CalculatorEngine().evaluate(expression)
+        assertEquals("evaluate(\"$expression\") 应返回 \"$expected\"",
             expected, result)
     }
 }
