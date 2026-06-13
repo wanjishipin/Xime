@@ -221,6 +221,7 @@ fun KeyboardView(
                         ToolbarButton.CLIPBOARD -> ({ currentRoute = KeyboardRoute.Clipboard(0) })
                         ToolbarButton.SCHEMA -> ({ currentRoute = KeyboardRoute.SchemaList })
                         ToolbarButton.QUICK_PHRASE -> ({ currentRoute = KeyboardRoute.Clipboard(1) })
+                        ToolbarButton.SYMBOL -> ({ currentRoute = KeyboardRoute.Symbol })
                     }
                     ToolbarAction(button, onClick)
                 }
