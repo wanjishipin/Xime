@@ -368,16 +368,19 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             // 因为 nativeCreateSession 后 schema 的 processor/translator 等
                             // 可能未完全初始化，switchSchema 会触发完整的初始化流程
                             Log.d(TAG, "initRimeEngine: Switching to saved schema: $savedSchema")
+                            applyPageSizeSetting(savedSchema)
                             rimeEngine.switchSchema(savedSchema)
                         }
                         SchemaManager.isSchemaCompiled(this@XimeInputMethodService, savedSchema) -> {
                             Log.d(TAG, "initRimeEngine: Schema compiled but not in get_schema_list, switching anyway")
+                            applyPageSizeSetting(savedSchema)
                             rimeEngine.switchSchema(savedSchema)
                         }
                         availableSchemas.isNotEmpty() -> {
                             // savedSchema 不可用且未编译，退而求其次用第一个可用方案
                             val fallbackSchema = availableSchemas.first()
                             Log.d(TAG, "initRimeEngine: savedSchema '$savedSchema' not available, falling back to '$fallbackSchema'")
+                            applyPageSizeSetting(fallbackSchema)
                             rimeEngine.switchSchema(fallbackSchema)
                             SettingsPreferences.setCurrentSchema(this@XimeInputMethodService, fallbackSchema)
                         }
@@ -906,27 +909,36 @@ onVoiceModeChange = { enabled ->
             val availableSchemas = rimeEngine.getAvailableSchemas()
             Log.d(TAG, "onStartInput: saved=$savedSchema, current=$currentSchema, available=${availableSchemas.joinToString()}")
             
+            val actualSchema: String
             when {
                 savedSchema in availableSchemas -> {
                     if (savedSchema != currentSchema) {
                         Log.d(TAG, "onStartInput: Switching to saved schema: $savedSchema")
+                        applyPageSizeSetting(savedSchema)
                         rimeEngine.switchSchema(savedSchema)
                     } else {
                         // 即使 schema 相同也重新 switch 一下，确保 processor 完全初始化
                         Log.d(TAG, "onStartInput: Schema already matches, re-switching to init processors")
+                        applyPageSizeSetting(savedSchema)
                         rimeEngine.switchSchema(savedSchema)
                     }
+                    actualSchema = savedSchema
                 }
                 SchemaManager.isSchemaCompiled(this@XimeInputMethodService, savedSchema) -> {
                     Log.d(TAG, "onStartInput: Schema compiled but not in get_schema_list, switching anyway")
+                    applyPageSizeSetting(savedSchema)
                     rimeEngine.switchSchema(savedSchema)
+                    actualSchema = savedSchema
                 }
                 availableSchemas.isNotEmpty() -> {
                     val fallbackSchema = availableSchemas.first()
                     Log.d(TAG, "onStartInput: savedSchema '$savedSchema' not available, falling back to '$fallbackSchema'")
+                    applyPageSizeSetting(fallbackSchema)
                     rimeEngine.switchSchema(fallbackSchema)
                     SettingsPreferences.setCurrentSchema(this, fallbackSchema)
+                    actualSchema = fallbackSchema
                 }
+                else -> actualSchema = savedSchema
             }
             updateSchemaName()
         }
@@ -1715,6 +1727,8 @@ onVoiceModeChange = { enabled ->
                 val savedSchema = SettingsPreferences.getCurrentSchema(this@XimeInputMethodService)
                 Log.d(TAG, "Saved schema: $savedSchema")
                 if (savedSchema in availableSchemas) {
+                    // 部署完成后写 custom.yaml，switchSchema 会运行时加载
+                    applyPageSizeSetting(savedSchema)
                     val switchResult = rimeEngine.switchSchema(savedSchema)
                     Log.d(TAG, "Switch schema result: $switchResult")
                 } else {
@@ -1738,6 +1752,7 @@ onVoiceModeChange = { enabled ->
         try {
             rimeEngine.deploy()
             val savedSchema = SettingsPreferences.getCurrentSchema(this)
+            applyPageSizeSetting(savedSchema)
             rimeEngine.switchSchema(savedSchema)
             updateUI()
             Log.d(TAG, "Schema deployed successfully")
@@ -1757,10 +1772,32 @@ onVoiceModeChange = { enabled ->
         }
     }
     
+    private fun applyPageSizeSetting(schemaId: String) {
+        val userPageSize = SettingsPreferences.getPageSize(this)
+        val customFile = File(filesDir, "rime/${schemaId}.custom.yaml")
+        if (userPageSize > 0) {
+            val yaml = "patch:\n  menu/page_size: $userPageSize\n"
+            try {
+                customFile.parentFile?.mkdirs()
+                customFile.writeText(yaml)
+                Log.d(TAG, "Written ${customFile.path} with page_size=$userPageSize")
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to write custom yaml", e)
+            }
+        } else {
+            if (customFile.exists()) {
+                customFile.delete()
+                Log.d(TAG, "Removed ${customFile.path} to revert to schema default")
+            }
+        }
+    }
+
     private fun switchSchema(schemaId: String) {
         Log.d(TAG, "Switching schema to: $schemaId")
         try {
             SettingsPreferences.setCurrentSchema(this, schemaId)
+            // 用户自定义候选词数：先写 custom.yaml 再切方案，Rime 会自动加载
+            applyPageSizeSetting(schemaId)
             rimeEngine.switchSchema(schemaId)
             updateSchemaName()
             updateUI()

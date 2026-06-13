@@ -66,6 +66,8 @@ object SettingsPreferences {
     private const val KEY_INSTALLED_MARKET_IDS = "installed_market_ids"
     private const val KEY_COMPACT_MODE = "compact_mode"
     private const val KEY_SHOW_CANDIDATE_COMMENTS = "show_candidate_comments"
+    private const val KEY_PAGE_SIZE = "page_size"
+    const val DEFAULT_PAGE_SIZE = 0 // 0 表示使用 Rime schema 默认值
 
     fun isCompactModeEnabled(context: Context): Boolean {
         return getPrefs(context).getBoolean(KEY_COMPACT_MODE, true)
@@ -352,6 +354,14 @@ object SettingsPreferences {
 
     fun setSchemaImportWarningDismissed(context: Context, dismissed: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_SCHEMA_IMPORT_WARNING_DISMISSED, dismissed).apply()
+    }
+
+    fun getPageSize(context: Context): Int {
+        return getPrefs(context).getInt(KEY_PAGE_SIZE, DEFAULT_PAGE_SIZE)
+    }
+
+    fun setPageSize(context: Context, pageSize: Int) {
+        getPrefs(context).edit().putInt(KEY_PAGE_SIZE, pageSize).apply()
     }
 
     // ── 方案市场「已安装」的持久记录 ──

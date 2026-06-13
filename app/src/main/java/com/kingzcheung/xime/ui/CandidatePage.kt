@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -120,7 +122,7 @@ fun CandidatePage(
                         .size(28.dp)
                         .clip(CircleShape)
                         .background(
-                            if (hasNextPage && onPageDown != null) textColor.copy(alpha = 0.5f)
+                            if (hasNextPage && onPageDown != null) textColor.copy(alpha = 0.25f)
                             else textColor.copy(alpha = 0.1f)
                         )
                         .clickable(
@@ -162,7 +164,11 @@ fun CandidatePage(
                 .padding(horizontal = 8.dp)
         ) { page ->
             if (page == centerPage) {
-                Column {
+                Column(
+                    modifier = Modifier
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 40.dp)
+                ) {
                     if (candidates.isNotEmpty()) {
                         FlowRow(
                             modifier = Modifier.fillMaxWidth(),

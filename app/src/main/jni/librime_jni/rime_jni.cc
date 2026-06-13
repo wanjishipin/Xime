@@ -561,6 +561,23 @@ public:
         }
     }
 
+    void setPageSize(const char* schema_id, int page_size) {
+        if (!rime) {
+            LOGE("setPageSize: rime not available");
+            return;
+        }
+        RimeConfig config;
+        if (rime->config_open("user", &config)) {
+            char path[256];
+            snprintf(path, sizeof(path), "patch/%s/menu/page_size", schema_id);
+            rime->config_set_int(&config, path, page_size);
+            LOGI("Set page_size=%d for schema '%s' at path '%s'", page_size, schema_id, path);
+            rime->config_close(&config);
+        } else {
+            LOGE("setPageSize: failed to open user config");
+        }
+    }
+
     void destroy() {
         if (rime) {
             if (session_id_) {
@@ -965,6 +982,20 @@ Java_com_kingzcheung_xime_rime_RimeEngine_nativeLookupText(
         return env->NewStringUTF(code.c_str());
     }
     return env->NewStringUTF("");
+}
+
+// 设置候选词每页数量
+JNIEXPORT void JNICALL
+Java_com_kingzcheung_xime_rime_RimeEngine_nativeSetPageSize(
+    JNIEnv* env,
+    jobject thiz,
+    jstring schema_id,
+    jint page_size
+) {
+    const char* schema = env->GetStringUTFChars(schema_id, nullptr);
+    if (!schema) return;
+    Rime::Instance().setPageSize(schema, page_size);
+    env->ReleaseStringUTFChars(schema_id, schema);
 }
 
 // 检查 Rime 模块是否已注册（用于测试插件集成）
