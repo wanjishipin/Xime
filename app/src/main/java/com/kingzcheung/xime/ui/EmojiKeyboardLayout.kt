@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -180,11 +181,28 @@ fun EmojiKeyboardLayout(
     val pluginCategories = allCategories.filter { it.isPlugin }
     val builtinCategories = allCategories.filter { !it.isPlugin }
 
+    // 按 pluginId 分组插件子分类（用于顶层 tab 和底部子分类 tab）
+    val pluginGroupEntries = remember(pluginCategories) {
+        pluginCategories.groupBy { it.pluginId ?: it.name }.entries.toList()
+    }
+
+    // 当前顶层 tab 对应的子分类列表
+    val currentSubCategories = if (selectedTopTabIndex == 0) {
+        builtinCategories
+    } else {
+        val groupIdx = selectedTopTabIndex - 1
+        if (groupIdx < pluginGroupEntries.size) pluginGroupEntries[groupIdx].value
+        else emptyList()
+    }
+
     // 所有页面的扁平索引（用于动画过渡）
     val currentPageIndex = if (selectedTopTabIndex == 0) {
         selectedSubCategoryIndex.coerceIn(0, maxOf(0, builtinCategories.lastIndex))
     } else {
-        builtinCategories.size + (selectedTopTabIndex - 1).coerceIn(0, maxOf(0, pluginCategories.lastIndex))
+        val groupIdx = selectedTopTabIndex - 1
+        val startPage = builtinCategories.size + pluginGroupEntries.take(groupIdx).sumOf { it.value.size }
+        val groupSize = if (groupIdx < pluginGroupEntries.size) pluginGroupEntries[groupIdx].value.lastIndex else 0
+        startPage + selectedSubCategoryIndex.coerceIn(0, maxOf(0, groupSize))
     }
     val totalPages = builtinCategories.size + pluginCategories.size
 
@@ -193,15 +211,17 @@ fun EmojiKeyboardLayout(
         configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val emojiColumns = if (isLandscape) 15 else 8
 
-    // 当前显示的类别：Emoji tab 取子分类，插件 tab 取自身
+    // 当前显示的类别
     val currentCategory =
         if (selectedTopTabIndex == 0) {
             if (builtinCategories.isNotEmpty()) builtinCategories[selectedSubCategoryIndex.coerceIn(0, builtinCategories.lastIndex)]
             else EmojiData.categories.first()
         } else {
-            val idx = selectedTopTabIndex - 1
-            if (pluginCategories.isNotEmpty()) pluginCategories[idx.coerceIn(0, pluginCategories.lastIndex)]
-            else EmojiData.categories.first()
+            val groupIdx = selectedTopTabIndex - 1
+            if (pluginGroupEntries.isNotEmpty() && groupIdx < pluginGroupEntries.size) {
+                val subCats = pluginGroupEntries[groupIdx].value
+                subCats[selectedSubCategoryIndex.coerceIn(0, subCats.lastIndex)]
+            } else EmojiData.categories.first()
         }
 
     Column(
@@ -258,7 +278,7 @@ fun EmojiKeyboardLayout(
                                 .fillMaxHeight()
                                 .clip(RoundedCornerShape(11.dp))
                                 .background(
-                                    if (selectedTopTabIndex == 0) accentColor
+                                    if (selectedTopTabIndex == 0) accentColor.copy(0.4f)
                                     else Color.Transparent
                                 )
                                 .clickable {
@@ -274,14 +294,16 @@ fun EmojiKeyboardLayout(
                             )
                         }
 
-                        // 插件 Tab
-                        pluginCategories.forEachIndexed { index, category ->
+                        // 插件 Tab（按 pluginId 分组，每插件一个顶层 tab）
+                        pluginGroupEntries.forEachIndexed { index, (_, subCats) ->
+                            val firstCat = subCats.first()
+                            val pluginIcon = firstCat.pluginIcon
                             Box(
                                 modifier = Modifier
                                     .fillMaxHeight()
                                     .clip(RoundedCornerShape(11.dp))
                                     .background(
-                                        if (selectedTopTabIndex == index + 1) accentColor
+                                        if (selectedTopTabIndex == index + 1) accentColor.copy(0.4f)
                                         else Color.Transparent
                                     )
                                     .clickable {
@@ -291,10 +313,24 @@ fun EmojiKeyboardLayout(
                                     .padding(horizontal = 10.dp),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Text(
-                                    text = category.icon,
-                                    fontSize = 14.sp
-                                )
+                                if (pluginIcon?.assetName != null) {
+                                    AsyncImage(
+                                        model = ImageRequest.Builder(context)
+                                            .data(pluginIcon.assetName)
+                                            .crossfade(true)
+                                            .build(),
+                                        contentDescription = firstCat.name,
+                                        modifier = Modifier
+                                            .fillMaxHeight()
+                                            .padding(2.dp),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                } else {
+                                    Text(
+                                        text = pluginIcon?.text ?: firstCat.icon,
+                                        fontSize = 14.sp
+                                    )
+                                }
                             }
                         }
                     }
@@ -320,8 +356,16 @@ fun EmojiKeyboardLayout(
                     selectedTopTabIndex = 0
                     selectedSubCategoryIndex = page
                 } else {
-                    selectedTopTabIndex = page - builtinCategories.size + 1
-                    selectedSubCategoryIndex = 0
+                    // 找到该 page 属于哪个插件组的哪个子分类
+                    var remaining = page - builtinCategories.size
+                    for ((groupIdx, entry) in pluginGroupEntries.withIndex()) {
+                        if (remaining < entry.value.size) {
+                            selectedTopTabIndex = groupIdx + 1
+                            selectedSubCategoryIndex = remaining
+                            break
+                        }
+                        remaining -= entry.value.size
+                    }
                 }
             }
         }
@@ -437,25 +481,39 @@ fun EmojiKeyboardLayout(
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (selectedTopTabIndex == 0 && builtinCategories.isNotEmpty()) {
-                // Emoji tab：显示内置子分类
+            if (currentSubCategories.isNotEmpty()) {
+                // 显示当前顶层 tab 的子分类
                 Row(
                     modifier = Modifier
                         .weight(1f)
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    builtinCategories.forEachIndexed { index, category ->
-                        EmojiCategoryTab(
-                            icon = category.icon,
-                            pluginIcon = category.pluginIcon,
-                            isSelected = index == selectedSubCategoryIndex,
-                            onClick = { selectedSubCategoryIndex = index },
-                            backgroundColor = backgroundColor,
-                            textColor = textColor,
-                            selectedBackgroundColor = accentColor,
-                            modifier = Modifier.width(36.dp)
-                        )
+                    currentSubCategories.forEachIndexed { index, category ->
+                        if (category.isPlugin) {
+                            // 插件子分类：显示分类名，不用 pluginIcon（那是插件级图标）
+                            EmojiCategoryTab(
+                                icon = category.name,
+                                pluginIcon = null,
+                                isSelected = index == selectedSubCategoryIndex,
+                                onClick = { selectedSubCategoryIndex = index },
+                                backgroundColor = backgroundColor,
+                                textColor = textColor,
+                                selectedBackgroundColor = accentColor,
+                                modifier = Modifier.widthIn(min = 36.dp)
+                            )
+                        } else {
+                            EmojiCategoryTab(
+                                icon = category.icon,
+                                pluginIcon = category.pluginIcon,
+                                isSelected = index == selectedSubCategoryIndex,
+                                onClick = { selectedSubCategoryIndex = index },
+                                backgroundColor = backgroundColor,
+                                textColor = textColor,
+                                selectedBackgroundColor = accentColor,
+                                modifier = Modifier.width(36.dp)
+                            )
+                        }
                     }
                 }
             } else {
@@ -493,11 +551,13 @@ fun EmojiCategoryTab(
     Box(
         modifier = modifier
             .height(30.dp)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(15.dp))
+
             .background(
-                if (isSelected) selectedBackgroundColor
+                if (isSelected) selectedBackgroundColor.copy(0.4f)
                 else backgroundColor
             )
+            .padding(horizontal = 5.dp)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {

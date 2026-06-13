@@ -130,28 +130,49 @@ object ExtensionManager {
             emojiPlugins.forEach { (pluginId, plugin) ->
                 val pluginInfo = getAllInstalledPlugins().firstOrNull { it.id == pluginId }
                 try {
-                    val emojiItems = plugin.getEmojis(category = null, searchText = null, topK = 100)
-                    if (emojiItems.isNotEmpty()) {
-                        val layoutConfig = try {
-                            plugin.getCategoryLayoutConfig(emojiItems.firstOrNull()?.category ?: "")
-                        } catch (e: Exception) {
-                            Log.w(TAG, "getCategoryLayoutConfig not supported by ${pluginInfo?.name}")
-                            null
-                        }
-                        val pluginIcon = extractPluginIcon(context, pluginId, plugin, pluginInfo)
-                        pluginCategories.add(
-                            EmojiCategory(
-                                name = pluginInfo?.name ?: "表情",
-                                icon = "🎭",
-                                pluginIcon = pluginIcon,
-                                emojis = emptyList(),
-                                isPlugin = true,
-                                pluginId = pluginId,
-                                emojiItems = emojiItems,
-                                layoutConfig = layoutConfig
-                            )
+                    val subCategoryNames = try {
+                        plugin.getCategories()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "getCategories not supported by ${pluginInfo?.name}")
+                        listOf(pluginInfo?.name ?: "表情")
+                    }
+
+                    if (subCategoryNames.isEmpty()) {
+                        Log.w(TAG, "No categories from ${pluginInfo?.name}, skipping")
+                        return@forEach
+                    }
+
+                    val pluginIcon = extractPluginIcon(context, pluginId, plugin, pluginInfo)
+
+                    for (subCatName in subCategoryNames) {
+                        val emojiItems = plugin.getEmojis(
+                            category = subCatName,
+                            searchText = null,
+                            topK = 100
                         )
-                        Log.d(TAG, "Preloaded ${emojiItems.size} from ${pluginInfo?.name}")
+                        if (emojiItems.isNotEmpty()) {
+                            val layoutConfig = try {
+                                plugin.getCategoryLayoutConfig(subCatName)
+                            } catch (e: Exception) {
+                                Log.w(TAG, "getCategoryLayoutConfig not supported by ${pluginInfo?.name}/$subCatName")
+                                null
+                            }
+                            pluginCategories.add(
+                                EmojiCategory(
+                                    name = subCatName,
+                                    icon = "🎭",
+                                    pluginIcon = pluginIcon,
+                                    emojis = emptyList(),
+                                    isPlugin = true,
+                                    pluginId = pluginId,
+                                    emojiItems = emojiItems,
+                                    layoutConfig = layoutConfig
+                                )
+                            )
+                            Log.d(TAG, "Preloaded ${emojiItems.size} from ${pluginInfo?.name}/$subCatName")
+                        } else {
+                            Log.d(TAG, "No emoji items for ${pluginInfo?.name}/$subCatName")
+                        }
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "Error preloading from ${pluginInfo?.name}", e)
