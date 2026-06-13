@@ -1,21 +1,12 @@
 package com.kingzcheung.xime.keyboard
 
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.EmojiEmotions
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.Quickreply
 import androidx.compose.material.icons.twotone.ContentPaste
 import androidx.compose.material.icons.twotone.EmojiEmotions
-import androidx.compose.material.icons.twotone.EuroSymbol
-import androidx.compose.material.icons.twotone.Keyboard
 import androidx.compose.material.icons.twotone.KeyboardAlt
-import androidx.compose.material.icons.twotone.MonetizationOn
 import androidx.compose.material.icons.twotone.Paid
-import androidx.compose.material.icons.twotone.PriceChange
 import androidx.compose.material.icons.twotone.Quickreply
-import androidx.compose.material.icons.twotone.Star
+import androidx.compose.ui.graphics.vector.ImageVector
 
 enum class ToolbarButton(
     val id: String,
