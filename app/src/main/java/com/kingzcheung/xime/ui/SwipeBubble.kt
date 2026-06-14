@@ -28,7 +28,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.DrawScope
+
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalContext
@@ -123,28 +123,11 @@ private fun buildInvertedConvexPath(
  * 自定义 Shape，使 Modifier.shadow() 能沿倒"凸"轮廓投射阴影
  */
 private class InvertedConvexShape(
-    private val builder: (Size) -> Path
+    private val path: Path
 ) : Shape {
     override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
-        return Outline.Generic(builder(size))
+        return Outline.Generic(path)
     }
-}
-
-/** 绘制倒"凸"字形气泡 */
-private fun DrawScope.drawInvertedConvexShape(
-    bodyLeft: Float, bodyWidth: Float, bodyHeight: Float,
-    pointerLeft: Float, pointerWidth: Float, pointerHeight: Float,
-    cornerRadius: Float, color: Color,
-    isLeftFlush: Boolean = false,
-    isRightFlush: Boolean = false
-) {
-    val path = buildInvertedConvexPath(
-        bodyLeft, bodyWidth, bodyHeight,
-        pointerLeft, pointerWidth, pointerHeight,
-        cornerRadius,
-        isLeftFlush, isRightFlush
-    )
-    drawPath(path, color)
 }
 
 @Composable
@@ -226,18 +209,17 @@ fun SwipeBubble(
     val boxWidthDp = with(density) { boxWidth.toDp() }
     val totalHeightDp = with(density) { totalHeightPx.toDp() }
 
-    val bubbleShape = remember(bodyLeftInBox, bodyWidth, bodyHeightPx,
+    val cachedPath = remember(bodyLeftInBox, bodyWidth, bodyHeightPx,
         pointerLeftInBox, keyWidthPx, pointerHeightPx, cornerRadiusPx,
         isLeftFlush, isRightFlush) {
-        InvertedConvexShape { _ ->
-            buildInvertedConvexPath(
-                bodyLeft = bodyLeftInBox, bodyWidth = bodyWidth, bodyHeight = bodyHeightPx,
-                pointerLeft = pointerLeftInBox, pointerWidth = keyWidthPx,
-                pointerHeight = pointerHeightPx, cornerRadius = cornerRadiusPx,
-                isLeftFlush = isLeftFlush, isRightFlush = isRightFlush
-            )
-        }
+        buildInvertedConvexPath(
+            bodyLeft = bodyLeftInBox, bodyWidth = bodyWidth, bodyHeight = bodyHeightPx,
+            pointerLeft = pointerLeftInBox, pointerWidth = keyWidthPx,
+            pointerHeight = pointerHeightPx, cornerRadius = cornerRadiusPx,
+            isLeftFlush = isLeftFlush, isRightFlush = isRightFlush
+        )
     }
+    val bubbleShape = remember(cachedPath) { InvertedConvexShape(cachedPath) }
 
     val chaiFontFamily = remember {
         FontFamily(
@@ -254,14 +236,7 @@ fun SwipeBubble(
             .height(totalHeightDp)
             .shadow(10.dp, shape = bubbleShape, clip = false,
                 ambientColor = Color(0x88000000), spotColor = Color(0x88000000))
-            .drawBehind {
-                drawInvertedConvexShape(
-                    bodyLeft = bodyLeftInBox, bodyWidth = bodyWidth, bodyHeight = bodyHeightPx,
-                    pointerLeft = pointerLeftInBox, pointerWidth = keyWidthPx,
-                    pointerHeight = pointerHeightPx, cornerRadius = cornerRadiusPx,
-                    color = bgColor, isLeftFlush = isLeftFlush, isRightFlush = isRightFlush
-                )
-            }
+            .drawBehind { drawPath(cachedPath, bgColor) }
     ) {
         Box(
             modifier = Modifier

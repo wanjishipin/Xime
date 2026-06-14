@@ -42,7 +42,6 @@ engine:
     - script_translator
     - reverse_lookup_translator
     - lua_translator@*uuid
-    - lua_translator@*date_translator
 
 speller:
   alphabet: zyxwvutsrqponmlkjihgfedcba

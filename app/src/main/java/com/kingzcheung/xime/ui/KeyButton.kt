@@ -122,13 +122,6 @@ fun KeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(shadowModifier)
-            .clip(shadowShape)
-            .background(
-                if (isPressed) darkenColor(backgroundColor, 0.2f)
-                else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
-                else backgroundColor
-            )
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = {
@@ -239,7 +232,17 @@ fun KeyButton(
                         }
                     )
                 }
-            },
+            }
+            .padding(horizontal = 2.dp, vertical = 3.dp)
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .then(shadowModifier)
+            .clip(shadowShape)
+            .background(
+                if (isPressed) darkenColor(backgroundColor, 0.2f)
+                else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
+                else backgroundColor
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -326,16 +329,6 @@ fun SwipeableKeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(shadowModifier)
-            .onGloballyPositioned { coordinates ->
-                buttonBounds = coordinates.boundsInRoot()
-            }
-            .clip(shadowShape)
-            .background(
-                if (isPressed) backgroundColor.copy(alpha = 0.7f)
-                else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
-                else backgroundColor
-            )
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDragStart = {
@@ -414,7 +407,7 @@ fun SwipeableKeyButton(
             }
             .pointerInput(currentLongPressItems) {
                 if (currentLongPressItems.isNullOrEmpty()) {
-                    // 无长按选项时使用简单点击检�?
+                    // 无长按选项时使用简单点击检测
                     detectTapGestures(
                         onPress = {
                             isPressed = true
@@ -473,7 +466,6 @@ fun SwipeableKeyButton(
                             
                             if (change.isConsumed) continue
                             
-                            // 长按触发前检测到任何方向滑动则取消长�?
                             if (!localLongPressTriggered) {
                                 val deltaX = change.position.x - downX
                                 val deltaY = change.position.y - downY
@@ -508,7 +500,7 @@ fun SwipeableKeyButton(
                             if (event.type == androidx.compose.ui.input.pointer.PointerEventType.Release) {
                                 completed = true
                                 if (localLongPressTriggered) {
-                                    // 长按选择后抬�?�?上屏选中�?
+                                    // 长按选择后抬起：上屏选中项
                                     val selected = items.getOrNull(selectedIdx)
                                     if (selected != null) {
                                         currentOnLongPressSelect?.invoke(selected)
@@ -524,7 +516,20 @@ fun SwipeableKeyButton(
                         currentOnSwipeStateChange?.invoke(SwipeState(), buttonBounds)
                     }
                 }
-            },
+            }
+            .padding(horizontal = 2.dp, vertical = 3.dp)
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .then(shadowModifier)
+            .onGloballyPositioned { coordinates ->
+                buttonBounds = coordinates.boundsInRoot()
+            }
+            .clip(shadowShape)
+            .background(
+                if (isPressed) backgroundColor.copy(alpha = 0.7f)
+                else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
+                else backgroundColor
+            ),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -581,14 +586,15 @@ fun KeyboardRow(
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         keys.forEachIndexed { index, key ->
             val swipeText = swipeKeys?.getOrNull(index)
             val swipeDownText = swipeDownKeys?.getOrNull(index)
+            val rowOnClick = remember(key, onKeyPress) { { onKeyPress(key) } }
+            val rowOnPress: (() -> Unit)? = remember(key, onKeyPressDown) { { onKeyPressDown?.invoke(key); Unit } }
             SwipeableKeyButton(
                 text = if (isShifted) key.uppercase() else key,
-                onClick = { onKeyPress(key) },
+                onClick = rowOnClick,
                 backgroundColor = keyBackgroundColor,
                 textColor = keyTextColor,
                 modifier = Modifier.weight(1f),
@@ -597,7 +603,7 @@ fun KeyboardRow(
                 onSwipe = onSwipeKey,
                 onSwipeDown = onSwipeDownKey,
                 onSwipeStateChange = onSwipeStateChange,
-                onPress = { onKeyPressDown?.invoke(key) }
+                onPress = rowOnPress
             )
         }
     }
@@ -637,13 +643,6 @@ fun IconKeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(shadowModifier)
-            .clip(shadowShape)
-            .background(
-                if (isPressed) darkenColor(backgroundColor, 0.1f)
-                else if (isHighlighted) darkenColor(backgroundColor, 0.2f)
-                else backgroundColor
-            )
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -656,7 +655,17 @@ fun IconKeyButton(
                         onClick()
                     }
                 )
-            },
+            }
+            .padding(horizontal = 2.dp, vertical = 3.dp)
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .then(shadowModifier)
+            .clip(shadowShape)
+            .background(
+                if (isPressed) darkenColor(backgroundColor, 0.1f)
+                else if (isHighlighted) darkenColor(backgroundColor, 0.2f)
+                else backgroundColor
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(
@@ -758,16 +767,6 @@ fun SwipeableIconKeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(shadowModifier)
-            .onGloballyPositioned { coordinates ->
-                buttonBounds = coordinates.boundsInRoot()
-            }
-            .clip(shadowShape)
-            .background(
-                if (isPressed) darkenColor(backgroundColor, 0.2f)
-                else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
-                else backgroundColor
-            )
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -808,7 +807,7 @@ fun SwipeableIconKeyButton(
                         onPress?.invoke()
                     },
                     onDragEnd = {
-                        // 手指抬起时才执行，给用户反悔的机�?
+                        // 手指抬起时才执行，给用户反悔的机会
                         if (hasReachedClearThreshold && onSwipeUp != null) {
                             onSwipeUp()
                         } else if (hasReachedUndoThreshold && onSwipeDown != null) {
@@ -912,7 +911,20 @@ fun SwipeableIconKeyButton(
                         }
                     }
                 )
-            },
+            }
+            .padding(horizontal = 2.dp, vertical = 3.dp)
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .then(shadowModifier)
+            .onGloballyPositioned { coordinates ->
+                buttonBounds = coordinates.boundsInRoot()
+            }
+            .clip(shadowShape)
+            .background(
+                if (isPressed) darkenColor(backgroundColor, 0.2f)
+                else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
+                else backgroundColor
+            ),
         contentAlignment = Alignment.Center
     ) {
         Icon(

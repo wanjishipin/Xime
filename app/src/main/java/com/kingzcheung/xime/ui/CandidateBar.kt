@@ -54,6 +54,31 @@ import com.kingzcheung.xime.keyboard.ToolbarAction
 import com.kingzcheung.xime.settings.SettingsPreferences
 
 /**
+ * 候选栏视觉样式（主题相关、不频繁变化）
+ */
+data class CandidateBarVisuals(
+    val backgroundColor: Color,
+    val textColor: Color,
+    val dividerColor: Color,
+    val accentColor: Color = Color(0xFF1A73E8),
+    val isDarkTheme: Boolean = false,
+    val showClipboardHeader: Boolean = false
+)
+
+/**
+ * 候选栏回调（稳定引用，不应在重组中重建）
+ */
+data class CandidateBarCallbacks(
+    val onCandidateSelect: (Int) -> Unit,
+    val onLogoClick: (() -> Unit)? = null,
+    val onBack: (() -> Unit)? = null,
+    val onHideKeyboard: (() -> Unit)? = null,
+    val onShowMoreCandidates: (() -> Unit)? = null,
+    val onInputTextClick: (() -> Unit)? = null,
+    val onAssociationSelect: ((Int) -> Unit)? = null
+)
+
+/**
  * 候选栏组件
  * 显示输入编码和候选词列表
  */
@@ -63,22 +88,11 @@ fun CandidateBar(
     candidateComments: List<String> = emptyList(),
     inputText: String,
     isComposing: Boolean,
-    onCandidateSelect: (Int) -> Unit,
-    backgroundColor: Color,
-    showClipboardHeader: Boolean = false,
-    textColor: Color,
-    dividerColor: Color,
-    accentColor: Color = Color(0xFF1A73E8),
-    isDarkTheme: Boolean = false,
     currentRoute: KeyboardRoute = KeyboardRoute.Keyboard,
-    onLogoClick: (() -> Unit)? = null,
-    onBack: (() -> Unit)? = null,
-    onHideKeyboard: (() -> Unit)? = null,
-    onShowMoreCandidates: (() -> Unit)? = null,
-    onInputTextClick: (() -> Unit)? = null,
     associationCandidates: List<String> = emptyList(),
-    onAssociationSelect: ((Int) -> Unit)? = null,
     toolbarActions: List<ToolbarAction> = emptyList(),
+    visuals: CandidateBarVisuals,
+    callbacks: CandidateBarCallbacks,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier
 ) {
     val displayCandidates = candidates.take(20)
@@ -101,8 +115,8 @@ fun CandidateBar(
     val screenWidthPx = with(density) { LocalConfiguration.current.screenWidthDp.dp.toPx() }
     val rowPaddingPx = with(density) { 16.dp.toPx() }
     val rightSidePx = with(density) {
-        val moreBtn = if (hasAnyMore && onShowMoreCandidates != null) 38.dp.toPx() else 0f
-        val hideBtn = if (onHideKeyboard != null) 28.dp.toPx() else 0f
+        val moreBtn = if (hasAnyMore && callbacks.onShowMoreCandidates != null) 38.dp.toPx() else 0f
+        val hideBtn = if (callbacks.onHideKeyboard != null) 28.dp.toPx() else 0f
         rowPaddingPx + moreBtn + hideBtn + 8.dp.toPx()
     }
 
@@ -144,7 +158,7 @@ fun CandidateBar(
             .padding(vertical = 0.dp)
             .fillMaxWidth()
             .height(50.dp)
-            .background(backgroundColor)
+            .background(visuals.backgroundColor)
             .padding(horizontal = horizontalPadding)
     ) {
         // 上方行：输入编码（拼音），仅在打字时显示
@@ -162,7 +176,7 @@ fun CandidateBar(
             ) {
                 Text(
                     text = inputText,
-                    color = textColor.copy(alpha = 0.8f),
+                    color = visuals.textColor.copy(alpha = 0.8f),
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Normal,
                     lineHeight = 16.sp,
@@ -170,8 +184,8 @@ fun CandidateBar(
                     modifier = Modifier
                         .clip(RoundedCornerShape(4.dp))
                         .background(
-                            if (isInputTextPressed && onInputTextClick != null)
-                                (if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(
+                            if (isInputTextPressed && callbacks.onInputTextClick != null)
+                                (if (visuals.isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(
                                     alpha = 0.1f
                                 ))
                             else
@@ -190,19 +204,19 @@ fun CandidateBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
                 if (!isComposing && inputText.isEmpty()) {
-                    if (currentRoute is KeyboardRoute.SchemaList && onBack != null) {
+                    if (currentRoute is KeyboardRoute.SchemaList && callbacks.onBack != null) {
                         Box(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                                .clickable { onBack() },
+                                .background(if (visuals.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                .clickable { callbacks.onBack() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
                                 contentDescription = "返回菜单",
-                                tint = accentColor,
+                                tint = visuals.accentColor,
                                 modifier = Modifier.size(24.dp)
                             )
                         }
@@ -211,12 +225,12 @@ fun CandidateBar(
                             modifier = Modifier
                                 .size(32.dp)
                                 .clip(RoundedCornerShape(16.dp))
-                                .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                                .clickable { onLogoClick?.invoke() },
+                                .background(if (visuals.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                .clickable { callbacks.onLogoClick?.invoke() },
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                painter = painterResource(id = if (isDarkTheme) R.drawable.logo_dark else R.drawable.logo),
+                                painter = painterResource(id = if (visuals.isDarkTheme) R.drawable.logo_dark else R.drawable.logo),
                                 contentDescription = "曦码 Logo",
                                 tint = Color.Unspecified,
                                 modifier = Modifier.size(20.dp)
@@ -227,7 +241,7 @@ fun CandidateBar(
                     Spacer(modifier = Modifier.width(4.dp))
                 }
 
-                if (showClipboardHeader) {
+                if (visuals.showClipboardHeader) {
                     Row(
                         modifier = Modifier.padding(end = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -235,7 +249,7 @@ fun CandidateBar(
                         Icon(
                             imageVector = Icons.Default.ContentCopy,
                             contentDescription = "剪切板",
-                            tint = accentColor,
+                            tint = visuals.accentColor,
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -256,11 +270,11 @@ fun CandidateBar(
                         CandidateItem(
                             text = candidate,
                             index = index,
-                            onClick = { onCandidateSelect(index) },
-                            textColor = textColor,
+                            onClick = { callbacks.onCandidateSelect(index) },
+                            textColor = visuals.textColor,
                             comment = if (showComments) candidateComments.getOrElse(index) { "" } else "",
                             isSelected = index == 0,
-                            accentColor = accentColor
+                            accentColor = visuals.accentColor
                         )
                     }
 
@@ -270,7 +284,7 @@ fun CandidateBar(
                                 modifier = Modifier
                                     .width(1.dp)
                                     .height(20.dp)
-                                    .background(dividerColor.copy(alpha = 0.5f))
+                                    .background(visuals.dividerColor.copy(alpha = 0.5f))
                                     .padding(horizontal = 4.dp)
                             )
                         }
@@ -279,8 +293,8 @@ fun CandidateBar(
                             CandidateItem(
                                 text = candidate,
                                 index = -1,
-                                onClick = { onAssociationSelect?.invoke(index) },
-                                textColor = textColor,
+                                onClick = { callbacks.onAssociationSelect?.invoke(index) },
+                                textColor = visuals.textColor,
                                 comment = ""
                             )
                         }
@@ -299,10 +313,10 @@ fun CandidateBar(
                                 .size(32.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (isPressed) (if (isDarkTheme) Color.White.copy(
+                                    if (isPressed) (if (visuals.isDarkTheme) Color.White.copy(
                                         alpha = 0.15f
                                     ) else Color.Black.copy(alpha = 0.1f))
-                                    else (if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                    else (if (visuals.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
                                 )
                                 .clickable(
                                     interactionSource = interactionSource,
@@ -314,7 +328,7 @@ fun CandidateBar(
                             Icon(
                                 imageVector = action.button.icon,
                                 contentDescription = action.button.label,
-                                tint = if (isPressed) textColor.copy(alpha = 0.6f) else if (isDarkTheme) textColor else textColor.copy(alpha = 0.65f),
+                                tint = if (isPressed) visuals.textColor.copy(alpha = 0.6f) else if (visuals.isDarkTheme) visuals.textColor else visuals.textColor.copy(alpha = 0.65f),
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -326,19 +340,19 @@ fun CandidateBar(
                         modifier = Modifier
                             .size(28.dp)
                             .clip(RoundedCornerShape(14.dp))
-                            .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                            .clickable { onBack?.invoke() },
+                            .background(if (visuals.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                            .clickable { callbacks.onBack?.invoke() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.KeyboardArrowUp,
                             contentDescription = "返回键盘",
-                            tint = accentColor,
+                            tint = visuals.accentColor,
                             modifier = Modifier.size(24.dp)
                         )
                     }
                 } else {
-                    if (hasAnyMore && onShowMoreCandidates != null) {
+                    if (hasAnyMore && callbacks.onShowMoreCandidates != null) {
                         val moreInteractionSource = remember { MutableInteractionSource() }
                         val isMorePressed by moreInteractionSource.collectIsPressedAsState()
 
@@ -348,7 +362,7 @@ fun CandidateBar(
                             modifier = Modifier
                                 .width(1.dp)
                                 .height(28.dp)
-                                .background(dividerColor).padding(end = 1.dp)
+                                .background(visuals.dividerColor).padding(end = 1.dp)
                         )
                         Box(
                             modifier = Modifier
@@ -356,7 +370,7 @@ fun CandidateBar(
                                 .height(24.dp)
                                 .clip(RoundedCornerShape(6.dp))
                                 .background(
-                                    if (isMorePressed) (if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(
+                                    if (isMorePressed) (if (visuals.isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(
                                         alpha = 0.1f
                                     ))
                                     else Color.Transparent
@@ -364,19 +378,19 @@ fun CandidateBar(
                                 .clickable(
                                     interactionSource = moreInteractionSource,
                                     indication = null,
-                                    onClick = { onShowMoreCandidates() }
+                                    onClick = { callbacks.onShowMoreCandidates() }
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
                                 text = "更多",
-                                color = if (isMorePressed) textColor.copy(alpha = 0.6f) else textColor,
+                                color = if (isMorePressed) visuals.textColor.copy(alpha = 0.6f) else visuals.textColor,
                                 fontSize = 11.sp
                             )
                         }
                     }
 
-                    if (onHideKeyboard != null && (!isComposing || inputText.isEmpty())) {
+                    if (callbacks.onHideKeyboard != null && (!isComposing || inputText.isEmpty()) && candidates.isEmpty() && associationCandidates.isEmpty()) {
                         val hideKeyboardInteractionSource = remember { MutableInteractionSource() }
                         val isHideKeyboardPressed by hideKeyboardInteractionSource.collectIsPressedAsState()
 
@@ -387,22 +401,22 @@ fun CandidateBar(
                                 .size(32.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (isHideKeyboardPressed) (if (isDarkTheme) Color.White.copy(
+                                    if (isHideKeyboardPressed) (if (visuals.isDarkTheme) Color.White.copy(
                                         alpha = 0.15f
                                     ) else Color.Black.copy(alpha = 0.1f))
-                                    else (if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                    else (if (visuals.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
                                 )
                                 .clickable(
                                     interactionSource = hideKeyboardInteractionSource,
                                     indication = null,
-                                    onClick = { onHideKeyboard() }
+                                    onClick = { callbacks.onHideKeyboard() }
                                 ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.KeyboardArrowDown,
                                 contentDescription = "收起键盘",
-                                tint = if (isHideKeyboardPressed) textColor.copy(alpha = 0.6f) else textColor,
+                                tint = if (isHideKeyboardPressed) visuals.textColor.copy(alpha = 0.6f) else visuals.textColor,
                                 modifier = Modifier.size(20.dp)
                             )
                         }

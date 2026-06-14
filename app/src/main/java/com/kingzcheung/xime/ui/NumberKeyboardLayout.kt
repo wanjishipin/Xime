@@ -85,14 +85,12 @@ fun NumberKeyboardLayout(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     commonSymbols.chunked(6).forEach { rowSymbols ->
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             rowSymbols.forEach { sym ->
                                 KeyButton(
@@ -119,12 +117,10 @@ fun NumberKeyboardLayout(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     // 第一行：符号 | 1 | 2 | 3 | 退格
                     Row(
                         modifier = Modifier.fillMaxWidth().weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         KeyButton(text = "+", onClick = { onKeyPress("+") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("+") }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius)
                         listOf("1","2","3").forEach { k -> KeyButton(text = k, onClick = { onKeyPress(k) }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke(k) }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius) }
@@ -136,7 +132,6 @@ fun NumberKeyboardLayout(
                     // 第二行：符号 | 4 | 5 | 6 | 空格
                     Row(
                         modifier = Modifier.fillMaxWidth().weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         KeyButton(text = "-", onClick = { onKeyPress("-") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("-") }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius)
                         listOf("4","5","6").forEach { k -> KeyButton(text = k, onClick = { onKeyPress(k) }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke(k) }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius) }
@@ -145,7 +140,6 @@ fun NumberKeyboardLayout(
                     // 第三行：符号 | 7 | 8 | 9 | 表情
                     Row(
                         modifier = Modifier.fillMaxWidth().weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         KeyButton(text = "*", onClick = { onKeyPress("*") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("*") }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius)
                         listOf("7","8","9").forEach { k -> KeyButton(text = k, onClick = { onKeyPress(k) }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke(k) }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius) }
@@ -154,7 +148,6 @@ fun NumberKeyboardLayout(
                     // 第四行：返回 | 符号切换 | 0 | . | 确定
                     Row(
                         modifier = Modifier.fillMaxWidth().weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         IconKeyButton(icon = rememberVectorPainter(Icons.AutoMirrored.Filled.ArrowBack), onClick = { onKeyPress("abc") }, backgroundColor = specialKeyBackgroundColor, iconColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("abc") }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius)
                         KeyButton(text = "/", onClick = { onKeyPress("/") }, backgroundColor = keyBackgroundColor, textColor = keyTextColor, modifier = Modifier.weight(1f), onPress = { onKeyPressDown?.invoke("/") }, shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius)
@@ -172,7 +165,6 @@ fun NumberKeyboardLayout(
                     .fillMaxHeight()
                     .background(keyboardBackgroundColor)
                     .padding(vertical = 8.dp, horizontal = 4.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 NumberRows(
                     onKeyPress = onKeyPress,
@@ -226,14 +218,12 @@ private fun NumberRows(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         // 第一行：符号 | 1 | 2 | 3 | 退格
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             KeyButton(
                 text = symbols[0],
@@ -285,7 +275,6 @@ private fun NumberRows(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             KeyButton(
                 text = symbols[1],
@@ -329,7 +318,6 @@ private fun NumberRows(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             KeyButton(
                 text = symbols[2],
@@ -373,7 +361,6 @@ private fun NumberRows(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             IconKeyButton(
                 icon = rememberVectorPainter(Icons.AutoMirrored.Filled.ArrowBack),
