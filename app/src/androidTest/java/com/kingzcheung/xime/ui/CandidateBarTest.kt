@@ -26,10 +26,14 @@ class CandidateBarTest {
                 candidates = candidates,
                 inputText = "nihao",
                 isComposing = true,
-                onCandidateSelect = {},
-                backgroundColor = KeyboardBackground,
-                textColor = KeyTextColor,
-                dividerColor = DividerColor
+                visuals = CandidateBarVisuals(
+                    backgroundColor = KeyboardBackground,
+                    textColor = KeyTextColor,
+                    dividerColor = DividerColor
+                ),
+                callbacks = CandidateBarCallbacks(
+                    onCandidateSelect = {}
+                )
             )
         }
         
@@ -45,10 +49,14 @@ class CandidateBarTest {
                 candidates = emptyList(),
                 inputText = "",
                 isComposing = false,
-                onCandidateSelect = {},
-                backgroundColor = KeyboardBackground,
-                textColor = KeyTextColor,
-                dividerColor = DividerColor
+                visuals = CandidateBarVisuals(
+                    backgroundColor = KeyboardBackground,
+                    textColor = KeyTextColor,
+                    dividerColor = DividerColor
+                ),
+                callbacks = CandidateBarCallbacks(
+                    onCandidateSelect = {}
+                )
             )
         }
     }
@@ -60,10 +68,14 @@ class CandidateBarTest {
                 candidates = listOf("你好"),
                 inputText = "nihao",
                 isComposing = true,
-                onCandidateSelect = {},
-                backgroundColor = KeyboardBackground,
-                textColor = KeyTextColor,
-                dividerColor = DividerColor
+                visuals = CandidateBarVisuals(
+                    backgroundColor = KeyboardBackground,
+                    textColor = KeyTextColor,
+                    dividerColor = DividerColor
+                ),
+                callbacks = CandidateBarCallbacks(
+                    onCandidateSelect = {}
+                )
             )
         }
         
@@ -78,10 +90,14 @@ class CandidateBarTest {
                 candidateComments = listOf("wubi"),
                 inputText = "nihao",
                 isComposing = true,
-                onCandidateSelect = {},
-                backgroundColor = KeyboardBackground,
-                textColor = KeyTextColor,
-                dividerColor = DividerColor
+                visuals = CandidateBarVisuals(
+                    backgroundColor = KeyboardBackground,
+                    textColor = KeyTextColor,
+                    dividerColor = DividerColor
+                ),
+                callbacks = CandidateBarCallbacks(
+                    onCandidateSelect = {}
+                )
             )
         }
         
@@ -96,10 +112,14 @@ class CandidateBarTest {
                 associationCandidates = listOf("世界", "吗"),
                 inputText = "nihao",
                 isComposing = true,
-                onCandidateSelect = {},
-                backgroundColor = KeyboardBackground,
-                textColor = KeyTextColor,
-                dividerColor = DividerColor
+                visuals = CandidateBarVisuals(
+                    backgroundColor = KeyboardBackground,
+                    textColor = KeyTextColor,
+                    dividerColor = DividerColor
+                ),
+                callbacks = CandidateBarCallbacks(
+                    onCandidateSelect = {}
+                )
             )
         }
         

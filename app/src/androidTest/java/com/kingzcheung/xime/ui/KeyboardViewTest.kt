@@ -66,10 +66,14 @@ class KeyboardViewTest {
                 candidates = candidates,
                 inputText = "nihao",
                 isComposing = true,
-                onCandidateSelect = {},
-                backgroundColor = KeyboardBackground,
-                textColor = KeyTextColor,
-                dividerColor = DividerColor
+                visuals = CandidateBarVisuals(
+                    backgroundColor = KeyboardBackground,
+                    textColor = KeyTextColor,
+                    dividerColor = DividerColor
+                ),
+                callbacks = CandidateBarCallbacks(
+                    onCandidateSelect = {}
+                )
             )
         }
         

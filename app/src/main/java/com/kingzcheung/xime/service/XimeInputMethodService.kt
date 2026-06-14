@@ -129,6 +129,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private val mainHandler = Handler(Looper.getMainLooper())
     
     private val uiState = mutableStateOf(InputUIState())
+    private val candidateState = mutableStateOf(CandidateState())
     private val clipboardItemsState = mutableStateOf<List<com.kingzcheung.xime.clipboard.ClipboardItem>>(emptyList())
     private val quickSendItemsState = mutableStateOf<List<com.kingzcheung.xime.clipboard.ClipboardItem>>(emptyList())
     private val recentClipboardItemsState = mutableStateOf<List<com.kingzcheung.xime.clipboard.ClipboardItem>>(emptyList())
@@ -146,7 +147,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private val predictionManager = PredictionManager(
         context = this,
         serviceScope = serviceScope,
-        onStateChanged = { newState -> uiState.value = newState },
+        onStateChanged = { newState ->
+            candidateState.value = candidateState.value.copy(
+                associationCandidates = newState.associationCandidates
+            )
+        },
         getState = { uiState.value }
     )
     
@@ -488,6 +493,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             isFocusable = true
             isFocusableInTouchMode = true
             setContent {
+                val cand = candidateState.value
                 val state = uiState.value
                 val isDarkTheme = isDarkTheme()
                 val screenHeightDp = resources.configuration.screenHeightDp
@@ -520,17 +526,17 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             }
                             .height(
                                 if (state.isCompact) {
-                                    if (state.isComposing) 110.dp else 1.dp
+                                    if (cand.isComposing) 110.dp else 1.dp
                                 } else if (state.showKeyboardResize) (maxHeightDp + 100).dp
                                 else (keyboardHeight + state.keyboardBottomPaddingDp).dp
                             )
                     ) {
-                        if (state.isCompact && state.isComposing) {
+                        if (state.isCompact && cand.isComposing) {
                             FloatingCandidateBar(
-                                inputText = state.inputText,
-                                candidates = state.candidates,
-                                candidateComments = state.candidateComments,
-                                isComposing = state.isComposing,
+                                inputText = cand.inputText,
+                                candidates = cand.candidates,
+                                candidateComments = cand.candidateComments,
+                                isComposing = cand.isComposing,
                                 onCandidateSelect = { index -> selectCandidate(index) },
                                 onDrag = { dx, dy -> moveFloatingWindow(dx, dy) }
                             )
@@ -545,9 +551,9 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                         ) {
                         CompositionLocalProvider(LocalStretchFactor provides state.stretchFactor) {
                             KeyboardView(
-                                candidates = state.candidates,
-                                inputText = state.inputText,
-                                isComposing = state.isComposing,
+                                candidates = cand.candidates,
+                                inputText = cand.inputText,
+                                isComposing = cand.isComposing,
                                 isAsciiMode = state.isAsciiMode,
                                 schemaName = state.schemaName,
                                 currentSchemaId = state.currentSchemaId,
@@ -562,7 +568,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                              clipboardItems = clipboardItemsState.value,
                              quickSendItems = quickSendItemsState.value,
                              recentClipboardItems = recentClipboardItemsState.value,
-                            candidateComments = state.candidateComments,
+                            candidateComments = cand.candidateComments,
                              isVoiceMode = state.isVoiceMode,
                              isSttEnabled = state.isSttEnabled,
                              voiceBottomActive = state.voiceButtonState.bottomActive,
@@ -573,6 +579,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             voiceRecognizedText = state.voiceRecognizedText,
                             voiceAmplitude = state.voiceAmplitude,
                             uiStateProvider = { uiState.value },
+                            candidateStateProvider = { candidateState.value },
                             onKeyPress = { key, isShifted ->
                                 handleKeyPress(key, isShifted)
                             },
@@ -669,25 +676,26 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             onToolbarEditingAction = { action ->
                                 handleToolbarEditingAction(action)
                             },
-                            associationCandidates = if (state.pendingEnglishText.isNotEmpty()) {
-                                arrayOf(state.pendingEnglishText) + state.associationCandidates
+                            associationCandidates = if (cand.pendingEnglishText.isNotEmpty()) {
+                                arrayOf(cand.pendingEnglishText) + cand.associationCandidates
                             } else {
-                                state.associationCandidates
+                                cand.associationCandidates
                             },
                             onAssociationSelect = { index ->
-                                val adjustedCandidates = if (state.pendingEnglishText.isNotEmpty()) {
-                                    arrayOf(state.pendingEnglishText) + state.associationCandidates
+                                val cs = candidateState.value
+                                val adjustedCandidates = if (cs.pendingEnglishText.isNotEmpty()) {
+                                    arrayOf(cs.pendingEnglishText) + cs.associationCandidates
                                 } else {
-                                    state.associationCandidates
+                                    cs.associationCandidates
                                 }
                                 
                                 if (index >= 0 && index < adjustedCandidates.size) {
                                     val text = adjustedCandidates[index]
-                                    val pendingEnglish = state.pendingEnglishText
+                                    val pendingEnglish = cs.pendingEnglishText
                                     
                                     if (pendingEnglish.isNotEmpty()) {
                                         if (index == 0 && text == pendingEnglish) {
-                                            uiState.value = uiState.value.copy(
+                                            candidateState.value = candidateState.value.copy(
                                                 pendingEnglishText = "",
                                                 associationCandidates = emptyArray()
                                             )
@@ -695,7 +703,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                         } else {
                                             currentInputConnection?.deleteSurroundingText(pendingEnglish.length, 0)
                                             commitText(text)
-                                            uiState.value = uiState.value.copy(
+                                            candidateState.value = candidateState.value.copy(
                                                 pendingEnglishText = "",
                                                 associationCandidates = emptyArray()
                                             )
@@ -751,7 +759,7 @@ onVoiceModeChange = { enabled ->
                                     if (isChineseMode != chineseMode) {
                                         isChineseMode = chineseMode
                                         if (!chineseMode) {
-                                            uiState.value = uiState.value.copy(associationCandidates = emptyArray())
+                                            candidateState.value = candidateState.value.copy(associationCandidates = emptyArray())
                                         }
                                     }
                                 }
@@ -975,7 +983,7 @@ onVoiceModeChange = { enabled ->
         try {
             recentClipboardItemsState.value = clipboardManager.getRecentItems(30)
             // 将最近剪切板内容显示在候选栏
-            uiState.value = uiState.value.copy(
+            candidateState.value = candidateState.value.copy(
                 candidates = recentClipboardItemsState.value.map { it.text }.toTypedArray(),
                 candidateComments = emptyArray(),
                 isShowingRecentClipboard = true
@@ -993,7 +1001,7 @@ onVoiceModeChange = { enabled ->
                 if (items.isNotEmpty()) {
                     // 清空Rime联想词等
                     rimeEngine.clearComposition()
-                    uiState.value = uiState.value.copy(
+                    candidateState.value = candidateState.value.copy(
                         candidates = items.map { it.text.take(8) + if (it.text.length > 8) "..." else "" }.toTypedArray(),
                         candidateComments = emptyArray(),
                         inputText = "",
@@ -1001,9 +1009,9 @@ onVoiceModeChange = { enabled ->
                         associationCandidates = emptyArray(),
                         isShowingRecentClipboard = true
                     )
-                } else if (uiState.value.isShowingRecentClipboard) {
+                } else if (candidateState.value.isShowingRecentClipboard) {
                     // 如果没有recent items，清空候选栏
-                    uiState.value = uiState.value.copy(
+                    candidateState.value = candidateState.value.copy(
                         candidates = emptyArray(),
                         candidateComments = emptyArray(),
                         isShowingRecentClipboard = false
@@ -1112,7 +1120,7 @@ onVoiceModeChange = { enabled ->
     private fun clearInputState() {
         calculatorEngine.clear()
         rimeEngine.clearComposition()
-        uiState.value = uiState.value.copy(
+        candidateState.value = candidateState.value.copy(
             candidates = emptyArray(),
             candidateComments = emptyArray(),
             inputText = "",
@@ -1137,7 +1145,7 @@ onVoiceModeChange = { enabled ->
     }
     
     private fun hideKeyboard() {
-        uiState.value = uiState.value.copy(associationCandidates = emptyArray())
+        candidateState.value = candidateState.value.copy(associationCandidates = emptyArray())
         requestHideSelf(0)
     }
     
@@ -1148,7 +1156,7 @@ onVoiceModeChange = { enabled ->
         val hasNextPage = rimeEngine.hasNextPage()
         val hasPrevPage = rimeEngine.hasPrevPage()
         
-        val pendingEnglish = uiState.value.pendingEnglishText
+        val pendingEnglish = candidateState.value.pendingEnglishText
         
         val (filteredTexts, filteredComments) = if (isAsciiMode) {
             val filtered = candidatesWithComments.filterNot { candidate ->
@@ -1159,17 +1167,17 @@ onVoiceModeChange = { enabled ->
             candidatesWithComments.map { it.text }.toTypedArray() to candidatesWithComments.map { it.comment }.toTypedArray()
         }
         
-        uiState.value = uiState.value.copy(
+        candidateState.value = candidateState.value.copy(
             inputText = inputText,
             candidates = filteredTexts,
             candidateComments = filteredComments,
             isComposing = inputText.isNotEmpty(),
-            isAsciiMode = isAsciiMode,
-            associationCandidates = if ((isAsciiMode || !isChineseMode) && pendingEnglish.isEmpty()) emptyArray() else uiState.value.associationCandidates,
+            associationCandidates = if ((isAsciiMode || !isChineseMode) && pendingEnglish.isEmpty()) emptyArray() else candidateState.value.associationCandidates,
             isShowingRecentClipboard = false,
             hasNextPage = hasNextPage,
             hasPrevPage = hasPrevPage
         )
+        uiState.value = uiState.value.copy(isAsciiMode = isAsciiMode)
 
         // 悬浮候选栏通过 Compose 内联显示（见 onCreateInputView），拖拽由 pointerInput 处理
         
@@ -1178,7 +1186,7 @@ onVoiceModeChange = { enabled ->
                 val candidates = predictionManager.getEnglishAssociations(pendingEnglish, PredictionManager.MAX_ASSOCIATION_COUNT)
                 Log.d(TAG, "English association for pending '$pendingEnglish': ${candidates.joinToString()}")
                 withContext(Dispatchers.Main) {
-                    uiState.value = uiState.value.copy(associationCandidates = candidates)
+                    candidateState.value = candidateState.value.copy(associationCandidates = candidates)
                 }
             }
         }
@@ -1188,7 +1196,7 @@ onVoiceModeChange = { enabled ->
         val isAsciiMode = result.isAsciiMode
         val candidatesWithComments = result.candidates
         
-        val pendingEnglish = uiState.value.pendingEnglishText
+        val pendingEnglish = candidateState.value.pendingEnglishText
         
         val (filteredTexts, filteredComments) = if (isAsciiMode) {
             val filtered = candidatesWithComments.filterNot { candidate ->
@@ -1199,24 +1207,24 @@ onVoiceModeChange = { enabled ->
             candidatesWithComments.map { it.text }.toTypedArray() to candidatesWithComments.map { it.comment }.toTypedArray()
         }
         
-        uiState.value = uiState.value.copy(
+        candidateState.value = candidateState.value.copy(
             inputText = result.inputText,
             candidates = filteredTexts,
             candidateComments = filteredComments,
             isComposing = result.inputText.isNotEmpty(),
-            isAsciiMode = isAsciiMode,
-            associationCandidates = if ((isAsciiMode || !isChineseMode) && pendingEnglish.isEmpty()) emptyArray() else uiState.value.associationCandidates,
+            associationCandidates = if ((isAsciiMode || !isChineseMode) && pendingEnglish.isEmpty()) emptyArray() else candidateState.value.associationCandidates,
             isShowingRecentClipboard = false,
             hasNextPage = result.hasNextPage,
             hasPrevPage = result.hasPrevPage
         )
+        uiState.value = uiState.value.copy(isAsciiMode = isAsciiMode)
         
         if (pendingEnglish.isNotEmpty()) {
             serviceScope.launch {
                 val candidates = predictionManager.getEnglishAssociations(pendingEnglish, PredictionManager.MAX_ASSOCIATION_COUNT)
                 Log.d(TAG, "English association for pending '$pendingEnglish': ${candidates.joinToString()}")
                 withContext(Dispatchers.Main) {
-                    uiState.value = uiState.value.copy(associationCandidates = candidates)
+                    candidateState.value = candidateState.value.copy(associationCandidates = candidates)
                 }
             }
         }
@@ -1257,6 +1265,7 @@ onVoiceModeChange = { enabled ->
     private fun handleKeyPress(key: String, isShifted: Boolean) {
         val job = serviceScope.launch(keyProcessingDispatcher, start = CoroutineStart.LAZY) {
             val state = uiState.value
+            val candState = candidateState.value
             var needsUIUpdate = false
             var pendingResult: com.kingzcheung.xime.rime.RimeProcessResult? = null
             
@@ -1266,20 +1275,20 @@ onVoiceModeChange = { enabled ->
                     calculatorEngine.handleDelete()
                     updateCalculatorCandidates()
                     
-                    val pendingEnglish = state.pendingEnglishText
+                    val pendingEnglish = candState.pendingEnglishText
                     
                     if (pendingEnglish.isNotEmpty()) {
                         val newPending = pendingEnglish.dropLast(1)
                         withContext(Dispatchers.Main) {
                             sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
-                            uiState.value = uiState.value.copy(
+                            candidateState.value = candidateState.value.copy(
                                 pendingEnglishText = newPending,
                                 associationCandidates = emptyArray()
                             )
                         }
                         needsUIUpdate = true
                         Log.d(TAG, "Delete English pending: '$newPending'")
-                    } else if (state.isComposing || state.inputText.isNotEmpty()) {
+                    } else if (candState.isComposing || candState.inputText.isNotEmpty()) {
                         val result = rimeEngine.processKeyAndGetResult(0xff08, 0)
                         if (result.inputText.isEmpty()) {
                             rimeEngine.clearComposition()
@@ -1292,9 +1301,9 @@ onVoiceModeChange = { enabled ->
                         
                         if (!state.isAsciiMode && isChineseMode && SettingsPreferences.isSmartPredictionEnabled(this@XimeInputMethodService) && predictionManager.lastCommittedText.isNotEmpty()) {
                             val candidates = predictionManager.getChineseAssociations(predictionManager.lastCommittedText, PredictionManager.MAX_ASSOCIATION_COUNT)
-                            uiState.value = uiState.value.copy(associationCandidates = candidates)
+                            candidateState.value = candidateState.value.copy(associationCandidates = candidates)
                         } else {
-                            uiState.value = uiState.value.copy(
+                            candidateState.value = candidateState.value.copy(
                                 candidates = emptyArray(),
                                 candidateComments = emptyArray(),
                                 associationCandidates = emptyArray(),
@@ -1309,7 +1318,7 @@ onVoiceModeChange = { enabled ->
                 }
                 "clear_composition" -> {
                     rimeEngine.clearComposition()
-                    uiState.value = uiState.value.copy(
+                    candidateState.value = candidateState.value.copy(
                         candidates = emptyArray(),
                         candidateComments = emptyArray(),
                         associationCandidates = emptyArray(),
@@ -1324,9 +1333,9 @@ onVoiceModeChange = { enabled ->
                     val inputFieldText = withContext(Dispatchers.Main) {
                         currentInputConnection?.getTextBeforeCursor(Int.MAX_VALUE, 0)?.toString() ?: ""
                     }
-                    lastClearedText = inputFieldText + state.inputText
+                    lastClearedText = inputFieldText + candState.inputText
                     rimeEngine.clearComposition()
-                    uiState.value = uiState.value.copy(
+                    candidateState.value = candidateState.value.copy(
                         candidates = emptyArray(),
                         candidateComments = emptyArray(),
                         associationCandidates = emptyArray(),
@@ -1365,8 +1374,8 @@ onVoiceModeChange = { enabled ->
                 "enter" -> {
                     calculatorEngine.clear()
                     updateCalculatorCandidates()
-                    if (state.isComposing) {
-                        val input = state.inputText
+                    if (candState.isComposing) {
+                        val input = candState.inputText
                         if (input.isNotEmpty()) {
                             withContext(Dispatchers.Main) {
                                 commitText(input)
@@ -1401,7 +1410,7 @@ onVoiceModeChange = { enabled ->
                         }
                     }
                     withContext(Dispatchers.Main) {
-                        uiState.value = uiState.value.copy(
+                        candidateState.value = candidateState.value.copy(
                             inputText = "",
                             pendingEnglishText = "",
                             candidates = emptyArray(),
@@ -1412,22 +1421,22 @@ onVoiceModeChange = { enabled ->
                     }
                 }
                 "space" -> {
-                    val pendingEnglish = state.pendingEnglishText
+                    val pendingEnglish = candState.pendingEnglishText
                     
                     if (pendingEnglish.isNotEmpty()) {
                         withContext(Dispatchers.Main) {
                             commitText(" ")
-                            uiState.value = uiState.value.copy(
+                            candidateState.value = candidateState.value.copy(
                                 pendingEnglishText = "",
                                 associationCandidates = emptyArray()
                             )
                         }
                         Log.d(TAG, "Space: added space after pending English '$pendingEnglish'")
-                    } else if (state.isComposing) {
-                        if (state.candidates.isNotEmpty()) {
+                    } else if (candState.isComposing) {
+                        if (candState.candidates.isNotEmpty()) {
                             selectCandidateAsync(0)
                         } else {
-                            val input = state.inputText
+                            val input = candState.inputText
                             if (input.isNotEmpty()) {
                                 withContext(Dispatchers.Main) {
                                     commitText(input)
@@ -1461,7 +1470,7 @@ onVoiceModeChange = { enabled ->
                     }
                 }
                 else -> {
-                    val pendingEnglish = state.pendingEnglishText
+                    val pendingEnglish = candState.pendingEnglishText
                     
                     // 非计算器键（如符号键盘的符号、全键盘的字母）清除计算器状态
                     if (!key.matches(Regex("[0-9]")) && key !in listOf("+", "-", "*", "/", ".")) {
@@ -1486,13 +1495,13 @@ onVoiceModeChange = { enabled ->
                         if (pendingEnglish.isNotEmpty()) {
                             withContext(Dispatchers.Main) {
                                 commitText(key)
-                                uiState.value = uiState.value.copy(
+                                candidateState.value = candidateState.value.copy(
                                     pendingEnglishText = "",
                                     associationCandidates = emptyArray()
                                 )
                             }
                             Log.d(TAG, "Symbol: added '$key' after pending English '$pendingEnglish'")
-                        } else if (state.isComposing) {
+                        } else if (candState.isComposing) {
                             val committedText = rimeEngine.commit()
                             if (committedText.isNotEmpty()) {
                                 withContext(Dispatchers.Main) {
@@ -1531,15 +1540,15 @@ onVoiceModeChange = { enabled ->
                             }
                         } else {
                             val isAscii = state.isAsciiMode
-                            if (!state.isComposing) {
+                            if (!candState.isComposing) {
                                 if (isAscii) {
                                     val charToCommit = if (isShifted) char.uppercase() else char.lowercase()
-                                    val currentPending = uiState.value.pendingEnglishText
+                                    val currentPending = candState.pendingEnglishText
                                     val newPending = currentPending + charToCommit
                                     
                                     withContext(Dispatchers.Main) {
                                         commitText(charToCommit)
-                                        uiState.value = uiState.value.copy(
+                                        candidateState.value = candidateState.value.copy(
                                             pendingEnglishText = newPending,
                                             associationCandidates = emptyArray()
                                         )
@@ -1582,8 +1591,8 @@ onVoiceModeChange = { enabled ->
     }
 
     private suspend fun selectCandidateAsync(index: Int) {
-        val selectedCandidate = if (index < uiState.value.candidates.size) {
-            uiState.value.candidates[index]
+        val selectedCandidate = if (index < candidateState.value.candidates.size) {
+            candidateState.value.candidates[index]
         } else null
         
         if (rimeEngine.selectCandidate(index)) {
@@ -1598,7 +1607,7 @@ onVoiceModeChange = { enabled ->
                 }
                 withContext(Dispatchers.Main) {
                     commitText(committedText)
-                    uiState.value = uiState.value.copy(
+                    candidateState.value = candidateState.value.copy(
                         inputText = "",
                         candidates = emptyArray(),
                         candidateComments = emptyArray(),
@@ -1625,20 +1634,20 @@ onVoiceModeChange = { enabled ->
     private fun updateCalculatorCandidates() {
         val candidate = calculatorEngine.getCandidate()
         val result = calculatorEngine.getResult()
-        uiState.value = if (candidate != null && result.isNotEmpty()) {
-            uiState.value.copy(
+        candidateState.value = if (candidate != null && result.isNotEmpty()) {
+            candidateState.value.copy(
                 candidates = arrayOf(result, candidate),
                 candidateComments = emptyArray()
             )
         } else {
             // 如果计算器之前有显示但现在已清除，也要清空候选栏
-            if (uiState.value.candidates.isNotEmpty() && !calculatorEngine.isActive()) {
-                uiState.value.copy(
+            if (candidateState.value.candidates.isNotEmpty() && !calculatorEngine.isActive()) {
+                candidateState.value.copy(
                     candidates = emptyArray(),
                     candidateComments = emptyArray()
                 )
             } else {
-                uiState.value
+                candidateState.value
             }
         }
     }
@@ -1678,10 +1687,10 @@ onVoiceModeChange = { enabled ->
             return
         }
         
-        if (uiState.value.isShowingRecentClipboard && index >= 0 && index < recentClipboardItemsState.value.size) {
+        if (candidateState.value.isShowingRecentClipboard && index >= 0 && index < recentClipboardItemsState.value.size) {
             val text = recentClipboardItemsState.value[index].text
             selectClipboardItem(text)
-            uiState.value = uiState.value.copy(
+            candidateState.value = candidateState.value.copy(
                 isShowingRecentClipboard = false,
                 candidates = emptyArray(),
                 candidateComments = emptyArray()
@@ -2018,7 +2027,7 @@ onVoiceModeChange = { enabled ->
     }
 
     private fun selectClipboardItem(text: String) {
-        if (uiState.value.isComposing) {
+        if (candidateState.value.isComposing) {
             postRimeJob {
                 rimeEngine.clearComposition()
                 withContext(Dispatchers.Main) {
