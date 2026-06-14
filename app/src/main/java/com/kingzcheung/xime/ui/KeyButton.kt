@@ -143,9 +143,7 @@ fun KeyButton(
                         onPress?.invoke()
                     },
                     onDragEnd = {
-                        if (!longPressActivated && !hasTriggeredSwipeUp && !hasTriggeredSwipeDown && abs(dragOffsetX) < 5.dp.toPx() && dragOffsetY > swipeUpThreshold && dragOffsetY < swipeDownThreshold) {
-                            currentOnClick()
-                        }
+                        // onClick is handled by detectTapGestures below — do NOT fire it here
                         isPressed = false
                         dragOffsetX = 0f
                         dragOffsetY = 0f
@@ -352,9 +350,7 @@ fun SwipeableKeyButton(
                         currentOnPress?.invoke()
                     },
                     onDragEnd = {
-                        if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown && abs(dragOffsetX) < 5.dp.toPx() && dragOffsetY > swipeUpThreshold && dragOffsetY < swipeDownThreshold) {
-                            currentOnClick?.invoke()
-                        }
+                        // onClick is handled by detectTapGestures / awaitEachGesture below
                         isPressed = false
                         dragOffsetX = 0f
                         dragOffsetY = 0f
@@ -518,7 +514,6 @@ fun SwipeableKeyButton(
                                         currentOnLongPressSelect?.invoke(selected)
                                     }
                                 } else if (!swipeDetected) {
-                                    // 长按未触发且非滑�?�?普通点�?
                                     currentOnClick?.invoke()
                                 }
                             }
