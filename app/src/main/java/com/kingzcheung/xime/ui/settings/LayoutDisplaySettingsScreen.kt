@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.twotone.Straighten
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -36,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.ui.SettingsSection
+import com.kingzcheung.xime.ui.SettingsToggleItem
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -158,6 +160,24 @@ fun LayoutDisplaySettingsContent(
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
+                })
+            }
+
+            item {
+                SettingsSection(title = "键盘布局", content = {
+                    var showBottomButtons by remember {
+                        mutableStateOf(SettingsPreferences.showBottomButtons(context))
+                    }
+                    SettingsToggleItem(
+                        icon = Icons.TwoTone.Straighten,
+                        title = "显示底部按钮",
+                        subtitle = "显示收回键盘和切换输入法按钮（部分系统自带）",
+                        checked = showBottomButtons,
+                        onCheckedChange = { newValue ->
+                            showBottomButtons = newValue
+                            SettingsPreferences.setShowBottomButtons(context, newValue)
+                        }
+                    )
                 })
             }
 

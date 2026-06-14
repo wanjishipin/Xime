@@ -263,22 +263,6 @@ fun SettingsMainContent(
                         onClick = onNavigateToLayoutDisplay,
                         showArrow = true
                     )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 56.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    var showBottomButtons by remember { mutableStateOf(SettingsPreferences.showBottomButtons(context)) }
-                    SettingsToggleItem(
-                        icon = Icons.TwoTone.Straighten,
-                        title = "显示底部按钮",
-                        subtitle = "显示收回键盘和切换输入法按钮（部分系统自带）",
-                        checked = showBottomButtons,
-                        onCheckedChange = { newValue ->
-                            showBottomButtons = newValue
-                            SettingsPreferences.setShowBottomButtons(context, newValue)
-                        }
-                    )
                 })
             }
 
