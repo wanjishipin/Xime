@@ -586,9 +586,11 @@ fun KeyboardRow(
         keys.forEachIndexed { index, key ->
             val swipeText = swipeKeys?.getOrNull(index)
             val swipeDownText = swipeDownKeys?.getOrNull(index)
+            val rowOnClick = remember(key, onKeyPress) { { onKeyPress(key) } }
+            val rowOnPress: (() -> Unit)? = remember(key, onKeyPressDown) { { onKeyPressDown?.invoke(key); Unit } }
             SwipeableKeyButton(
                 text = if (isShifted) key.uppercase() else key,
-                onClick = { onKeyPress(key) },
+                onClick = rowOnClick,
                 backgroundColor = keyBackgroundColor,
                 textColor = keyTextColor,
                 modifier = Modifier.weight(1f),
@@ -597,7 +599,7 @@ fun KeyboardRow(
                 onSwipe = onSwipeKey,
                 onSwipeDown = onSwipeDownKey,
                 onSwipeStateChange = onSwipeStateChange,
-                onPress = { onKeyPressDown?.invoke(key) }
+                onPress = rowOnPress
             )
         }
     }

@@ -37,7 +37,7 @@ build/sherpa-onnx-*.tar.gz
 *.tar.xz
 *.tar.gz
 *.zip
-
+/.agents
 # Association model weights (large files, manually placed)
 app/src/main/assets/association_model
 

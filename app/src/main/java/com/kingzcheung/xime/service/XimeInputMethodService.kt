@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -580,16 +581,16 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             voiceAmplitude = state.voiceAmplitude,
                             uiStateProvider = { uiState.value },
                             candidateStateProvider = { candidateState.value },
-                            onKeyPress = { key, isShifted ->
+                            onKeyPress = remember { { key: String, isShifted: Boolean ->
                                 handleKeyPress(key, isShifted)
-                            },
-                            onKeyPressDown = { key ->
+                            } },
+                            onKeyPressDown = remember { { key: String ->
                                 feedbackManager.performKeyPressDownEffect(key)
                                 if (key == "space" && uiState.value.isSttEnabled) {
                                     voiceRecognitionHandler.startDelayedPreStart()
                                 }
-                            },
-                            onCursorMove = { direction ->
+                            } },
+                            onCursorMove = remember { { direction: Int ->
                                 val ic = currentInputConnection
                                 if (ic != null) {
                                     val textBefore = ic.getTextBeforeCursor(Int.MAX_VALUE, 0)
@@ -599,16 +600,16 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                     val newSel = (selStart + direction).coerceIn(0, totalLen)
                                     ic.setSelection(newSel, newSel)
                                 }
-                            },
-                            onGestureAction = { action, value ->
+                            } },
+                            onGestureAction = remember { { action, value ->
                                 action.execute(this@XimeInputMethodService, value)
-                            },
-                            onCandidateSelect = { index ->
+                            } },
+                            onCandidateSelect = remember { { index: Int ->
                                 selectCandidate(index)
-                            },
-                            onToggleDarkMode = {
+                            } },
+                            onToggleDarkMode = remember { {
                                 toggleDarkMode()
-                            },
+                            } },
                             onClipboard = {
                                 Log.d(TAG, "Clipboard clicked")
                             },

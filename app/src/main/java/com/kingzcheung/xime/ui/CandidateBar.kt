@@ -390,7 +390,7 @@ fun CandidateBar(
                         }
                     }
 
-                    if (callbacks.onHideKeyboard != null && (!isComposing || inputText.isEmpty())) {
+                    if (callbacks.onHideKeyboard != null && (!isComposing || inputText.isEmpty()) && candidates.isEmpty() && associationCandidates.isEmpty()) {
                         val hideKeyboardInteractionSource = remember { MutableInteractionSource() }
                         val isHideKeyboardPressed by hideKeyboardInteractionSource.collectIsPressedAsState()
 
