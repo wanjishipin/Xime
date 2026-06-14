@@ -75,9 +75,13 @@ import com.kingzcheung.xime.ui.theme.XimeTheme
 import com.kingzcheung.xime.util.FileLogger
 import com.kingzcheung.xime.keyboard.ActionExecutor
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.channels.consumeEach
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -113,6 +117,14 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private val keyProcessingDispatcher = java.util.concurrent.Executors.newSingleThreadExecutor { r ->
         Thread(r, "key-process").also { it.isDaemon = true }
     }.asCoroutineDispatcher()
+    
+    private val keyJobs = Channel<Job>(Channel.UNLIMITED)
+    
+    init {
+        serviceScope.launch {
+            keyJobs.consumeEach { it.join() }
+        }
+    }
     
     private val mainHandler = Handler(Looper.getMainLooper())
     
@@ -736,9 +748,11 @@ onVoiceModeChange = { enabled ->
                                    uiState.value = uiState.value.copy(toolbarButtons = buttons)
                                },
                                 onKeyboardModeChange = { chineseMode ->
-                                    isChineseMode = chineseMode
-                                    if (!chineseMode) {
-                                        uiState.value = uiState.value.copy(associationCandidates = emptyArray())
+                                    if (isChineseMode != chineseMode) {
+                                        isChineseMode = chineseMode
+                                        if (!chineseMode) {
+                                            uiState.value = uiState.value.copy(associationCandidates = emptyArray())
+                                        }
                                     }
                                 }
                                 )
@@ -853,8 +867,12 @@ onVoiceModeChange = { enabled ->
     override fun executeCommand(name: String) {
         when (name) {
             "clear_composition" -> {
-                rimeEngine.clearComposition()
-                mainHandler.post { updateUI() }
+                postRimeJob {
+                    rimeEngine.clearComposition()
+                    withContext(Dispatchers.Main) {
+                        updateUI()
+                    }
+                }
             }
             else -> Log.w(TAG, "Unknown command: $name")
         }
@@ -1237,7 +1255,7 @@ onVoiceModeChange = { enabled ->
     }
 
     private fun handleKeyPress(key: String, isShifted: Boolean) {
-        serviceScope.launch(keyProcessingDispatcher) {
+        val job = serviceScope.launch(keyProcessingDispatcher, start = CoroutineStart.LAZY) {
             val state = uiState.value
             var needsUIUpdate = false
             var pendingResult: com.kingzcheung.xime.rime.RimeProcessResult? = null
@@ -1551,8 +1569,18 @@ onVoiceModeChange = { enabled ->
                 }
             }
         }
+        keyJobs.trySend(job)
     }
-    
+
+    /**
+     * Posts a rime operation to [keyJobs] for sequential execution.
+     * Ensures no interleaving with key processing.
+     */
+    private fun postRimeJob(block: suspend CoroutineScope.() -> Unit) {
+        val job = serviceScope.launch(keyProcessingDispatcher, start = CoroutineStart.LAZY, block = block)
+        keyJobs.trySend(job)
+    }
+
     private suspend fun selectCandidateAsync(index: Int) {
         val selectedCandidate = if (index < uiState.value.candidates.size) {
             uiState.value.candidates[index]
@@ -1659,14 +1687,14 @@ onVoiceModeChange = { enabled ->
                 candidateComments = emptyArray()
             )
         } else {
-            serviceScope.launch(keyProcessingDispatcher) {
+            postRimeJob {
                 selectCandidateAsync(index)
             }
         }
     }
     
     private fun pageDown() {
-        serviceScope.launch(Dispatchers.Default) {
+        postRimeJob {
             if (rimeEngine.pageDown()) {
                 withContext(Dispatchers.Main) {
                     updateUI()
@@ -1676,7 +1704,7 @@ onVoiceModeChange = { enabled ->
     }
     
     private fun pageUp() {
-        serviceScope.launch(Dispatchers.Default) {
+        postRimeJob {
             if (rimeEngine.pageUp()) {
                 withContext(Dispatchers.Main) {
                     updateUI()
@@ -1991,8 +2019,12 @@ onVoiceModeChange = { enabled ->
 
     private fun selectClipboardItem(text: String) {
         if (uiState.value.isComposing) {
-            rimeEngine.clearComposition()
-            updateUI()
+            postRimeJob {
+                rimeEngine.clearComposition()
+                withContext(Dispatchers.Main) {
+                    updateUI()
+                }
+            }
         }
         commitText(text)
         clipboardManager.copyToSystemClipboard(text)
