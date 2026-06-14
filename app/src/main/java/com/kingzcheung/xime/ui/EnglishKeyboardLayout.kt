@@ -124,13 +124,11 @@ fun EnglishKeyboardLayout(
             ) {
                 Column(
                     modifier = Modifier.fillMaxWidth().weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     // 第一行
                     Box(modifier = Modifier.weight(1f)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             row1.forEach { key ->
                                 val swipeText = swipeSymbols[key]
@@ -161,7 +159,6 @@ fun EnglishKeyboardLayout(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             row2.forEach { key ->
                                 val swipeText = swipeSymbols[key]
@@ -192,7 +189,6 @@ fun EnglishKeyboardLayout(
                             .fillMaxWidth()
                             .weight(1f)
                             .background(keyboardBackgroundColor),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         // Shift 键
                         IconKeyButton(
@@ -255,7 +251,6 @@ fun EnglishKeyboardLayout(
                             .fillMaxWidth()
                             .weight(1f)
                             .background(keyboardBackgroundColor),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         KeyButton(
                             text = "?123",
@@ -366,12 +361,10 @@ private fun LandscapeEnglishKeyboardContent(
                 .fillMaxHeight()
                 .weight(0.42f)
                 .padding(start = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Box(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     listOf("q", "w", "e", "r", "t").forEach { key ->
                         KeyButton(
@@ -391,7 +384,6 @@ private fun LandscapeEnglishKeyboardContent(
             Box(modifier = Modifier.weight(1f).padding(start = staggerStep)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     listOf("a", "s", "d", "f", "g").forEach { key ->
                         KeyButton(
@@ -408,7 +400,6 @@ private fun LandscapeEnglishKeyboardContent(
             Box(modifier = Modifier.weight(1f).padding(start = staggerStep * 2)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     listOf("z", "x", "c", "v").forEach { key ->
                         KeyButton(
@@ -424,7 +415,6 @@ private fun LandscapeEnglishKeyboardContent(
             }
             Row(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 IconKeyButton(
                     icon = rememberVectorPainter(Icons.Default.EmojiEmotions),
@@ -470,12 +460,10 @@ private fun LandscapeEnglishKeyboardContent(
                 .fillMaxHeight()
                 .weight(0.42f)
                 .padding(end = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Box(modifier = Modifier.weight(1f)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     listOf("y", "u", "i", "o", "p").forEach { key ->
                         KeyButton(
@@ -492,7 +480,6 @@ private fun LandscapeEnglishKeyboardContent(
             Box(modifier = Modifier.weight(1f).padding(end = staggerStep)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     listOf("g", "h", "j", "k", "l").forEach { key ->
                         KeyButton(
@@ -511,12 +498,10 @@ private fun LandscapeEnglishKeyboardContent(
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(end = staggerStep * 2),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Box(modifier = Modifier.weight(4f)) {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf("v", "b", "n", "m").forEach { key ->
                             KeyButton(
@@ -547,7 +532,6 @@ private fun LandscapeEnglishKeyboardContent(
             }
             Row(
                 modifier = Modifier.fillMaxWidth().weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 SplitSpaceKey(
                     onClick = { onKeyPress("space") },

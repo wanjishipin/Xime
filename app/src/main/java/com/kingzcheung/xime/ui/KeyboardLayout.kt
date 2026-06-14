@@ -200,7 +200,6 @@ fun KeyboardLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     // 第一行
                     if (isVoiceMode) {
@@ -294,7 +293,6 @@ fun KeyboardLayout(
                                 .fillMaxWidth()
                                 .weight(1f)
                                 .background(keyboardBackgroundColor),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp)
                         ) {
                             IconKeyButton(
                                 icon = rememberVectorPainter(Icons.TwoTone.EmojiEmotions),
@@ -315,7 +313,6 @@ fun KeyboardLayout(
                                     .weight(7f)
                                     .fillMaxHeight()
                                     .background(keyboardBackgroundColor),
-                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 val bottomKeys = listOf("z", "x", "c", "v", "b", "n", "m")
                                 bottomKeys.forEach { key ->
@@ -433,7 +430,6 @@ fun KeyboardLayout(
                             .fillMaxWidth()
                             .weight(1f)
                             .background(keyboardBackgroundColor),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         // 123 / 英中 键
                         if (isVoiceMode) {
@@ -494,9 +490,6 @@ fun KeyboardLayout(
                             modifier = Modifier
                                 .weight(3f)
                                 .fillMaxHeight()
-                                .then(spaceShadowModifier)
-                                .clip(RoundedCornerShape(shadowShapeRadius))
-                                .background(keyBackgroundColor)
                                 .pointerInput(isSttEnabled) {
                                     awaitEachGesture {
                                         val down = awaitFirstDown(requireUnconsumed = false)
@@ -569,7 +562,13 @@ fun KeyboardLayout(
                                             currentOnKeyPress("space")
                                         }
                                     }
-                                },
+                                }
+                                .padding(horizontal = 2.dp, vertical = 3.dp)
+                                .fillMaxWidth()
+                                .fillMaxHeight()
+                                .then(spaceShadowModifier)
+                                .clip(RoundedCornerShape(shadowShapeRadius))
+                                .background(keyBackgroundColor),
                             contentAlignment = Alignment.Center
                         ) {
                             if (isVoiceMode) {
@@ -692,7 +691,6 @@ private fun DummyKeyboardRow(
         modifier = modifier
             .fillMaxWidth()
             .background(keyboardBackgroundColor),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         repeat(keysCount) {
             DummyKeyButton(
@@ -713,7 +711,6 @@ private fun DummyBottomRow(
         modifier = Modifier
             .fillMaxWidth()
             .background(keyboardBackgroundColor),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         DummyKeyButton(
             backgroundColor = specialKeyBackgroundColor,
@@ -723,7 +720,6 @@ private fun DummyBottomRow(
             modifier = Modifier
                 .weight(7f)
                 .fillMaxHeight(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             repeat(7) {
                 DummyKeyButton(
@@ -778,7 +774,6 @@ fun KeyboardRowWithConfig(
         modifier = modifier
             .fillMaxWidth()
             .background(keyboardBackgroundColor),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         keys.forEach { key ->
             val rawSwipeUpText = KeysConfigHelper.getSwipeUpText(key)
@@ -900,7 +895,6 @@ private fun LandscapeKeyboardContent(
                 .fillMaxHeight()
                 .weight(0.42f)
                 .padding(start = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Box(modifier = Modifier.weight(1f)) {
                 CompactKeyboardRowWithConfig(
@@ -977,7 +971,6 @@ private fun LandscapeKeyboardContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 IconKeyButton(
                     icon = rememberVectorPainter(Icons.Default.EmojiEmotions),
@@ -1027,7 +1020,6 @@ private fun LandscapeKeyboardContent(
                 .fillMaxHeight()
                 .weight(0.42f)
                 .padding(end = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Box(modifier = Modifier.weight(1f)) {
                 CompactKeyboardRowWithConfig(
@@ -1080,7 +1072,6 @@ private fun LandscapeKeyboardContent(
                     .fillMaxWidth()
                     .weight(1f)
                     .padding(end = staggerStep * 2),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Box(modifier = Modifier.weight(4f)) {
                     CompactKeyboardRowWithConfig(
@@ -1129,7 +1120,6 @@ private fun LandscapeKeyboardContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 SplitSpaceKey(
                     onClick = { onKeyPress("space") },
@@ -1253,12 +1243,6 @@ fun CompactSwipeableKeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .then(shadowModifier)
-            .onGloballyPositioned { coordinates ->
-                buttonBounds = coordinates.boundsInRoot()
-            }
-            .clip(shadowShape)
-            .background(if (isPressed) darkenColor(backgroundColor) else backgroundColor)
             .pointerInput(currentLongPressItems, currentOnLongPressSelect) {
                 if (currentLongPressItems.isNullOrEmpty() || currentOnLongPressSelect == null) {
                     detectTapGestures(
@@ -1440,7 +1424,16 @@ fun CompactSwipeableKeyButton(
                         }
                     }
                 )
-            },
+            }
+            .padding(horizontal = 2.dp, vertical = 3.dp)
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .then(shadowModifier)
+            .onGloballyPositioned { coordinates ->
+                buttonBounds = coordinates.boundsInRoot()
+            }
+            .clip(shadowShape)
+            .background(if (isPressed) darkenColor(backgroundColor) else backgroundColor),
         contentAlignment = Alignment.TopStart
     ) {
 
@@ -1521,7 +1514,6 @@ fun CompactKeyboardRowWithConfig(
         modifier = modifier
             .fillMaxSize()
             .background(keyboardBackgroundColor),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         keys.forEach { key ->
             val rawSwipeUpText = KeysConfigHelper.getSwipeUpText(key)
