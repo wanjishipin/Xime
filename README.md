@@ -155,6 +155,15 @@ git submodule update --init --recursive
 - Rime (librime)
 - JNI (Native C++)
 
+## 贡献
+
+欢迎贡献！在提交 PR 之前，请先阅读 [CONTRIBUTING.md](CONTRIBUTING.md) 了解贡献流程。
+
+核心规则：
+- **先提 Issue** — 所有改动必须先创建 Issue 讨论
+- **最小修改** — PR 只包含所需的最小改动
+- **GPG 签名** — 所有 commit 必须 GPG 签名
+
 ## 致谢
 
 - [Rime](https://rime.im/) - 中州韵输入法引擎

@@ -13,6 +13,9 @@
 - [插件开发指南](https://ime.ximei.me/plugins/PLUGIN_DEVELOPMENT_GUIDE) - 开发插件时必读
 
 ## 硬性规则（必须遵守，CI 会验证）
+- 所有 commit 必须经过 GPG 签名
+- PR 必须遵循最小修改原则
+- 贡献前请阅读 [CONTRIBUTING.md](CONTRIBUTING.md)
 
 ## 工作规则
 - 每次只做一个功能点
