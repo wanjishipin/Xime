@@ -38,7 +38,11 @@ object AssociationManager {
                 FileLogger.i(TAG, "Starting OnnxAssociationEngine initialization...")
                 val modelInit = OnnxAssociationEngine.initialize(ctx)
                 FileLogger.i(TAG, "OnnxAssociationEngine init result: $modelInit")
-                
+
+                if (modelInit) {
+                    OnnxAssociationEngine.startWarmup()
+                }
+
                 val cacheInit = fusionEngine.initialize()
                 FileLogger.i(TAG, "NgramFusionEngine init result: $cacheInit")
                 

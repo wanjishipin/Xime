@@ -77,36 +77,6 @@ class PredictionManager(
         }
     }
     
-    fun checkAndInitialize() {
-        if (!FileLogger.isInitialized()) {
-            FileLogger.init(context)
-        }
-        
-        serviceScope.launch(Dispatchers.IO) {
-            try {
-                if (!ExtensionManager.isInitialized()) {
-                    FileLogger.i(TAG, "ExtensionManager not initialized, initializing now...")
-                    ExtensionManager.initialize(context)
-                }
-                
-                if (SettingsPreferences.isSmartPredictionEnabled(context)) {
-                    try {
-                        val initialized = AssociationManager.initialize(context)
-                        if (initialized) {
-                            FileLogger.i(TAG, "Smart prediction initialized in checkAndInitialize")
-                        } else {
-                            FileLogger.w(TAG, "Smart prediction initialization failed in checkAndInitialize")
-                        }
-                    } catch (e: Exception) {
-                        FileLogger.e(TAG, "Failed to initialize smart prediction: ${e.message}")
-                    }
-                }
-            } catch (e: Exception) {
-                FileLogger.e(TAG, "Failed to initialize in checkAndInitialize: ${e.message}")
-            }
-        }
-    }
-    
     fun getPrediction(contextText: String) {
         if (contextText.isEmpty()) {
             onStateChanged(getState().copy(associationCandidates = emptyArray()))

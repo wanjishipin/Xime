@@ -2,7 +2,10 @@ package com.kingzcheung.xime.association
 
 import android.content.Context
 import com.kingzcheung.xime.util.FileLogger
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.io.File
@@ -13,6 +16,8 @@ object OnnxAssociationEngine {
     private var vocab: Map<String, Int> = emptyMap()
     private var id2word: Map<Int, String> = emptyMap()
     private var isInitialized = false
+    private var warmupStarted = false
+    private val warmupScope = CoroutineScope(Dispatchers.Default + SupervisorJob())
 
     fun initialize(context: Context): Boolean {
         if (isInitialized) {
@@ -126,6 +131,21 @@ object OnnxAssociationEngine {
             i++
         }
         return ids
+    }
+
+    fun startWarmup() {
+        if (!isInitialized || warmupStarted) return
+        warmupStarted = true
+        warmupScope.launch {
+            FileLogger.d(TAG, "Starting warmup prediction...")
+            val dummyIds = longArrayOf(1L, 9L)
+            try {
+                NativeOnnxEngine.predict(dummyIds, 5)
+                FileLogger.d(TAG, "Warmup prediction completed")
+            } catch (e: Exception) {
+                FileLogger.w(TAG, "Warmup prediction failed (non-fatal): ${e.message}")
+            }
+        }
     }
 
     fun release() {

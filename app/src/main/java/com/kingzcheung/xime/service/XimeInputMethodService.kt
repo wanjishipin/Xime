@@ -282,9 +282,6 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         predictionManager.initialize()
     }
     
-    private fun checkAndInitializeAssociationEngine() {
-        predictionManager.checkAndInitialize()
-    }
     
     private fun getPredictionFromPlugin(contextText: String) {
         predictionManager.getPrediction(contextText)
@@ -938,8 +935,6 @@ onVoiceModeChange = { enabled ->
 
         predictionManager.clearCommittedText()
         Log.d(TAG, "onStartInput: cleared lastCommittedText")
-
-        checkAndInitializeAssociationEngine()
         
         if (RimeEngine.isInitialized()) {
             val savedSchema = SettingsPreferences.getCurrentSchema(this)
