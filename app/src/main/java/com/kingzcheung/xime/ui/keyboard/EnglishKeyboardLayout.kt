@@ -278,14 +278,17 @@ fun EnglishKeyboardLayout(
                             shadowShapeRadius = shadowShapeRadius,
                         )
 
-                        // 标点键 .
-                        KeyButton(
-                            text = ".",
-                            onClick = { onKeyPress(".") },
+                        // 标点键 ，上滑 .
+                        SwipeableKeyButton(
+                            text = ",",
+                            onClick = { onKeyPress(",") },
                             backgroundColor = keyBackgroundColor,
                             textColor = keyTextColor,
                             modifier = Modifier.weight(0.8f),
-                            onPress = { onKeyPressDown?.invoke(".") },
+                            swipeText = ".",
+                            onSwipe = onKeyPress,
+                            onPress = { onKeyPressDown?.invoke(",") },
+                            onSwipeStateChange = { state, bounds -> processSwipeState(state, bounds) },
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,
                             shadowShapeRadius = shadowShapeRadius,
