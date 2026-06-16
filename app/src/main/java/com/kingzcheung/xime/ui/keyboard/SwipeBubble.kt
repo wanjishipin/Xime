@@ -75,7 +75,7 @@ fun rememberSwipeBubbleDrawData(
     val cornerRadiusPx = with(density) { BubbleCornerRadius.toPx() }
     val screenMarginPx = with(density) { BubbleScreenMargin.toPx() }
     val keyWidthPx = keyWidth
-    val minBodyWidthPx = keyWidthPx + with(density) { 24.dp.toPx() }
+    val minBodyWidthPx = keyWidthPx * 1.8f
     val totalHeightPx = bodyHeightPx + pointerHeightPx
     val shadowRadiusPx = with(density) { 4.dp.toPx() }
 
@@ -128,8 +128,8 @@ fun rememberSwipeBubbleDrawData(
     val bodyLeftInBox = bodyLeft - boxLeft
     val pointerLeftInBox = pointerLeft - boxLeft
     val pointerRightInBox = pointerLeftInBox + keyWidthPx
-    val pathBodyLeft = if (isLeftFlush) pointerLeftInBox else bodyLeftInBox
-    val pathBodyWidth = (if (isRightFlush) pointerRightInBox else (bodyLeftInBox + bodyWidth)) - pathBodyLeft
+    val pathBodyLeft = if (isLeftFlush && leftRoom < cornerRadiusPx) pointerLeftInBox else bodyLeftInBox
+    val pathBodyWidth = (bodyLeftInBox + bodyWidth) - pathBodyLeft
 
     val paddingPx = with(density) { 10.dp.toPx() }
 
@@ -143,8 +143,8 @@ fun rememberSwipeBubbleDrawData(
         bodyHeightPx = bodyHeightPx,
         pointerHeightPx = pointerHeightPx,
         cornerRadiusPx = cornerRadiusPx,
-        isLeftFlush = isLeftFlush,
-        isRightFlush = isRightFlush,
+        isLeftFlush = isLeftFlush && leftRoom < cornerRadiusPx,
+        isRightFlush = isRightFlush && rightRoom < cornerRadiusPx,
         bgColor = bgColor,
         textColor = textColor,
         displayText = displayText,
