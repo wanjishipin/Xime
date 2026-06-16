@@ -669,13 +669,15 @@ fun KeyboardLayout(
             }
         }
 
-        SwipeBubble(
-            swipeState = swipeState,
-            keyBounds = lastKeyBounds,
-            isDarkTheme = isDarkTheme,
-            keyWidth = if (swipeState.isSwiping || swipeState.isPressed) lastKeyBounds.width else 0f,
-            keyboardWidth = keyboardBounds.width
-        )
+        Box(Modifier.fillMaxSize()) {
+            SwipeBubble(
+                swipeState = swipeState,
+                keyBounds = lastKeyBounds,
+                isDarkTheme = isDarkTheme,
+                keyWidth = if (swipeState.isSwiping || swipeState.isPressed) lastKeyBounds.width else 0f,
+                keyboardWidth = keyboardBounds.width
+            )
+        }
     }
 }
 
