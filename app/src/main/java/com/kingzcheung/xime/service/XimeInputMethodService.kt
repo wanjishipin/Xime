@@ -1302,59 +1302,70 @@ onVoiceModeChange = { enabled ->
                     calculatorEngine.handleDelete()
                     updateCalculatorCandidates()
                     
-                    val pendingEnglish = candState.pendingEnglishText
-                    
-                    if (pendingEnglish.isNotEmpty()) {
-                        val newPending = pendingEnglish.dropLast(1)
+                    // 优先清空联想词：如果存在联想词，退格键先清空联想词，不执行实际删除
+                    if (candState.associationCandidates.isNotEmpty()) {
                         withContext(Dispatchers.Main) {
-                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
                             candidateState.value = candidateState.value.copy(
-                                pendingEnglishText = newPending,
                                 associationCandidates = emptyArray()
                             )
                         }
                         needsUIUpdate = true
-                        Log.d(TAG, "Delete English pending: '$newPending'")
-                    } else if (candState.isComposing || candState.inputText.isNotEmpty()) {
-                        rimeEngine.processKey(0xff08, 0)
-                        val result = rimeEngine.getProcessResult(true)
-                        if (result.inputText.isEmpty()) {
-                            rimeEngine.clearComposition()
-                        }
-                        val pending = candidateState.value.pendingEnglishText
-                        uiEventChannel.trySend {
-                            updateUIWithResult(result)
-                            if (calculatorEngine.isActive()) updateCalculatorCandidates()
-                            if (pending.isNotEmpty()) {
-                                serviceScope.launch {
-                                    val candidates = predictionManager.getEnglishAssociations(pending, PredictionManager.MAX_ASSOCIATION_COUNT)
-                                    withContext(Dispatchers.Main) {
-                                        candidateState.value = candidateState.value.copy(associationCandidates = candidates)
+                        Log.d(TAG, "Delete: cleared association candidates")
+                    } else {
+                        val pendingEnglish = candState.pendingEnglishText
+                        
+                        if (pendingEnglish.isNotEmpty()) {
+                            val newPending = pendingEnglish.dropLast(1)
+                            withContext(Dispatchers.Main) {
+                                sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                                candidateState.value = candidateState.value.copy(
+                                    pendingEnglishText = newPending,
+                                    associationCandidates = emptyArray()
+                                )
+                            }
+                            needsUIUpdate = true
+                            Log.d(TAG, "Delete English pending: '$newPending'")
+                        } else if (candState.isComposing || candState.inputText.isNotEmpty()) {
+                            rimeEngine.processKey(0xff08, 0)
+                            val result = rimeEngine.getProcessResult(true)
+                            if (result.inputText.isEmpty()) {
+                                rimeEngine.clearComposition()
+                            }
+                            val pending = candidateState.value.pendingEnglishText
+                            uiEventChannel.trySend {
+                                updateUIWithResult(result)
+                                if (calculatorEngine.isActive()) updateCalculatorCandidates()
+                                if (pending.isNotEmpty()) {
+                                    serviceScope.launch {
+                                        val candidates = predictionManager.getEnglishAssociations(pending, PredictionManager.MAX_ASSOCIATION_COUNT)
+                                        withContext(Dispatchers.Main) {
+                                            candidateState.value = candidateState.value.copy(associationCandidates = candidates)
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } else {
-                        predictionManager.deleteLastChar()
-                        Log.d(TAG, "Delete committed text, remaining: '${predictionManager.lastCommittedText}'")
-                        
-                        withContext(Dispatchers.Main) {
-                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
-                        }
-                        
-                        if (!state.isAsciiMode && isChineseMode && SettingsPreferences.isSmartPredictionEnabled(this@XimeInputMethodService) && predictionManager.lastCommittedText.isNotEmpty()) {
-                            val text = predictionManager.lastCommittedText
-                            serviceScope.launch {
-                                val candidates = predictionManager.getChineseAssociations(text, PredictionManager.MAX_ASSOCIATION_COUNT)
-                                candidateState.value = candidateState.value.copy(associationCandidates = candidates)
-                            }
                         } else {
-                            candidateState.value = candidateState.value.copy(
-                                candidates = emptyArray(),
-                                candidateComments = emptyArray(),
-                                associationCandidates = emptyArray(),
-                                isShowingRecentClipboard = false
-                            )
+                            predictionManager.deleteLastChar()
+                            Log.d(TAG, "Delete committed text, remaining: '${predictionManager.lastCommittedText}'")
+                            
+                            withContext(Dispatchers.Main) {
+                                sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                            }
+                            
+                            if (!state.isAsciiMode && isChineseMode && SettingsPreferences.isSmartPredictionEnabled(this@XimeInputMethodService) && predictionManager.lastCommittedText.isNotEmpty()) {
+                                val text = predictionManager.lastCommittedText
+                                serviceScope.launch {
+                                    val candidates = predictionManager.getChineseAssociations(text, PredictionManager.MAX_ASSOCIATION_COUNT)
+                                    candidateState.value = candidateState.value.copy(associationCandidates = candidates)
+                                }
+                            } else {
+                                candidateState.value = candidateState.value.copy(
+                                    candidates = emptyArray(),
+                                    candidateComments = emptyArray(),
+                                    associationCandidates = emptyArray(),
+                                    isShowingRecentClipboard = false
+                                )
+                            }
                         }
                     }
                 }
