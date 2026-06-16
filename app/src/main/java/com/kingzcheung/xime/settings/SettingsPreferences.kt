@@ -36,6 +36,7 @@ object SettingsPreferences {
     
     const val KEY_SWIPE_UP_HINTS_ENABLED = "swipe_up_hints_enabled"
     const val KEY_SWIPE_DOWN_HINTS_ENABLED = "swipe_down_hints_enabled"
+    const val KEY_SHOW_PRESS_BUBBLE = "show_press_bubble"
     
     private const val KEY_KEYBOARD_HEIGHT_DP = "keyboard_height_dp"
     private const val KEY_KEYBOARD_HEIGHT_DP_LANDSCAPE = "keyboard_height_dp_landscape"
@@ -274,9 +275,17 @@ object SettingsPreferences {
     fun isSwipeDownHintsEnabled(context: Context): Boolean {
         return getPrefs(context).getBoolean(KEY_SWIPE_DOWN_HINTS_ENABLED, true)
     }
-    
+
     fun setSwipeDownHintsEnabled(context: Context, enabled: Boolean) {
         getPrefs(context).edit().putBoolean(KEY_SWIPE_DOWN_HINTS_ENABLED, enabled).apply()
+    }
+
+    fun shouldShowPressBubble(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_SHOW_PRESS_BUBBLE, true)
+    }
+
+    fun setShowPressBubble(context: Context, show: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_SHOW_PRESS_BUBBLE, show).apply()
     }
     
     fun getKeyboardHeightDp(context: Context): Int {

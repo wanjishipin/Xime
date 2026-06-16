@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.keyboard.KeyboardDimensions
+import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.ui.theme.KeyBackground
 import com.kingzcheung.xime.ui.theme.KeyBackgroundDark
 import kotlin.math.roundToInt
@@ -158,7 +159,9 @@ fun SwipeBubble(
     keyboardWidth: Float,
     modifier: Modifier = Modifier
 ) {
-    val shouldShowBubble = swipeState.isSwiping || swipeState.isPressed || swipeState.isLongPress
+    val context = LocalContext.current
+    val showPressBubble = SettingsPreferences.shouldShowPressBubble(context)
+    val shouldShowBubble = swipeState.isSwiping || (showPressBubble && swipeState.isPressed) || swipeState.isLongPress
     val isLongPressMode = swipeState.isLongPress && swipeState.longPressItems.isNotEmpty()
 
     val displayText = if (isLongPressMode) null
@@ -168,7 +171,6 @@ fun SwipeBubble(
     if (!isLongPressMode && displayText == null) return
 
     val density = LocalDensity.current
-    val context = LocalContext.current
 
     val bgColor = if (swipeState.isDanger) {
         if (swipeState.isSwipeDown) Color(0xFF1A73E8) else Color(0xFFD93025)

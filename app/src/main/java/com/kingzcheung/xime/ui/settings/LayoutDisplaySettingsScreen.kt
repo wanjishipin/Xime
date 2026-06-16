@@ -244,6 +244,40 @@ fun LayoutDisplaySettingsContent(
                             }
                         )
                     }
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 16.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                    var showPressBubble by remember {
+                        mutableStateOf(SettingsPreferences.shouldShowPressBubble(context))
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "点按弹出气泡",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = "在按键上显示当前按键字符气泡（关闭可减少快速打字卡顿）",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = showPressBubble,
+                            onCheckedChange = { newValue ->
+                                showPressBubble = newValue
+                                SettingsPreferences.setShowPressBubble(context, newValue)
+                            }
+                        )
+                    }
                 })
             }
         }
