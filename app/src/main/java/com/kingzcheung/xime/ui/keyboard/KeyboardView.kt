@@ -314,9 +314,12 @@ fun KeyboardView(
                     val fullScreenOnKeyPress: (String) -> Unit = { key ->
                         when (key) {
                             "shift" -> isShifted = !isShifted
-                            "mode_change" -> keyboardState = keyboardState.transition(
-                                KeyboardLayoutAction.SwitchToNumber, isAsciiMode
-                            )
+                            "mode_change" -> {
+                                keyboardState = keyboardState.transition(
+                                    KeyboardLayoutAction.SwitchToNumber, isAsciiMode
+                                )
+                                onKeyPress("clear_composition", false)
+                            }
                             "mode_change_symbol" -> currentRoute = KeyboardRoute.Symbol
                             "emoji" -> currentRoute = KeyboardRoute.Emoji
                             else -> onKeyPress(key, isShifted)
@@ -337,9 +340,12 @@ fun KeyboardView(
                             "abc" -> keyboardState = keyboardState.transition(
                                 KeyboardLayoutAction.SwitchToFull, isAsciiMode
                             )
-                            "?123" -> keyboardState = keyboardState.transition(
-                                KeyboardLayoutAction.SwitchToNumber, isAsciiMode
-                            )
+                            "?123" -> {
+                                keyboardState = keyboardState.transition(
+                                    KeyboardLayoutAction.SwitchToNumber, isAsciiMode
+                                )
+                                onKeyPress("clear_composition", false)
+                            }
                             else -> onKeyPress(key, false)
                         }
                     }

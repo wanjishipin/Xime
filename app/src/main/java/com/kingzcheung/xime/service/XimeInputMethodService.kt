@@ -1391,6 +1391,8 @@ onVoiceModeChange = { enabled ->
                     }
                 }
                 "clear_composition" -> {
+                    calculatorEngine.clear()
+                    updateCalculatorCandidates()
                     rimeEngine.clearComposition()
                     candidateState.value = candidateState.value.copy(
                         candidates = emptyArray(),
@@ -1403,6 +1405,8 @@ onVoiceModeChange = { enabled ->
                     Log.d(TAG, "Clear composition: cleared all")
                 }
                 "clear_all" -> {
+                    calculatorEngine.clear()
+                    updateCalculatorCandidates()
                     // 记录当前输入框中的文本以便撤回
                     val inputFieldText = withContext(Dispatchers.Main) {
                         currentInputConnection?.getTextBeforeCursor(Int.MAX_VALUE, 0)?.toString() ?: ""
