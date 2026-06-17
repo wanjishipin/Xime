@@ -1309,53 +1309,85 @@ onVoiceModeChange = { enabled ->
                     calculatorEngine.handleDelete()
                     updateCalculatorCandidates()
                     
-                    // 优先清空候选栏：无论联想词、候选词还是复制内容，按删除键先清空候选栏
-                    val hasCandidateContent = candState.candidates.isNotEmpty() ||
-                        candState.associationCandidates.isNotEmpty() ||
-                        candState.isShowingRecentClipboard
-                    
-                    if (hasCandidateContent) {
-                        // 如果有待处理的英文输入，需同步删除已提交的字符并清空 pendingEnglishText
-                        // 否则候选栏清除后 pendingEnglishText 仍在，会重新拉取联想词
-                        val pendingLen = candState.pendingEnglishText.length
-                        withContext(Dispatchers.Main) {
-                            repeat(pendingLen) {
-                                sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                    when {
+                        // 1. 英文待处理文本：逐个删除字符，重新加载联想
+                        candState.pendingEnglishText.isNotEmpty() -> {
+                            val pendingLen = candState.pendingEnglishText.length
+                            if (pendingLen > 1) {
+                                val newPending = candState.pendingEnglishText.dropLast(1)
+                                withContext(Dispatchers.Main) {
+                                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                                    candidateState.value = candidateState.value.copy(
+                                        pendingEnglishText = newPending,
+                                        candidates = emptyArray(),
+                                        candidateComments = emptyArray(),
+                                        associationCandidates = emptyArray()
+                                    )
+                                }
+                                serviceScope.launch {
+                                    val candidates = predictionManager.getEnglishAssociations(newPending, PredictionManager.MAX_ASSOCIATION_COUNT)
+                                    withContext(Dispatchers.Main) {
+                                        candidateState.value = candidateState.value.copy(associationCandidates = candidates)
+                                    }
+                                }
+                                Log.d(TAG, "Delete: one char from pending English, now '$newPending'")
+                            } else {
+                                withContext(Dispatchers.Main) {
+                                    sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                                    candidateState.value = candidateState.value.copy(
+                                        pendingEnglishText = "",
+                                        candidates = emptyArray(),
+                                        candidateComments = emptyArray(),
+                                        associationCandidates = emptyArray(),
+                                        isShowingRecentClipboard = false
+                                    )
+                                }
+                                Log.d(TAG, "Delete: last pending English char, cleared")
                             }
+                        }
+                        
+                        // 2. Rime 编码中：让 Rime 处理退格，更新候选
+                        candState.isComposing || candState.inputText.isNotEmpty() -> {
+                            rimeEngine.processKey(0xff08, 0)
+                            val result = rimeEngine.getProcessResult(true)
+                            if (result.inputText.isEmpty()) {
+                                rimeEngine.clearComposition()
+                            }
+                            uiEventChannel.trySend {
+                                updateUIWithResult(result)
+                                if (calculatorEngine.isActive()) updateCalculatorCandidates()
+                            }
+                            Log.d(TAG, "Delete: processed Rime backspace, remaining='${result.inputText}'")
+                        }
+                        
+                        // 3. 联想词或剪贴板：仅清空候选栏，不回删已上屏字符
+                        candState.associationCandidates.isNotEmpty() || candState.isShowingRecentClipboard -> {
+                            Log.d(TAG, "Delete: cleared predictions, clipboard=${candState.isShowingRecentClipboard}")
+                            
                             candidateState.value = candidateState.value.copy(
                                 candidates = emptyArray(),
                                 candidateComments = emptyArray(),
                                 associationCandidates = emptyArray(),
-                                isShowingRecentClipboard = false,
-                                pendingEnglishText = ""
+                                isShowingRecentClipboard = false
                             )
                         }
-                        needsUIUpdate = true
-                        Log.d(TAG, "Delete: cleared candidate bar (candidates=${candState.candidates.size}, assoc=${candState.associationCandidates.size}, clipboard=${candState.isShowingRecentClipboard})")
-                    } else if (candState.isComposing || candState.inputText.isNotEmpty()) {
-                        rimeEngine.processKey(0xff08, 0)
-                        val result = rimeEngine.getProcessResult(true)
-                        if (result.inputText.isEmpty()) {
-                            rimeEngine.clearComposition()
-                        }
-                        uiEventChannel.trySend {
-                            updateUIWithResult(result)
-                            if (calculatorEngine.isActive()) updateCalculatorCandidates()
-                        }
-                    } else {
-                        predictionManager.deleteLastChar()
-                        Log.d(TAG, "Delete committed text, remaining: '${predictionManager.lastCommittedText}'")
                         
-                        withContext(Dispatchers.Main) {
-                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                        // 4. 无候选也无编码：直接回删已上屏文本
+                        else -> {
+                            predictionManager.deleteLastChar()
+                            Log.d(TAG, "Delete committed text, remaining: '${predictionManager.lastCommittedText}'")
+                            
+                            withContext(Dispatchers.Main) {
+                                sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                            }
+                            
+                            candidateState.value = candidateState.value.copy(
+                                candidates = emptyArray(),
+                                candidateComments = emptyArray(),
+                                associationCandidates = emptyArray(),
+                                isShowingRecentClipboard = false
+                            )
                         }
-                        
-                        candidateState.value = candidateState.value.copy(
-                            candidates = emptyArray(),
-                            candidateComments = emptyArray(),
-                            associationCandidates = emptyArray(),
-                            isShowingRecentClipboard = false
-                        )
                     }
                 }
                 "clear_composition" -> {
@@ -1543,7 +1575,8 @@ onVoiceModeChange = { enabled ->
                     }
                     
                     // 所有按键统一经过 Rime 引擎
-                    if (pendingEnglish.isNotEmpty()) {
+                    // 字母键不进入此分支（即使 pendingEnglish 非空），需要继续积累编码
+                    if (pendingEnglish.isNotEmpty() && !key.matches(Regex("[a-zA-Z]"))) {
                         withContext(Dispatchers.Main) {
                             commitText(key)
                             candidateState.value = candidateState.value.copy(
