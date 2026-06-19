@@ -8,7 +8,7 @@ package com.kingzcheung.xime.ui.keyboard
  * 状态转移由 [KeyboardLayoutAction] 驱动，参见 [KeyboardLayoutState.transition]。
  *
  * 横竖屏（分体/正常）是渲染层根据 [isLandscape] 自动选择的，
- * 不编码在状态机中，故仅有 4 种核心状态。
+ * 不编码在状态机中，故仅有 5 种核心状态。
  */
 sealed class KeyboardLayoutState {
 
@@ -23,6 +23,9 @@ sealed class KeyboardLayoutState {
 
     /** 符号键盘 */
     data object Symbol : KeyboardLayoutState()
+
+    /** 常用符号键盘（?123 进入的符号+数字混合键盘） */
+    data object CommonSymbol : KeyboardLayoutState()
 
     /** 是否为全键盘类（Chinese / English） */
     val isFullKeyboard: Boolean get() = this is Chinese || this is English
@@ -39,7 +42,10 @@ sealed class KeyboardLayoutAction {
     /** 切换到符号键盘 */
     data object SwitchToSymbol : KeyboardLayoutAction()
 
-    /** 从数字/符号切回全键盘（中文或英文，取决于 isAsciiMode） */
+    /** 切换到常用符号键盘 */
+    data object SwitchToCommonSymbol : KeyboardLayoutAction()
+
+    /** 从数字/符号/常用符号切回全键盘（中文或英文，取决于 isAsciiMode） */
     data object SwitchToFull : KeyboardLayoutAction()
 }
 
@@ -57,6 +63,7 @@ fun KeyboardLayoutState.transition(
     return when (action) {
         KeyboardLayoutAction.SwitchToNumber -> KeyboardLayoutState.Number
         KeyboardLayoutAction.SwitchToSymbol -> KeyboardLayoutState.Symbol
+        KeyboardLayoutAction.SwitchToCommonSymbol -> KeyboardLayoutState.CommonSymbol
         KeyboardLayoutAction.SwitchToFull -> when {
             isAsciiMode -> KeyboardLayoutState.English
             else -> KeyboardLayoutState.Chinese

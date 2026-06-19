@@ -103,6 +103,22 @@ fun KeyboardLayoutScreen(
             )
         }
 
+        is KeyboardLayoutState.CommonSymbol -> {
+            CommonSymbolKeyboardLayout(
+                onKeyPress = onKeyPress,
+                isAsciiMode = isAsciiMode,
+                keyBackgroundColor = keyBackgroundColor,
+                keyTextColor = keyTextColor,
+                specialKeyBackgroundColor = specialKeyBackgroundColor,
+                keyboardBackgroundColor = keyboardBackgroundColor,
+                shadowEnabled = shadowEnabled,
+                shadowElevation = shadowElevation,
+                shadowShapeRadius = shadowShapeRadius,
+                modifier = modifier,
+                onKeyPressDown = onKeyPressDown,
+            )
+        }
+
         is KeyboardLayoutState.Symbol -> {
             // 符号键盘已改为路由，此处不应到达
         }

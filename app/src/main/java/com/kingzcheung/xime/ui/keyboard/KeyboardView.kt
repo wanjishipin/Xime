@@ -329,7 +329,7 @@ fun KeyboardView(
                             "shift" -> isShifted = !isShifted
                             "mode_change" -> {
                                 keyboardState = keyboardState.transition(
-                                    KeyboardLayoutAction.SwitchToNumber, isAsciiMode
+                                    KeyboardLayoutAction.SwitchToCommonSymbol, isAsciiMode
                                 )
                                 onKeyPress("clear_composition", false)
                             }
@@ -362,10 +362,24 @@ fun KeyboardView(
                             else -> onKeyPress(key, false)
                         }
                     }
+                    val commonSymbolOnKeyPress: (String) -> Unit = { key ->
+                        when (key) {
+                            "abc" -> keyboardState = keyboardState.transition(
+                                KeyboardLayoutAction.SwitchToFull, isAsciiMode
+                            )
+                            "number" -> keyboardState = keyboardState.transition(
+                                KeyboardLayoutAction.SwitchToNumber, isAsciiMode
+                            )
+                            "symbol" -> currentRoute = KeyboardRoute.Symbol
+                            "emoji" -> currentRoute = KeyboardRoute.Emoji
+                            else -> onKeyPress(key, false)
+                        }
+                    }
                     val currentOnKeyPress = when (keyboardState) {
                         is KeyboardLayoutState.Chinese,
                         is KeyboardLayoutState.English -> fullScreenOnKeyPress
                         is KeyboardLayoutState.Number -> numberOnKeyPress
+                        is KeyboardLayoutState.CommonSymbol -> commonSymbolOnKeyPress
                         is KeyboardLayoutState.Symbol -> symbolOnKeyPress
                     }
                     KeyboardLayoutScreen(
