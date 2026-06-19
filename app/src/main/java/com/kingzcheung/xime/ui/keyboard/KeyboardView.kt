@@ -90,6 +90,7 @@ fun KeyboardView(
     onKeyPressDown: ((String) -> Unit)? = null,
     onCandidateSelect: (Int) -> Unit,
     onAssociationSelect: ((Int) -> Unit)? = null,
+    onClearAssociation: (() -> Unit)? = null,
     onToggleDarkMode: (() -> Unit)? = null,
     onClipboard: (() -> Unit)? = null,
     onClipboardSelect: ((String) -> Unit)? = null,
@@ -249,7 +250,8 @@ fun KeyboardView(
                             onClipboardSelect?.invoke(inputText)
                         }
                     },
-                    onAssociationSelect = onAssociationSelect
+                    onAssociationSelect = onAssociationSelect,
+                    onClearAssociation = onClearAssociation
                 )
             )
 
