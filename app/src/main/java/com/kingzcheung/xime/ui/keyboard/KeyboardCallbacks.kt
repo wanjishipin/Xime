@@ -1,0 +1,38 @@
+package com.kingzcheung.xime.ui.keyboard
+
+import com.kingzcheung.xime.keyboard.GestureAction
+
+data class KeyboardCallbacks(
+    val onKeyPress: (String, Boolean) -> Unit,
+    val onKeyPressDown: ((String) -> Unit)? = null,
+    val onCandidateSelect: (Int) -> Unit,
+    val onAssociationSelect: ((Int) -> Unit)? = null,
+    val onClearAssociation: (() -> Unit)? = null,
+    val onToggleDarkMode: (() -> Unit)? = null,
+    val onClipboard: (() -> Unit)? = null,
+    val onClipboardSelect: ((String) -> Unit)? = null,
+    val onCommitText: ((String) -> Unit)? = null,
+    val onDeleteText: ((Int) -> Unit)? = null,
+    val onClipboardRemove: ((Long) -> Unit)? = null,
+    val onClipboardSplitWords: ((Long) -> Unit)? = null,
+    val onAddToQuickSend: ((Long) -> Unit)? = null,
+    val onAddQuickSendText: ((String) -> Unit)? = null,
+    val onRemoveFromQuickSend: ((Long) -> Unit)? = null,
+    val onQuickSend: (() -> Unit)? = null,
+    val onKeyboardResize: (() -> Unit)? = null,
+    val onReloadConfig: (() -> Unit)? = null,
+    val onSettings: (() -> Unit)? = null,
+    val onSwitchSchema: ((String) -> Unit)? = null,
+    val onHideKeyboard: (() -> Unit)? = null,
+    val onSwitchKeyboard: (() -> Unit)? = null,
+    val onToolbarEditingAction: ((String) -> Unit)? = null,
+    val onCommitImage: ((String) -> Unit)? = null,
+    val onVoiceModeChange: ((Boolean) -> Unit)? = null,
+    val onPageDown: (() -> Unit)? = null,
+    val onPageUp: (() -> Unit)? = null,
+    val onCursorMove: ((Int) -> Unit)? = null,
+    val onGestureAction: ((GestureAction, String) -> Unit)? = null,
+    val onUpdateToolbarButtons: ((List<String>) -> Unit)? = null,
+    val onKeyboardModeChange: ((Boolean) -> Unit)? = null,
+    val onDismissDeploying: (() -> Unit)? = null,
+)

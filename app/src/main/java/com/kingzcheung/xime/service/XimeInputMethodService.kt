@@ -54,12 +54,18 @@ import androidx.lifecycle.LifecycleOwner
 import kotlinx.coroutines.asCoroutineDispatcher
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.kingzcheung.xime.MainActivity
 import com.kingzcheung.xime.association.AssociationManager
+import com.kingzcheung.xime.ui.keyboard.KeyboardCallbacks
+import com.kingzcheung.xime.viewmodel.KeyboardUiState
+import com.kingzcheung.xime.viewmodel.KeyboardViewModel
 import com.kingzcheung.xime.association.AssociationService
 import com.kingzcheung.xime.clipboard.ClipboardManager
 import com.kingzcheung.xime.plugin.ExtensionManager
@@ -90,7 +96,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileInputStream
 
-class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner, ActionExecutor {
+class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner, ActionExecutor {
 
     companion object {
         private const val TAG = "XimeInputMethodService"
@@ -156,6 +162,16 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private var isChineseMode = true
     
     private val calculatorEngine = com.kingzcheung.xime.calculator.CalculatorEngine()
+
+    private val _viewModelStore = ViewModelStore()
+    override val viewModelStore: ViewModelStore get() = _viewModelStore
+
+    private val keyboardViewModel: KeyboardViewModel by lazy {
+        ViewModelProvider(
+            _viewModelStore,
+            androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory(applicationContext as android.app.Application)
+        ).get(KeyboardViewModel::class.java)
+    }
     
     private val predictionManager = PredictionManager(
         context = this,
@@ -559,224 +575,197 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             color = MaterialTheme.colorScheme.surface
                         ) {
                         CompositionLocalProvider(LocalStretchFactor provides state.stretchFactor) {
-                            KeyboardView(
+                            val kbState = KeyboardUiState(
                                 candidates = cand.candidates,
+                                candidateComments = cand.candidateComments,
                                 inputText = cand.inputText,
                                 isComposing = cand.isComposing,
+                                associationCandidates = if (cand.pendingEnglishText.isNotEmpty()) {
+                                    listOf(cand.pendingEnglishText) + cand.associationCandidates
+                                } else {
+                                    cand.associationCandidates
+                                },
+                                hasNextPage = cand.hasNextPage,
+                                hasPrevPage = cand.hasPrevPage,
                                 isAsciiMode = state.isAsciiMode,
                                 schemaName = state.schemaName,
                                 currentSchemaId = state.currentSchemaId,
                                 schemas = state.schemas,
                                 enterKeyText = state.enterKeyText,
-                            isDarkTheme = isDarkTheme,
-                            darkMode = state.darkMode,
-                            themeId = state.themeId,
-                            showBottomButtons = state.showBottomButtons,
-                            keyboardHeightDp = keyboardHeight,
-                            keyboardBottomPaddingDp = state.keyboardBottomPaddingDp,
-                             clipboardItems = clipboardItemsState.value,
-                             quickSendItems = quickSendItemsState.value,
-                             recentClipboardItems = recentClipboardItemsState.value,
-                            candidateComments = cand.candidateComments,
-                             isVoiceMode = state.isVoiceMode,
-                             isSttEnabled = state.isSttEnabled,
-                             voiceBottomActive = state.voiceButtonState.bottomActive,
-                            voiceLeftActive = state.voiceButtonState.leftActive,
-                            voiceRightActive = state.voiceButtonState.rightActive,
-                            voicePluginName = state.voicePluginName,
-                            voiceRecognitionState = state.voiceRecognitionState,
-                            voiceRecognizedText = state.voiceRecognizedText,
-                            voiceAmplitude = state.voiceAmplitude,
-                            uiStateProvider = { uiState.value },
-                            candidateStateProvider = { candidateState.value },
-                            onKeyPress = remember { { key: String, isShifted: Boolean ->
-                                handleKeyPress(key, isShifted)
-                            } },
-                            onKeyPressDown = remember { { key: String ->
-                                feedbackManager.performKeyPressDownEffect(key)
-                                if (key == "space" && uiState.value.isSttEnabled) {
-                                    voiceRecognitionHandler.startDelayedPreStart()
-                                }
-                            } },
-                            onCursorMove = remember { { direction: Int ->
-                                val ic = currentInputConnection
-                                if (ic != null) {
-                                    val textBefore = ic.getTextBeforeCursor(Int.MAX_VALUE, 0)
-                                    val textAfter = ic.getTextAfterCursor(Int.MAX_VALUE, 0)
-                                    val selStart = textBefore?.length ?: 0
-                                    val totalLen = selStart + (textAfter?.length ?: 0)
-                                    val newSel = (selStart + direction).coerceIn(0, totalLen)
-                                    ic.setSelection(newSel, newSel)
-                                }
-                            } },
-                            onGestureAction = remember { { action, value ->
-                                action.execute(this@XimeInputMethodService, value)
-                            } },
-                            onCandidateSelect = remember { { index: Int ->
-                                selectCandidate(index)
-                            } },
-                            onToggleDarkMode = remember { {
-                                toggleDarkMode()
-                            } },
-                            onClipboard = {
-                                Log.d(TAG, "Clipboard clicked")
-                            },
-                            onClipboardSelect = { text ->
-                                selectClipboardItem(text)
-                            },
-                            onCommitText = { text ->
-                                commitClipboardText(text)
-                            },
-                            onDeleteText = { count ->
-                                deleteClipboardChars(count)
-                            },
-                            onClipboardRemove = { id ->
-                                removeClipboardItem(id)
-                            },
-                            onClipboardSplitWords = { id ->
-                                splitClipboardWords(id)
-                            },
-                            onAddToQuickSend = { id ->
-                                addToQuickSend(id)
-                            },
-                            onAddQuickSendText = { text ->
-                                clipboardManager.addQuickSendItem(text)
-                            },
-                            onRemoveFromQuickSend = { id ->
-                                removeFromQuickSend(id)
-                            },
-                            onQuickSend = {
-                                Log.d(TAG, "QuickSend clicked")
-                            },
-                            onKeyboardResize = {
-                                val config = resources.configuration
-                                val isLandscape = config.screenWidthDp > config.screenHeightDp
-                                val currentHeight = SettingsPreferences.getKeyboardHeightDp(this@XimeInputMethodService, isLandscape)
-                                val currentPadding = uiState.value.keyboardBottomPaddingDp
-                                val maxHeightDp = (config.screenHeightDp * 3) / 5
-                                val displayHeight = minOf(currentHeight, maxHeightDp)
-                                uiState.value = uiState.value.copy(
-                                    showKeyboardResize = true,
-                                    keyboardHeightDp = currentHeight,
-                                    resizePreviewHeightDp = displayHeight,
-                                    resizePreviewBottomPaddingDp = currentPadding,
-                                    originalKeyboardHeightDp = displayHeight,
-                                    originalKeyboardBottomPaddingDp = currentPadding,
-                                    stretchFactor = ((displayHeight - 126f) / (SettingsPreferences.getDefaultKeyboardHeightDp() - 126f)).coerceAtLeast(0f)
-                                )
-                            },
-                            onReloadConfig = {
-                                reloadConfig()
-                            },
-                            onSettings = {
-                                openSettings()
-                            },
-                            onSwitchSchema = { schemaId ->
-                                switchSchema(schemaId)
-                            },
-                            onHideKeyboard = {
-                                hideKeyboard()
-                            },
-                            onSwitchKeyboard = {
-                                val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
-                                @Suppress("DEPRECATION")
-                                imm.showInputMethodPicker()
-                            },
-                            onToolbarEditingAction = { action ->
-                                handleToolbarEditingAction(action)
-                            },
-                            associationCandidates = if (cand.pendingEnglishText.isNotEmpty()) {
-                                listOf(cand.pendingEnglishText) + cand.associationCandidates
-                            } else {
-                                cand.associationCandidates
-                            },
-                            onAssociationSelect = { index ->
-                                val cs = candidateState.value
-                                val adjustedCandidates = if (cs.pendingEnglishText.isNotEmpty()) {
-                                    listOf(cs.pendingEnglishText) + cs.associationCandidates
-                                } else {
-                                    cs.associationCandidates
-                                }
-                                
-                                if (index >= 0 && index < adjustedCandidates.size) {
-                                    val text = adjustedCandidates[index]
-                                    val pendingEnglish = cs.pendingEnglishText
-                                    
-                                    if (pendingEnglish.isNotEmpty()) {
-                                        if (index == 0 && text == pendingEnglish) {
-                                            candidateState.value = candidateState.value.copy(
-                                                pendingEnglishText = "",
-                                                associationCandidates = emptyList()
-                                            )
-                                            Log.d(TAG, "Confirmed pending English: '$text'")
+                                isDarkTheme = isDarkTheme,
+                                darkMode = state.darkMode,
+                                themeId = state.themeId,
+                                showBottomButtons = state.showBottomButtons,
+                                keyboardHeightDp = keyboardHeight,
+                                keyboardBottomPaddingDp = state.keyboardBottomPaddingDp,
+                                clipboardItems = clipboardItemsState.value,
+                                quickSendItems = quickSendItemsState.value,
+                                recentClipboardItems = recentClipboardItemsState.value,
+                                isVoiceMode = state.isVoiceMode,
+                                voiceBottomActive = state.voiceButtonState.bottomActive,
+                                voiceLeftActive = state.voiceButtonState.leftActive,
+                                voiceRightActive = state.voiceButtonState.rightActive,
+                                voicePluginName = state.voicePluginName,
+                                voiceRecognitionState = state.voiceRecognitionState,
+                                voiceRecognizedText = state.voiceRecognizedText,
+                                voiceAmplitude = state.voiceAmplitude,
+                                isSttEnabled = state.isSttEnabled,
+                                toolbarButtons = state.toolbarButtons,
+                                isCalculatorMode = calculatorEngine.isActive(),
+                                inputSessionId = state.inputSessionId,
+                                isShowingRecentClipboard = cand.isShowingRecentClipboard,
+                            )
+                            val callbacks = remember {
+                                KeyboardCallbacks(
+                                    onKeyPress = { key, isShifted ->
+                                        handleKeyPress(key, isShifted)
+                                    },
+                                    onKeyPressDown = { key ->
+                                        feedbackManager.performKeyPressDownEffect(key)
+                                        if (key == "space" && uiState.value.isSttEnabled) {
+                                            voiceRecognitionHandler.startDelayedPreStart()
+                                        }
+                                    },
+                                    onCandidateSelect = { index ->
+                                        selectCandidate(index)
+                                    },
+                                    onAssociationSelect = { index ->
+                                        val cs = candidateState.value
+                                        val adjustedCandidates = if (cs.pendingEnglishText.isNotEmpty()) {
+                                            listOf(cs.pendingEnglishText) + cs.associationCandidates
                                         } else {
-                                            currentInputConnection?.deleteSurroundingText(pendingEnglish.length, 0)
-                                            commitText(text)
-                                            candidateState.value = candidateState.value.copy(
-                                                pendingEnglishText = "",
-                                                associationCandidates = emptyList()
-                                            )
-                                            Log.d(TAG, "Replaced '$pendingEnglish' with association: '$text'")
+                                            cs.associationCandidates
                                         }
-                                    } else {
-                                        commitText(text)
-                                        updateUI()
-                                    }
-                                }
-                            },
-                            onClearAssociation = {
-                                candidateState.value = candidateState.value.copy(associationCandidates = emptyList())
-                            },
-                            onPageDown = { pageDown() },
-                            onPageUp = { pageUp() },
-                            onCommitImage = { imagePath ->
-                                val success = commitImage(imagePath)
-                                if (!success) {
-                                    android.widget.Toast.makeText(
-                                        this@XimeInputMethodService,
-                                        "发送失败，已复制到剪贴板",
-                                        android.widget.Toast.LENGTH_SHORT
-                                    ).show()
-                                    clipboardManager.copyImageToSystemClipboard(imagePath)
-                                }
-                            },
-onVoiceModeChange = { enabled ->
-                                Log.d("VoiceButtons", "onVoiceModeChange called: enabled=$enabled")
-                                uiState.value = uiState.value.copy(
-                                    isVoiceMode = enabled,
-                                    voiceButtonState = if (enabled) VoiceButtonState(bottomActive = true) else VoiceButtonState(),
-                                    voiceRecognizedText = ""
-                                )
-                                if (enabled) {
-                                    feedbackManager.performVibration()
-                                    isTrackingVoiceButtons = true
-                                    voiceRecordingStarted = true
-                                    voiceRecognitionHandler.startRecognition()
-                                    Log.d("VoiceButtons", "Speech recognition starting...")
-                                } else {
-                                    isTrackingVoiceButtons = false
-}
- },
-                               isDeploying = state.isDeploying,
-                               deploymentMessage = state.deploymentMessage,
-                               onDismissDeploying = {
-                                   notifyDeploymentStatus(false, "")
-                               },
-                               toolbarButtons = state.toolbarButtons,
-                               onUpdateToolbarButtons = { buttons ->
-                                   SettingsPreferences.setToolbarButtons(this@XimeInputMethodService, buttons)
-                                   uiState.value = uiState.value.copy(toolbarButtons = buttons)
-                               },
-                                onKeyboardModeChange = { chineseMode ->
-                                    if (isChineseMode != chineseMode) {
-                                        isChineseMode = chineseMode
-                                        if (!chineseMode) {
-                                            candidateState.value = candidateState.value.copy(associationCandidates = emptyList())
+                                        if (index >= 0 && index < adjustedCandidates.size) {
+                                            val text = adjustedCandidates[index]
+                                            val pendingEnglish = cs.pendingEnglishText
+                                            if (pendingEnglish.isNotEmpty()) {
+                                                if (index == 0 && text == pendingEnglish) {
+                                                    candidateState.value = candidateState.value.copy(
+                                                        pendingEnglishText = "",
+                                                        associationCandidates = emptyList()
+                                                    )
+                                                    Log.d(TAG, "Confirmed pending English: '$text'")
+                                                } else {
+                                                    currentInputConnection?.deleteSurroundingText(pendingEnglish.length, 0)
+                                                    commitText(text)
+                                                    candidateState.value = candidateState.value.copy(
+                                                        pendingEnglishText = "",
+                                                        associationCandidates = emptyList()
+                                                    )
+                                                    Log.d(TAG, "Replaced '$pendingEnglish' with association: '$text'")
+                                                }
+                                            } else {
+                                                commitText(text)
+                                                updateUI()
+                                            }
                                         }
-                                    }
-                                },
-                                isCalculatorMode = calculatorEngine.isActive()
+                                    },
+                                    onClearAssociation = {
+                                        candidateState.value = candidateState.value.copy(associationCandidates = emptyList())
+                                    },
+                                    onToggleDarkMode = { toggleDarkMode() },
+                                    onClipboard = { Log.d(TAG, "Clipboard clicked") },
+                                    onClipboardSelect = { text -> selectClipboardItem(text) },
+                                    onCommitText = { text -> commitClipboardText(text) },
+                                    onDeleteText = { count -> deleteClipboardChars(count) },
+                                    onClipboardRemove = { id -> removeClipboardItem(id) },
+                                    onClipboardSplitWords = { id -> splitClipboardWords(id) },
+                                    onAddToQuickSend = { id -> addToQuickSend(id) },
+                                    onAddQuickSendText = { text -> clipboardManager.addQuickSendItem(text) },
+                                    onRemoveFromQuickSend = { id -> removeFromQuickSend(id) },
+                                    onQuickSend = { Log.d(TAG, "QuickSend clicked") },
+                                    onKeyboardResize = {
+                                        val config = resources.configuration
+                                        val isLandscape = config.screenWidthDp > config.screenHeightDp
+                                        val currentHeight = SettingsPreferences.getKeyboardHeightDp(this@XimeInputMethodService, isLandscape)
+                                        val currentPadding = uiState.value.keyboardBottomPaddingDp
+                                        val maxHeightDp = (config.screenHeightDp * 3) / 5
+                                        val displayHeight = minOf(currentHeight, maxHeightDp)
+                                        uiState.value = uiState.value.copy(
+                                            showKeyboardResize = true,
+                                            keyboardHeightDp = currentHeight,
+                                            resizePreviewHeightDp = displayHeight,
+                                            resizePreviewBottomPaddingDp = currentPadding,
+                                            originalKeyboardHeightDp = displayHeight,
+                                            originalKeyboardBottomPaddingDp = currentPadding,
+                                            stretchFactor = ((displayHeight - 126f) / (SettingsPreferences.getDefaultKeyboardHeightDp() - 126f)).coerceAtLeast(0f)
+                                        )
+                                    },
+                                    onReloadConfig = { reloadConfig() },
+                                    onSettings = { openSettings() },
+                                    onSwitchSchema = { schemaId -> switchSchema(schemaId) },
+                                    onHideKeyboard = { hideKeyboard() },
+                                    onSwitchKeyboard = {
+                                        val imm = getSystemService(INPUT_METHOD_SERVICE) as android.view.inputmethod.InputMethodManager
+                                        @Suppress("DEPRECATION")
+                                        imm.showInputMethodPicker()
+                                    },
+                                    onToolbarEditingAction = { action -> handleToolbarEditingAction(action) },
+                                    onCommitImage = { imagePath ->
+                                        val success = commitImage(imagePath)
+                                        if (!success) {
+                                            android.widget.Toast.makeText(
+                                                this@XimeInputMethodService,
+                                                "发送失败，已复制到剪贴板",
+                                                android.widget.Toast.LENGTH_SHORT
+                                            ).show()
+                                            clipboardManager.copyImageToSystemClipboard(imagePath)
+                                        }
+                                    },
+                                    onVoiceModeChange = { enabled ->
+                                        Log.d("VoiceButtons", "onVoiceModeChange called: enabled=$enabled")
+                                        uiState.value = uiState.value.copy(
+                                            isVoiceMode = enabled,
+                                            voiceButtonState = if (enabled) VoiceButtonState(bottomActive = true) else VoiceButtonState(),
+                                            voiceRecognizedText = ""
+                                        )
+                                        if (enabled) {
+                                            feedbackManager.performVibration()
+                                            isTrackingVoiceButtons = true
+                                            voiceRecordingStarted = true
+                                            voiceRecognitionHandler.startRecognition()
+                                            Log.d("VoiceButtons", "Speech recognition starting...")
+                                        } else {
+                                            isTrackingVoiceButtons = false
+                                        }
+                                    },
+                                    onPageDown = { pageDown() },
+                                    onPageUp = { pageUp() },
+                                    onCursorMove = { direction ->
+                                        val ic = currentInputConnection
+                                        if (ic != null) {
+                                            val textBefore = ic.getTextBeforeCursor(Int.MAX_VALUE, 0)
+                                            val textAfter = ic.getTextAfterCursor(Int.MAX_VALUE, 0)
+                                            val selStart = textBefore?.length ?: 0
+                                            val totalLen = selStart + (textAfter?.length ?: 0)
+                                            val newSel = (selStart + direction).coerceIn(0, totalLen)
+                                            ic.setSelection(newSel, newSel)
+                                        }
+                                    },
+                                    onGestureAction = { action, value ->
+                                        action.execute(this@XimeInputMethodService, value)
+                                    },
+                                    onUpdateToolbarButtons = { buttons ->
+                                        SettingsPreferences.setToolbarButtons(this@XimeInputMethodService, buttons)
+                                        uiState.value = uiState.value.copy(toolbarButtons = buttons)
+                                    },
+                                    onKeyboardModeChange = { chineseMode ->
+                                        if (isChineseMode != chineseMode) {
+                                            isChineseMode = chineseMode
+                                            if (!chineseMode) {
+                                                candidateState.value = candidateState.value.copy(associationCandidates = emptyList())
+                                            }
+                                        }
+                                    },
+                                    onDismissDeploying = { notifyDeploymentStatus(false, "") },
                                 )
+                            }
+                            KeyboardView(
+                                viewModel = keyboardViewModel,
+                                state = kbState,
+                                callbacks = callbacks,
+                            )
                          }
                      }
                      }
@@ -1153,6 +1142,7 @@ onVoiceModeChange = { enabled ->
             SettingsPreferences.getPrefsPublic(this).unregisterOnSharedPreferenceChangeListener(it)
         }
         RimeEngine.setDeploymentCallback { _, _ -> }
+        _viewModelStore.clear()
         feedbackManager.release()
         rimeEngine.destroy()
         voiceRecognitionHandler.release()
