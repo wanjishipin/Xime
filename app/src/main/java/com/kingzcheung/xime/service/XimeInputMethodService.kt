@@ -1528,10 +1528,11 @@ onVoiceModeChange = { enabled ->
                     } else if (candState.associationCandidates.isNotEmpty()) {
                         // 联想预测词模式：按空格选中第一个联想词
                         val text = candState.associationCandidates[0]
+                        val remaining = candState.associationCandidates.drop(1)
                         withContext(Dispatchers.Main) {
                             commitText(text)
                             candidateState.value = candidateState.value.copy(
-                                associationCandidates = emptyList()
+                                associationCandidates = remaining
                             )
                         }
                         updateUI()
