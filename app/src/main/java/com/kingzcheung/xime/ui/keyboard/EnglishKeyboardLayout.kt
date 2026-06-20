@@ -63,6 +63,7 @@ fun EnglishKeyboardLayout(
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
 ) {
+    val suppressCursorMove = LocalSuppressCursorMove.current
     val row1 = listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p")
     val row2 = listOf("a", "s", "d", "f", "g", "h", "j", "k", "l")
     val row3 = listOf("z", "x", "c", "v", "b", "n", "m")
@@ -251,6 +252,7 @@ fun EnglishKeyboardLayout(
                             swipeDownLabel = "下滑撤回",
                             onSwipeUp = { onKeyPress("clear_all") },
                             onSwipeDown = { onKeyPress("undo_clear") },
+                            onSwipeLeft = { suppressCursorMove.value = true; onKeyPress("clear_composition") },
                             onSwipeStateChange = { state, bounds -> processSwipeState(state, bounds) },
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,

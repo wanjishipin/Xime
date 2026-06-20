@@ -21,12 +21,15 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
@@ -45,6 +48,7 @@ import com.kingzcheung.xime.viewmodel.KeyboardViewModel
 import kotlin.math.abs
 
 val LocalStretchFactor = compositionLocalOf { 1f }
+val LocalSuppressCursorMove = compositionLocalOf { mutableStateOf(false) }
 
 @Composable
 fun KeyboardView(
@@ -194,11 +198,13 @@ fun KeyboardView(
 
                 else -> {
                     val currentOnCursorMove = rememberUpdatedState(callbacks.onCursorMove)
+                    val suppressCursorMove = remember { mutableStateOf(false) }
                     val cursorMod = if (callbacks.onCursorMove != null) {
                         Modifier.pointerInput(Unit) {
                             val stepThresholdPx = 25.dp.toPx()
                             val activationThresholdPx = 60.dp.toPx()
                             awaitEachGesture {
+                                suppressCursorMove.value = false
                                 val down = awaitFirstDown(requireUnconsumed = false)
                                 var isCursorGesture = false
                                 var lastSteps = 0
@@ -216,9 +222,8 @@ fun KeyboardView(
                                         }
                                         break
                                     }
-                                    //4倍的横向距离
+                                    if (suppressCursorMove.value) break
                                     if (abs(dx) > abs(dy) * 4f) {
-                                        event.changes.forEach { it.consume() }
 
                                         if (!isCursorGesture && abs(dx) > activationThresholdPx) {
                                             isCursorGesture = true
@@ -226,6 +231,7 @@ fun KeyboardView(
                                         }
 
                                         if (isCursorGesture) {
+                                            event.changes.forEach { it.consume() }
                                             val dxFromAnchor = change.position.x - activationAnchorX
                                             val steps = (dxFromAnchor / stepThresholdPx).toInt()
                                             if (steps != lastSteps) {
@@ -300,32 +306,34 @@ fun KeyboardView(
                         is KeyboardLayoutState.CommonSymbol -> commonSymbolOnKeyPress
                         is KeyboardLayoutState.Symbol -> symbolOnKeyPress
                     }
-                    KeyboardLayoutScreen(
-                        state = keyboardState,
-                        onKeyPress = currentOnKeyPress,
-                        isShifted = isShifted,
-                        isAsciiMode = state.isAsciiMode,
-                        isLandscape = isLandscape,
-                        schemaName = state.schemaName,
-                        enterKeyText = state.enterKeyText,
-                        isDarkTheme = state.isDarkTheme,
-                        keyBackgroundColor = keyBgColor,
-                        keyTextColor = keyTextColor,
-                        specialKeyBackgroundColor = specialKeyBgColor,
-                        keyboardBackgroundColor = keyboardBgColor,
-                        shadowEnabled = kbShadow.enabled,
-                        shadowElevation = kbShadow.elevation.dp,
-                        shadowShapeRadius = kbShadow.shapeRadius.dp,
-                        modifier = Modifier.weight(1f).then(cursorMod),
-                        onKeyPressDown = callbacks.onKeyPressDown,
-                        onVoiceModeChange = callbacks.onVoiceModeChange,
-                        onCommitText = callbacks.onCommitText,
-                        isSttEnabled = state.isSttEnabled,
-                        isVoiceMode = state.isVoiceMode,
-                        onCursorMove = callbacks.onCursorMove,
-                        onGestureAction = callbacks.onGestureAction,
-                        currentSchemaId = state.currentSchemaId,
-                    )
+                    CompositionLocalProvider(LocalSuppressCursorMove provides suppressCursorMove) {
+                        KeyboardLayoutScreen(
+                            state = keyboardState,
+                            onKeyPress = currentOnKeyPress,
+                            isShifted = isShifted,
+                            isAsciiMode = state.isAsciiMode,
+                            isLandscape = isLandscape,
+                            schemaName = state.schemaName,
+                            enterKeyText = state.enterKeyText,
+                            isDarkTheme = state.isDarkTheme,
+                            keyBackgroundColor = keyBgColor,
+                            keyTextColor = keyTextColor,
+                            specialKeyBackgroundColor = specialKeyBgColor,
+                            keyboardBackgroundColor = keyboardBgColor,
+                            shadowEnabled = kbShadow.enabled,
+                            shadowElevation = kbShadow.elevation.dp,
+                            shadowShapeRadius = kbShadow.shapeRadius.dp,
+                            modifier = Modifier.weight(1f).then(cursorMod),
+                            onKeyPressDown = callbacks.onKeyPressDown,
+                            onVoiceModeChange = callbacks.onVoiceModeChange,
+                            onCommitText = callbacks.onCommitText,
+                            isSttEnabled = state.isSttEnabled,
+                            isVoiceMode = state.isVoiceMode,
+                            onCursorMove = callbacks.onCursorMove,
+                            onGestureAction = callbacks.onGestureAction,
+                            currentSchemaId = state.currentSchemaId,
+                        )
+                    }
                 }
             }
 

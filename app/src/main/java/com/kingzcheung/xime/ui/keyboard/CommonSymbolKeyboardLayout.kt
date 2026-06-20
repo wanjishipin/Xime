@@ -55,6 +55,7 @@ fun CommonSymbolKeyboardLayout(
     val periodChar = if (isAsciiMode) "." else "。"
 
     val isDarkTheme = keyTextColor == Color(0xFFE8EAED)
+    val suppressCursorMove = LocalSuppressCursorMove.current
     var swipeState by remember { mutableStateOf(SwipeState()) }
     var keyboardBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
     var lastKeyBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
@@ -174,6 +175,7 @@ fun CommonSymbolKeyboardLayout(
                     swipeDownLabel = "下滑撤回",
                     onSwipeUp = { onKeyPress("clear_all") },
                     onSwipeDown = { onKeyPress("undo_clear") },
+                    onSwipeLeft = { suppressCursorMove.value = true; onKeyPress("clear_composition") },
                     onSwipeStateChange = { state, bounds ->
                         swipeState = state
                         lastKeyBounds = Rect(

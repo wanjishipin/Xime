@@ -101,6 +101,7 @@ fun KeyboardLayout(
     onGestureAction: ((GestureAction, String) -> Unit)? = null
 ) {
     val context = LocalContext.current
+    val suppressCursorMove = LocalSuppressCursorMove.current
     var swipeUpHintsEnabled by remember {
         mutableStateOf(
             SettingsPreferences.isSwipeUpHintsEnabled(
@@ -422,6 +423,7 @@ fun KeyboardLayout(
                                 swipeDownLabel = "下滑撤回",
                                 onSwipeUp = { onKeyPress("clear_all") },
                                 onSwipeDown = { onKeyPress("undo_clear") },
+                                onSwipeLeft = { suppressCursorMove.value = true; onKeyPress("clear_composition") },
                                 onSwipeStateChange = { state, bounds ->
                                     processSwipeState(
                                         state,
@@ -854,6 +856,7 @@ private fun LandscapeKeyboardContent(
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
 ) {
+    val suppressCursorMove = LocalSuppressCursorMove.current
     val staggerStep = 10.dp
     val landscapeFontSize = 12.sp
     val landscapeSwipeFontSize = 7.sp
@@ -1084,6 +1087,7 @@ private fun LandscapeKeyboardContent(
                     swipeDownLabel = "下滑撤回",
                     onSwipeUp = { onKeyPress("clear_all") },
                     onSwipeDown = { onKeyPress("undo_clear") },
+                    onSwipeLeft = { suppressCursorMove.value = true; onKeyPress("clear_composition") },
                     onSwipeStateChange = onSwipeStateChange,
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,

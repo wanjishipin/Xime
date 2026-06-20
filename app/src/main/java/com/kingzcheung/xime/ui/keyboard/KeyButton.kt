@@ -712,7 +712,7 @@ fun SwipeableIconKeyButton(
     val density = LocalDensity.current
     val swipeUpThreshold = with(density) { (-50).dp.toPx() }
     val swipeDownThreshold = with(density) { 50.dp.toPx() }
-    val swipeLeftThreshold = with(density) { (-24).dp.toPx() }
+    val swipeLeftThreshold = with(density) { (-50).dp.toPx() }
     val bubbleShowThresholdUp = swipeUpThreshold * 0.3f
     val bubbleShowThresholdDown = swipeDownThreshold * 0.3f
     

@@ -59,37 +59,16 @@ fun NumberKeyboardLayout(
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
     modifier: Modifier = Modifier,
-    onKeyPressDown: ((String) -> Unit)? = null
+    onKeyPressDown: ((String) -> Unit)? = null,
 ) {
 
     val configuration = LocalConfiguration.current
     val isLandscape =
         configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val commonSymbols = listOf(
-        "~",
-        "!",
-        "#",
-        "$",
-        "%",
-        "^",
-        "&",
-        "*",
-        "(",
-        ")",
-        "_",
-        "=",
-        "[",
-        "]",
-        "{",
-        "}",
-        "\\",
-        "|",
-        ";",
-        ":",
-        "'",
-        "\"",
-        "<",
-        ">"
+        "~", "!", "#", "$", "%", "^", "&", "*",
+        "(", ")", "_", "=", "[", "]", "{", "}",
+        "\\", "|", ";", ":", "'", "\"", "<", ">"
     )
 
     var swipeState by remember { mutableStateOf(SwipeState()) }
@@ -234,7 +213,7 @@ private fun NumberRows(
     onKeyPressDown: ((String) -> Unit)? = null,
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)? = null
 ) {
-
+    val suppressCursorMove = LocalSuppressCursorMove.current
     val symbols = listOf("+", "-", "*", "/")
     Column(
         modifier = Modifier
@@ -309,6 +288,10 @@ private fun NumberRows(
                             swipeDownLabel = "下滑撤回",
                             onSwipeUp = { onKeyPress("clear_all") },
                             onSwipeDown = { onKeyPress("undo_clear") },
+                            onSwipeLeft = {
+                                suppressCursorMove.value = true
+                                onKeyPress("clear_composition")
+                            },
                             onSwipeStateChange = onSwipeStateChange,
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,
