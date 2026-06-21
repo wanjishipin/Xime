@@ -3,7 +3,6 @@ package com.kingzcheung.xime.service
 import android.content.Context
 import android.view.MotionEvent
 import android.widget.FrameLayout
-import com.kingzcheung.xime.speech.RecognitionState
 
 class VoiceKeyboardContainer(
     context: Context,
@@ -20,6 +19,10 @@ class VoiceKeyboardContainer(
     private var isTrackingVoiceButtons = false
     private var lastLeftActive = false
     private var lastRightActive = false
+    
+    fun enableVoiceButtonTracking() {
+        isTrackingVoiceButtons = true
+    }
     
     fun updateHeight(heightDp: Int) {
         val heightPx = (heightDp * resources.displayMetrics.density).toInt()
@@ -83,11 +86,9 @@ class VoiceKeyboardContainer(
                 setRecording(false)
             }
             
-            onUiStateChanged(state.copy(
-                isVoiceMode = false,
-                voiceButtonState = VoiceButtonState(),
-                voiceRecognitionState = RecognitionState.IDLE
-            ))
+            // Don't immediately exit voice mode here — let the recognition
+            // result/error callback set isVoiceMode = false so the voice
+            // keyboard UI has time to render before being dismissed.
         }
         
         isTrackingVoiceButtons = false

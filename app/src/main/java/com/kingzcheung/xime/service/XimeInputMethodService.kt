@@ -63,6 +63,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.kingzcheung.xime.MainActivity
 import com.kingzcheung.xime.association.AssociationManager
+import com.kingzcheung.xime.keyboard.KeyboardRoute
 import com.kingzcheung.xime.ui.keyboard.KeyboardCallbacks
 import com.kingzcheung.xime.viewmodel.KeyboardUiState
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
@@ -158,6 +159,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     
     private var isTrackingVoiceButtons = false
     private var voiceRecordingStarted = false
+    private var pendingVoiceAction: (() -> Unit)? = null
     private var lastClearedText: String = ""
     private var isChineseMode = true
     
@@ -187,7 +189,22 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         context = this,
         onStateChanged = { newState -> uiState.value = newState },
         getState = { uiState.value },
-        getInputConnection = { currentInputConnection }
+        getInputConnection = { currentInputConnection },
+        onVoiceComplete = {
+            val action = pendingVoiceAction
+            pendingVoiceAction = null
+            action?.invoke()
+
+            uiState.value = uiState.value.copy(
+                isVoiceMode = false,
+                voiceButtonState = VoiceButtonState(),
+                voiceRecognitionState = RecognitionState.IDLE,
+                voiceRecognizedText = "",
+                voiceAmplitude = 0f
+            )
+            isTrackingVoiceButtons = false
+            keyboardViewModel.setRoute(KeyboardRoute.Keyboard)
+        }
     )
     
     private var sharedPrefsListener: android.content.SharedPreferences.OnSharedPreferenceChangeListener? = null
@@ -507,8 +524,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             uiStateProvider = { uiState.value },
             onUiStateChanged = { newState -> uiState.value = newState },
             onPerformVibration = { feedbackManager.performVibration() },
-            onPerformUndo = { performUndo() },
-            onPerformSearch = { performSearch() },
+            onPerformUndo = { pendingVoiceAction = { performUndo() } },
+            onPerformSearch = { pendingVoiceAction = { performSearch() } },
             onStopRecognition = { voiceRecognitionHandler.stopRecognition() },
             isRecording = { voiceRecordingStarted },
             setRecording = { voiceRecordingStarted = it }
@@ -716,12 +733,15 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                             voiceRecognizedText = ""
                                         )
                                         if (enabled) {
+                                            keyboardViewModel.setRoute(KeyboardRoute.Voice)
                                             feedbackManager.performVibration()
                                             isTrackingVoiceButtons = true
+                                            keyboardContainer.enableVoiceButtonTracking()
                                             voiceRecordingStarted = true
                                             voiceRecognitionHandler.startRecognition()
                                             Log.d("VoiceButtons", "Speech recognition starting...")
                                         } else {
+                                            keyboardViewModel.setRoute(KeyboardRoute.Keyboard)
                                             isTrackingVoiceButtons = false
                                         }
                                     },

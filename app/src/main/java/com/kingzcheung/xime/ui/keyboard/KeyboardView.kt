@@ -177,7 +177,7 @@ fun KeyboardView(
             )
 
             when {
-                state.isVoiceMode -> {
+                currentRoute is KeyboardRoute.Voice -> {
                     VoiceKeyboardLayout(
                         keyBackgroundColor = keyBgColor,
                         keyTextColor = keyTextColor,
@@ -325,7 +325,7 @@ fun KeyboardView(
 
             val configuration = LocalConfiguration.current
             val isLandscapeBottom = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-            if (state.showBottomButtons && !state.isVoiceMode && !isLandscapeBottom) {
+            if (state.showBottomButtons && currentRoute !is KeyboardRoute.Voice && !isLandscapeBottom) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -364,10 +364,10 @@ fun KeyboardView(
                         )
                     }
                 }
-            } else if (!state.isVoiceMode && !isLandscapeBottom) {
+            } else if (currentRoute !is KeyboardRoute.Voice && !isLandscapeBottom) {
                 val bottomSpacer = (40 + bottomReduction).coerceAtLeast(0)
                 Spacer(modifier = Modifier.height(bottomSpacer.dp))
-            } else if (!state.isVoiceMode && isLandscapeBottom) {
+            } else if (currentRoute !is KeyboardRoute.Voice && isLandscapeBottom) {
                 val bottomSpacer = (15 + bottomReduction).coerceAtLeast(0)
                 Spacer(modifier = Modifier.height(bottomSpacer.dp))
             }
@@ -412,7 +412,7 @@ fun KeyboardView(
             }
         }
 
-        if (currentRoute !is KeyboardRoute.Keyboard && !state.isVoiceMode) {
+        if (currentRoute !is KeyboardRoute.Keyboard && currentRoute !is KeyboardRoute.Voice) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()

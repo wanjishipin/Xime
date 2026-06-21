@@ -17,7 +17,8 @@ class VoiceRecognitionHandler(
     private val context: Context,
     private val onStateChanged: (InputUIState) -> Unit,
     private val getState: () -> InputUIState,
-    private val getInputConnection: () -> InputConnection?
+    private val getInputConnection: () -> InputConnection?,
+    private val onVoiceComplete: () -> Unit = {}
 ) {
     companion object {
         private const val TAG = "VoiceRecognition"
@@ -180,8 +181,8 @@ class VoiceRecognitionHandler(
                 val punctuatedText = addPunctuation(cleanText)
                 ic.commitText(punctuatedText, 1)
             }
-            onStateChanged(getState().copy(voiceRecognizedText = ""))
         }
+        onVoiceComplete()
     }
     
     private fun addPunctuation(text: String): String {
@@ -245,13 +246,7 @@ class VoiceRecognitionHandler(
         Log.e(TAG, "Speech error: $error")
         FileLogger.e(TAG, "Speech error: $error")
         lastPartialText = ""
-        onStateChanged(getState().copy(
-            isVoiceMode = false,
-            voiceButtonState = VoiceButtonState(),
-            voiceRecognitionState = RecognitionState.ERROR,
-            voiceRecognizedText = "",
-            voiceAmplitude = 0f
-        ))
+        onVoiceComplete()
     }
 
     private fun handleAmplitudeUpdate(amplitude: Float) {

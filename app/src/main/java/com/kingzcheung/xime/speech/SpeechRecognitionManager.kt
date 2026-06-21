@@ -113,41 +113,47 @@ class SpeechRecognitionManager(private val context: Context) {
 
     fun stopRecognition() {
         Log.d(TAG, "Stopping recognition")
-        recordingThread?.let { thread ->
-            thread.interrupt()
+        val thread = recordingThread ?: return
+        recordingThread = null
+        thread.interrupt()
+        Thread {
             try {
                 thread.join()
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
             }
-        }
-        recordingThread = null
-        stateCallback?.invoke(RecognitionState.IDLE)
+            mainHandler.post {
+                stateCallback?.invoke(RecognitionState.IDLE)
 
-        if (!SettingsPreferences.isSttKeepModelInRam(context)) {
-            Log.d(TAG, "Release mode: freeing backend resources")
-            backend?.release()
-            backend = null
-        }
+                if (!SettingsPreferences.isSttKeepModelInRam(context)) {
+                    Log.d(TAG, "Release mode: freeing backend resources")
+                    backend?.release()
+                    backend = null
+                }
+            }
+        }.start()
     }
 
     fun cancelRecognition() {
         Log.d(TAG, "Canceling recognition")
-        recordingThread?.let { thread ->
-            thread.interrupt()
+        val thread = recordingThread ?: return
+        recordingThread = null
+        thread.interrupt()
+        Thread {
             try {
                 thread.join()
             } catch (_: InterruptedException) {
                 Thread.currentThread().interrupt()
             }
-        }
-        recordingThread = null
-        stateCallback?.invoke(RecognitionState.IDLE)
+            mainHandler.post {
+                stateCallback?.invoke(RecognitionState.IDLE)
 
-        if (!SettingsPreferences.isSttKeepModelInRam(context)) {
-            backend?.release()
-            backend = null
-        }
+                if (!SettingsPreferences.isSttKeepModelInRam(context)) {
+                    backend?.release()
+                    backend = null
+                }
+            }
+        }.start()
     }
 
     fun setCallbacks(
@@ -354,9 +360,7 @@ class SpeechRecognitionManager(private val context: Context) {
 
     private fun handleResult(text: String) {
         mainHandler.post {
-            if (text.isNotEmpty()) {
-                resultCallback?.invoke(text)
-            }
+            resultCallback?.invoke(text)
         }
     }
 

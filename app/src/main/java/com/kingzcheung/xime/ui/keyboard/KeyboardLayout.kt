@@ -564,8 +564,6 @@ fun KeyboardLayout(
 
                                         if (!longPressTriggered) {
                                             currentOnKeyPress("space")
-                                        } else if (isSttEnabled) {
-                                            currentOnVoiceModeChange?.invoke(false)
                                         }
                                     }
                                 }
