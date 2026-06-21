@@ -37,7 +37,6 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.kingzcheung.xime.keyboard.GestureAction
 import com.kingzcheung.xime.keyboard.KeyboardRoute
 import com.kingzcheung.xime.keyboard.ToolbarAction
 import com.kingzcheung.xime.keyboard.ToolbarButton
@@ -309,45 +308,12 @@ fun KeyboardView(
                     }
                     CompositionLocalProvider(LocalSuppressCursorMove provides suppressCursorMove) {
                         KeyboardLayoutScreen(
-                            state = keyboardState,
+                            keyboardState = keyboardState,
+                            uiState = state,
+                            viewModel = viewModel,
+                            callbacks = callbacks,
                             onKeyPress = currentOnKeyPress,
-                            isShifted = isShifted,
-                            isAsciiMode = state.isAsciiMode,
-                            isLandscape = isLandscape,
-                            schemaName = state.schemaName,
-                            enterKeyText = state.enterKeyText,
-                            isDarkTheme = state.isDarkTheme,
-                            keyBackgroundColor = keyBgColor,
-                            keyTextColor = keyTextColor,
-                            specialKeyBackgroundColor = specialKeyBgColor,
-                            keyboardBackgroundColor = keyboardBgColor,
-                            shadowEnabled = kbShadow.enabled,
-                            shadowElevation = kbShadow.elevation.dp,
-                            shadowShapeRadius = kbShadow.shapeRadius.dp,
                             modifier = Modifier.weight(1f).then(cursorMod),
-                            onKeyPressDown = callbacks.onKeyPressDown,
-                            onVoiceModeChange = callbacks.onVoiceModeChange,
-                            onCommitText = callbacks.onCommitText,
-                            isSttEnabled = state.isSttEnabled,
-                            isVoiceMode = state.isVoiceMode,
-                            onCursorMove = callbacks.onCursorMove,
-                            onGestureAction = { action, value ->
-                                when (action) {
-                                    GestureAction.SWITCH_ROUTE -> {
-                                        val route = when (value) {
-                                            "emoji" -> KeyboardRoute.Emoji
-                                            "symbol" -> KeyboardRoute.Symbol
-                                            else -> null
-                                        }
-                                        if (route != null) viewModel.setRoute(route)
-                                    }
-                                    GestureAction.TOGGLE_ASCII -> {
-                                        callbacks.onKeyPress("ime_switch", state.isAsciiMode)
-                                    }
-                                    else -> callbacks.onGestureAction?.invoke(action, value)
-                                }
-                            },
-                            currentSchemaId = state.currentSchemaId,
                         )
                     }
                 }

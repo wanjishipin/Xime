@@ -70,6 +70,13 @@ import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.util.PermissionHelper
 import com.kingzcheung.xime.util.CharInfo
 import com.kingzcheung.xime.util.SubcharHelper
+import com.kingzcheung.xime.viewmodel.KeyboardUiState
+import com.kingzcheung.xime.viewmodel.KeyboardViewModel
+import com.kingzcheung.xime.keyboard.KeyboardRoute
+import com.kingzcheung.xime.ui.theme.KeyboardThemes
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.collectAsState
@@ -79,29 +86,51 @@ import androidx.compose.ui.unit.TextUnit
 @Composable
 fun KeyboardLayout(
     onKeyPress: (String) -> Unit,
-    isShifted: Boolean,
-    isLandscape: Boolean = false,
-    schemaName: String = "",
-    enterKeyText: String = "发送",
-    currentSchemaId: String = "",
-    isDarkTheme: Boolean = false,
-    keyBackgroundColor: Color,
-    keyTextColor: Color,
-    specialKeyBackgroundColor: Color,
-    keyboardBackgroundColor: Color = Color.Transparent,
-    shadowEnabled: Boolean = true,
-    shadowElevation: Dp = 1.dp,
-    shadowShapeRadius: Dp = 8.dp,
-    onVoiceModeChange: ((Boolean) -> Unit)? = null,
-    onCommitText: ((String) -> Unit)? = null,
-    isSttEnabled: Boolean = true,
-    isVoiceMode: Boolean = false,
+    viewModel: KeyboardViewModel,
+    callbacks: KeyboardCallbacks,
+    uiState: KeyboardUiState,
     modifier: Modifier = Modifier,
-    onKeyPressDown: ((String) -> Unit)? = null,
-    onCursorMove: ((Int) -> Unit)? = null,
-    onGestureAction: ((GestureAction, String) -> Unit)? = null
 ) {
+    val isShifted by viewModel.isShifted.collectAsStateWithLifecycle()
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
     val context = LocalContext.current
+    val kbColors = KeysConfigHelper.getKeyboardColors()
+    val longToColor: (Long) -> Color = { Color(0xFF000000 or it) }
+    val keyboardBackgroundColor = if (uiState.isDarkTheme) longToColor(kbColors.keyboardBgColorDark) else longToColor(kbColors.keyboardBgColor)
+    val themeSpecialKeyColor = KeyboardThemes.getSpecialKeyColor(uiState.themeId, uiState.isDarkTheme)
+    val keyBackgroundColor = if (uiState.isDarkTheme) longToColor(kbColors.keyBgColorDark) else longToColor(kbColors.keyBgColor)
+    val keyTextColor = if (uiState.isDarkTheme) longToColor(kbColors.keyTextColorDark) else longToColor(kbColors.keyTextColor)
+    val specialKeyBackgroundColor = if (uiState.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
+        ?: themeSpecialKeyColor else kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
+    val kbShadow = KeysConfigHelper.getKeyboardShadow()
+    val shadowEnabled = kbShadow.enabled
+    val shadowElevation = kbShadow.elevation.dp
+    val shadowShapeRadius = kbShadow.shapeRadius.dp
+    val schemaName = uiState.schemaName
+    val enterKeyText = uiState.enterKeyText
+    val isDarkTheme = uiState.isDarkTheme
+    val isSttEnabled = uiState.isSttEnabled
+    val isVoiceMode = uiState.isVoiceMode
+    val onKeyPressDown = callbacks.onKeyPressDown
+    val onVoiceModeChange = callbacks.onVoiceModeChange
+    val onCommitText = callbacks.onCommitText
+    val onGestureAction: (GestureAction, String) -> Unit = { action, value ->
+        when (action) {
+            GestureAction.SWITCH_ROUTE -> {
+                val route = when (value) {
+                    "emoji" -> KeyboardRoute.Emoji
+                    "symbol" -> KeyboardRoute.Symbol
+                    else -> null
+                }
+                if (route != null) viewModel.setRoute(route)
+            }
+            GestureAction.TOGGLE_ASCII -> {
+                callbacks.onKeyPress("ime_switch", uiState.isAsciiMode)
+            }
+            else -> callbacks.onGestureAction?.invoke(action, value) ?: Unit
+        }
+    }
     val suppressCursorMove = LocalSuppressCursorMove.current
     var swipeUpHintsEnabled by remember {
         mutableStateOf(
@@ -184,23 +213,12 @@ fun KeyboardLayout(
         if (isLandscape) {
             LandscapeKeyboardContent(
                 onKeyPress = onKeyPress,
-                isShifted = isShifted,
-                schemaName = schemaName,
-                enterKeyText = enterKeyText,
-                isDarkTheme = isDarkTheme,
-                keyBackgroundColor = keyBackgroundColor,
-                keyTextColor = keyTextColor,
-                specialKeyBackgroundColor = specialKeyBackgroundColor,
-                keyboardBackgroundColor = keyboardBackgroundColor,
-                onKeyPressDown = onKeyPressDown,
-                onGestureAction = onGestureAction,
+                viewModel = viewModel,
+                callbacks = callbacks,
+                uiState = uiState,
                 swipeUpHintsEnabled = swipeUpHintsEnabled,
                 swipeDownHintsEnabled = swipeDownHintsEnabled,
-                onCommitText = onCommitText,
                 onSwipeStateChange = { state, bounds -> processSwipeState(state, bounds) },
-                shadowEnabled = shadowEnabled,
-                shadowElevation = shadowElevation,
-                shadowShapeRadius = shadowShapeRadius,
             )
         } else {
             Column(
@@ -230,10 +248,12 @@ fun KeyboardLayout(
                             KeyboardRowWithConfig(
                                 keys = listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p"),
                                 onKeyPress = onKeyPress,
-                                keyBackgroundColor = keyBackgroundColor,
-                                keyTextColor = keyTextColor,
+                                config = KeyboardRowConfig(
+                                    keyBackgroundColor = keyBackgroundColor,
+                                    keyTextColor = keyTextColor,
+                                    keyboardBackgroundColor = keyboardBackgroundColor,
+                                ),
                                 isShifted = isShifted,
-                                keyboardBackgroundColor = keyboardBackgroundColor,
                                 onSwipeStateChange = { state, bounds ->
                                     processSwipeState(
                                         state,
@@ -245,9 +265,6 @@ fun KeyboardLayout(
                                 swipeUpHintsEnabled = swipeUpHintsEnabled,
                                 onCommitText = onCommitText,
                                 configVersion = cfgVer,
-                                shadowEnabled = shadowEnabled,
-                                shadowElevation = shadowElevation,
-                                shadowShapeRadius = shadowShapeRadius,
                             )
                         }
                     }
@@ -270,10 +287,12 @@ fun KeyboardLayout(
                             KeyboardRowWithConfig(
                                 keys = listOf("a", "s", "d", "f", "g", "h", "j", "k", "l"),
                                 onKeyPress = onKeyPress,
-                                keyBackgroundColor = keyBackgroundColor,
-                                keyTextColor = keyTextColor,
+                                config = KeyboardRowConfig(
+                                    keyBackgroundColor = keyBackgroundColor,
+                                    keyTextColor = keyTextColor,
+                                    keyboardBackgroundColor = keyboardBackgroundColor,
+                                ),
                                 isShifted = isShifted,
-                                keyboardBackgroundColor = keyboardBackgroundColor,
                                 modifier = Modifier.padding(horizontal = 16.dp),
                                 onSwipeStateChange = { state, bounds ->
                                     processSwipeState(
@@ -286,9 +305,6 @@ fun KeyboardLayout(
                                 swipeUpHintsEnabled = swipeUpHintsEnabled,
                                 onCommitText = onCommitText,
                                 configVersion = cfgVer,
-                                shadowEnabled = shadowEnabled,
-                                shadowElevation = shadowElevation,
-                                shadowShapeRadius = shadowShapeRadius,
                             )
                         }
                     }
@@ -745,10 +761,8 @@ private fun DummyKeyButton(
 fun KeyboardRowWithConfig(
     keys: List<String>,
     onKeyPress: (String) -> Unit,
-    keyBackgroundColor: Color,
-    keyTextColor: Color,
+    config: KeyboardRowConfig,
     isShifted: Boolean,
-    keyboardBackgroundColor: Color = Color.Transparent,
     modifier: Modifier = Modifier,
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)? = null,
     onKeyPressDown: ((String) -> Unit)? = null,
@@ -756,17 +770,12 @@ fun KeyboardRowWithConfig(
     swipeUpHintsEnabled: Boolean = true,
     onCommitText: ((String) -> Unit)? = null,
     onGestureAction: ((GestureAction, String) -> Unit)? = null,
-    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
-    swipeFontSize: androidx.compose.ui.unit.TextUnit = 9.sp,
     configVersion: Int = 0,
-    shadowEnabled: Boolean = true,
-    shadowElevation: Dp = 1.dp,
-    shadowShapeRadius: Dp = 8.dp,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(keyboardBackgroundColor),
+            .background(config.keyboardBackgroundColor),
     ) {
         keys.forEach { key ->
             val rawSwipeUpText = KeysConfigHelper.getSwipeUpText(key)
@@ -830,8 +839,8 @@ fun KeyboardRowWithConfig(
             SwipeableKeyButton(
                 text = displayText,
                 onClick = onClick,
-                backgroundColor = keyBackgroundColor,
-                textColor = keyTextColor,
+                backgroundColor = config.keyBackgroundColor,
+                textColor = config.keyTextColor,
                 modifier = Modifier.weight(1f),
                 swipeText = swipeUpText,
                 swipeDownText = swipeDownBubbleText,
@@ -843,11 +852,11 @@ fun KeyboardRowWithConfig(
                 onPress = onPress,
                 onLongPressSelect = onLongPressSelect,
                 longPressItems = longPressLabels,
-                fontSize = fontSize,
-                swipeFontSize = swipeFontSize,
-                shadowEnabled = shadowEnabled,
-                shadowElevation = shadowElevation,
-                shadowShapeRadius = shadowShapeRadius,
+                fontSize = config.fontSize,
+                swipeFontSize = config.swipeFontSize,
+                shadowEnabled = config.shadowEnabled,
+                shadowElevation = config.shadowElevation,
+                shadowShapeRadius = config.shadowShapeRadius,
             )
         }
     }
@@ -895,28 +904,51 @@ private fun Row3KeyButton(
 @Composable
 private fun LandscapeKeyboardContent(
     onKeyPress: (String) -> Unit,
-    isShifted: Boolean,
-    schemaName: String,
-    enterKeyText: String,
-    isDarkTheme: Boolean,
-    keyBackgroundColor: Color,
-    keyTextColor: Color,
-    specialKeyBackgroundColor: Color,
-    keyboardBackgroundColor: Color,
-    onKeyPressDown: ((String) -> Unit)?,
-    onGestureAction: ((GestureAction, String) -> Unit)?,
+    viewModel: KeyboardViewModel,
+    callbacks: KeyboardCallbacks,
+    uiState: KeyboardUiState,
     swipeUpHintsEnabled: Boolean,
     swipeDownHintsEnabled: Boolean,
-    onCommitText: ((String) -> Unit)?,
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)? = null,
-    shadowEnabled: Boolean = true,
-    shadowElevation: Dp = 1.dp,
-    shadowShapeRadius: Dp = 8.dp,
 ) {
+    val isShifted by viewModel.isShifted.collectAsStateWithLifecycle()
     val suppressCursorMove = LocalSuppressCursorMove.current
     val staggerStep = 10.dp
     val landscapeFontSize = 12.sp
     val landscapeSwipeFontSize = 7.sp
+
+    val kbColors = KeysConfigHelper.getKeyboardColors()
+    val longToColor: (Long) -> Color = { Color(0xFF000000 or it) }
+    val keyboardBackgroundColor = if (uiState.isDarkTheme) longToColor(kbColors.keyboardBgColorDark) else longToColor(kbColors.keyboardBgColor)
+    val themeSpecialKeyColor = KeyboardThemes.getSpecialKeyColor(uiState.themeId, uiState.isDarkTheme)
+    val keyBackgroundColor = if (uiState.isDarkTheme) longToColor(kbColors.keyBgColorDark) else longToColor(kbColors.keyBgColor)
+    val keyTextColor = if (uiState.isDarkTheme) longToColor(kbColors.keyTextColorDark) else longToColor(kbColors.keyTextColor)
+    val specialKeyBackgroundColor = if (uiState.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
+        ?: themeSpecialKeyColor else kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
+    val kbShadow = KeysConfigHelper.getKeyboardShadow()
+    val shadowEnabled = kbShadow.enabled
+    val shadowElevation = kbShadow.elevation.dp
+    val shadowShapeRadius = kbShadow.shapeRadius.dp
+    val schemaName = uiState.schemaName
+    val enterKeyText = uiState.enterKeyText
+    val onKeyPressDown = callbacks.onKeyPressDown
+    val onCommitText = callbacks.onCommitText
+    val onGestureAction: (GestureAction, String) -> Unit = { action, value ->
+        when (action) {
+            GestureAction.SWITCH_ROUTE -> {
+                val route = when (value) {
+                    "emoji" -> KeyboardRoute.Emoji
+                    "symbol" -> KeyboardRoute.Symbol
+                    else -> null
+                }
+                if (route != null) viewModel.setRoute(route)
+            }
+            GestureAction.TOGGLE_ASCII -> {
+                callbacks.onKeyPress("ime_switch", uiState.isAsciiMode)
+            }
+            else -> callbacks.onGestureAction?.invoke(action, value) ?: Unit
+        }
+    }
 
     Row(
         modifier = Modifier
@@ -934,21 +966,20 @@ private fun LandscapeKeyboardContent(
                 CompactKeyboardRowWithConfig(
                     keys = listOf("q", "w", "e", "r", "t"),
                     onKeyPress = onKeyPress,
-                    keyBackgroundColor = keyBackgroundColor,
-                    keyTextColor = keyTextColor,
+                    config = KeyboardRowConfig(
+                        keyBackgroundColor = keyBackgroundColor,
+                        keyTextColor = keyTextColor,
+                        keyboardBackgroundColor = keyboardBackgroundColor,
+                        fontSize = landscapeFontSize,
+                        swipeFontSize = landscapeSwipeFontSize,
+                    ),
                     isShifted = isShifted,
-                    keyboardBackgroundColor = keyboardBackgroundColor,
-                    fontSize = landscapeFontSize,
-                    swipeFontSize = landscapeSwipeFontSize,
                     onKeyPressDown = onKeyPressDown,
                     swipeDownHintsEnabled = swipeDownHintsEnabled,
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
                     onSwipeStateChange = onSwipeStateChange,
-                    shadowEnabled = shadowEnabled,
-                    shadowElevation = shadowElevation,
-                    shadowShapeRadius = shadowShapeRadius,
                 )
             }
             Box(
@@ -959,21 +990,20 @@ private fun LandscapeKeyboardContent(
                 CompactKeyboardRowWithConfig(
                     keys = listOf("a", "s", "d", "f", "g"),
                     onKeyPress = onKeyPress,
-                    keyBackgroundColor = keyBackgroundColor,
-                    keyTextColor = keyTextColor,
+                    config = KeyboardRowConfig(
+                        keyBackgroundColor = keyBackgroundColor,
+                        keyTextColor = keyTextColor,
+                        keyboardBackgroundColor = keyboardBackgroundColor,
+                        fontSize = landscapeFontSize,
+                        swipeFontSize = landscapeSwipeFontSize,
+                    ),
                     isShifted = isShifted,
-                    keyboardBackgroundColor = keyboardBackgroundColor,
-                    fontSize = landscapeFontSize,
-                    swipeFontSize = landscapeSwipeFontSize,
                     onKeyPressDown = onKeyPressDown,
                     swipeDownHintsEnabled = swipeDownHintsEnabled,
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
                     onSwipeStateChange = onSwipeStateChange,
-                    shadowEnabled = shadowEnabled,
-                    shadowElevation = shadowElevation,
-                    shadowShapeRadius = shadowShapeRadius,
                 )
             }
             Box(
@@ -984,21 +1014,20 @@ private fun LandscapeKeyboardContent(
                 CompactKeyboardRowWithConfig(
                     keys = listOf("z", "x", "c", "v"),
                     onKeyPress = onKeyPress,
-                    keyBackgroundColor = keyBackgroundColor,
-                    keyTextColor = keyTextColor,
+                    config = KeyboardRowConfig(
+                        keyBackgroundColor = keyBackgroundColor,
+                        keyTextColor = keyTextColor,
+                        keyboardBackgroundColor = keyboardBackgroundColor,
+                        fontSize = landscapeFontSize,
+                        swipeFontSize = landscapeSwipeFontSize,
+                    ),
                     isShifted = isShifted,
-                    keyboardBackgroundColor = keyboardBackgroundColor,
-                    fontSize = landscapeFontSize,
-                    swipeFontSize = landscapeSwipeFontSize,
                     onKeyPressDown = onKeyPressDown,
                     swipeDownHintsEnabled = swipeDownHintsEnabled,
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
                     onSwipeStateChange = onSwipeStateChange,
-                    shadowEnabled = shadowEnabled,
-                    shadowElevation = shadowElevation,
-                    shadowShapeRadius = shadowShapeRadius,
                 )
             }
             Row(
@@ -1063,21 +1092,20 @@ private fun LandscapeKeyboardContent(
                 CompactKeyboardRowWithConfig(
                     keys = listOf("y", "u", "i", "o", "p"),
                     onKeyPress = onKeyPress,
-                    keyBackgroundColor = keyBackgroundColor,
-                    keyTextColor = keyTextColor,
+                    config = KeyboardRowConfig(
+                        keyBackgroundColor = keyBackgroundColor,
+                        keyTextColor = keyTextColor,
+                        keyboardBackgroundColor = keyboardBackgroundColor,
+                        fontSize = landscapeFontSize,
+                        swipeFontSize = landscapeSwipeFontSize,
+                    ),
                     isShifted = isShifted,
-                    keyboardBackgroundColor = keyboardBackgroundColor,
-                    fontSize = landscapeFontSize,
-                    swipeFontSize = landscapeSwipeFontSize,
                     onKeyPressDown = onKeyPressDown,
                     swipeDownHintsEnabled = swipeDownHintsEnabled,
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
                     onSwipeStateChange = onSwipeStateChange,
-                    shadowEnabled = shadowEnabled,
-                    shadowElevation = shadowElevation,
-                    shadowShapeRadius = shadowShapeRadius,
                 )
             }
             Box(
@@ -1088,21 +1116,20 @@ private fun LandscapeKeyboardContent(
                 CompactKeyboardRowWithConfig(
                     keys = listOf("g", "h", "j", "k", "l"),
                     onKeyPress = onKeyPress,
-                    keyBackgroundColor = keyBackgroundColor,
-                    keyTextColor = keyTextColor,
+                    config = KeyboardRowConfig(
+                        keyBackgroundColor = keyBackgroundColor,
+                        keyTextColor = keyTextColor,
+                        keyboardBackgroundColor = keyboardBackgroundColor,
+                        fontSize = landscapeFontSize,
+                        swipeFontSize = landscapeSwipeFontSize,
+                    ),
                     isShifted = isShifted,
-                    keyboardBackgroundColor = keyboardBackgroundColor,
-                    fontSize = landscapeFontSize,
-                    swipeFontSize = landscapeSwipeFontSize,
                     onKeyPressDown = onKeyPressDown,
                     swipeDownHintsEnabled = swipeDownHintsEnabled,
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
                     onSwipeStateChange = onSwipeStateChange,
-                    shadowEnabled = shadowEnabled,
-                    shadowElevation = shadowElevation,
-                    shadowShapeRadius = shadowShapeRadius,
                 )
             }
             Row(
@@ -1115,21 +1142,20 @@ private fun LandscapeKeyboardContent(
                     CompactKeyboardRowWithConfig(
                         keys = listOf("v", "b", "n", "m"),
                         onKeyPress = onKeyPress,
-                        keyBackgroundColor = keyBackgroundColor,
-                        keyTextColor = keyTextColor,
+                        config = KeyboardRowConfig(
+                            keyBackgroundColor = keyBackgroundColor,
+                            keyTextColor = keyTextColor,
+                            keyboardBackgroundColor = keyboardBackgroundColor,
+                            fontSize = landscapeFontSize,
+                            swipeFontSize = landscapeSwipeFontSize,
+                        ),
                         isShifted = isShifted,
-                        keyboardBackgroundColor = keyboardBackgroundColor,
-                        fontSize = landscapeFontSize,
-                        swipeFontSize = landscapeSwipeFontSize,
                         onKeyPressDown = onKeyPressDown,
                         swipeDownHintsEnabled = swipeDownHintsEnabled,
                         swipeUpHintsEnabled = swipeUpHintsEnabled,
                         onCommitText = onCommitText,
                         onGestureAction = onGestureAction,
                         onSwipeStateChange = onSwipeStateChange,
-                        shadowEnabled = shadowEnabled,
-                        shadowElevation = shadowElevation,
-                        shadowShapeRadius = shadowShapeRadius,
                     )
                 }
                 SwipeableIconKeyButton(
@@ -1543,28 +1569,21 @@ fun CompactSwipeableKeyButton(
 fun CompactKeyboardRowWithConfig(
     keys: List<String>,
     onKeyPress: (String) -> Unit,
-    keyBackgroundColor: Color,
-    keyTextColor: Color,
+    config: KeyboardRowConfig,
     isShifted: Boolean,
-    keyboardBackgroundColor: Color = Color.Transparent,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
     swipeDownHintsEnabled: Boolean = true,
     swipeUpHintsEnabled: Boolean = true,
     onCommitText: ((String) -> Unit)? = null,
     onGestureAction: ((GestureAction, String) -> Unit)? = null,
-    fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
-    swipeFontSize: androidx.compose.ui.unit.TextUnit = 9.sp,
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)? = null,
     configVersion: Int = 0,
-    shadowEnabled: Boolean = true,
-    shadowElevation: Dp = 1.dp,
-    shadowShapeRadius: Dp = 8.dp,
 ) {
     Row(
         modifier = modifier
             .fillMaxSize()
-            .background(keyboardBackgroundColor),
+            .background(config.keyboardBackgroundColor),
     ) {
         keys.forEach { key ->
             val rawSwipeUpText = KeysConfigHelper.getSwipeUpText(key)
@@ -1624,23 +1643,23 @@ fun CompactKeyboardRowWithConfig(
             CompactSwipeableKeyButton(
                 text = KeysConfigHelper.getKeyDisplayLabel(key),
                 onClick = compactOnClick,
-                backgroundColor = keyBackgroundColor,
-                textColor = keyTextColor,
+                backgroundColor = config.keyBackgroundColor,
+                textColor = config.keyTextColor,
                 modifier = Modifier.weight(1f),
                 swipeText = swipeUpText,
                 swipeDownText = swipeDownBubbleText,
                 swipeUpKeyLabel = swipeUpKeyLabel,
                 onSwipe = if (swipeUpText != null && swipeUpAction != GestureAction.NONE) onKeyPress else null,
-                    onSwipeDown = compactOnSwipeDown,
-                    onSwipeStateChange = onSwipeStateChange,
-                    onPress = compactOnPress,
+                onSwipeDown = compactOnSwipeDown,
+                onSwipeStateChange = onSwipeStateChange,
+                onPress = compactOnPress,
                 onLongPressSelect = compactOnLongPressSelect,
                 longPressItems = longPressLabels,
-                fontSize = fontSize,
-                swipeFontSize = swipeFontSize,
-                shadowEnabled = shadowEnabled,
-                shadowElevation = shadowElevation,
-                shadowShapeRadius = shadowShapeRadius,
+                fontSize = config.fontSize,
+                swipeFontSize = config.swipeFontSize,
+                shadowEnabled = config.shadowEnabled,
+                shadowElevation = config.shadowElevation,
+                shadowShapeRadius = config.shadowShapeRadius,
             )
         }
     }

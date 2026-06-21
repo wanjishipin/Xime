@@ -1,71 +1,67 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import android.content.res.Configuration
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kingzcheung.xime.keyboard.GestureAction
+import com.kingzcheung.xime.keyboard.KeyboardRoute
+import com.kingzcheung.xime.settings.KeysConfigHelper
+import com.kingzcheung.xime.ui.theme.KeyboardThemes
+import com.kingzcheung.xime.viewmodel.KeyboardUiState
+import com.kingzcheung.xime.viewmodel.KeyboardViewModel
 
-/**
- * 键盘布局调度屏幕 — 根据 [KeyboardLayoutState] 渲染对应的键盘布局。
- *
- * 职责单一：state → layout，不处理任何按键逻辑/状态转移。
- * 按键回调（[onKeyPress]）需由调用方封装好（含 [isShifted] 处理）。
- */
 @Composable
 fun KeyboardLayoutScreen(
-    state: KeyboardLayoutState,
+    keyboardState: KeyboardLayoutState,
+    uiState: KeyboardUiState,
+    viewModel: KeyboardViewModel,
+    callbacks: KeyboardCallbacks,
     onKeyPress: (String) -> Unit,
-    isShifted: Boolean,
-    isAsciiMode: Boolean,
-    isLandscape: Boolean,
-    schemaName: String,
-    enterKeyText: String,
-    isDarkTheme: Boolean,
-    keyBackgroundColor: Color,
-    keyTextColor: Color,
-    specialKeyBackgroundColor: Color,
-    keyboardBackgroundColor: Color,
-    shadowEnabled: Boolean = true,
-    shadowElevation: Dp = 1.dp,
-    shadowShapeRadius: Dp = 8.dp,
     modifier: Modifier = Modifier,
-    onKeyPressDown: ((String) -> Unit)? = null,
-    // Chinese-only 参数
-    onVoiceModeChange: ((Boolean) -> Unit)? = null,
-    onCommitText: ((String) -> Unit)? = null,
-    isSttEnabled: Boolean = true,
-    isVoiceMode: Boolean = false,
-    onCursorMove: ((Int) -> Unit)? = null,
-    onGestureAction: ((GestureAction, String) -> Unit)? = null,
-    currentSchemaId: String = "",
 ) {
-    when (state) {
+    val isShifted by viewModel.isShifted.collectAsStateWithLifecycle()
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val kbColors = KeysConfigHelper.getKeyboardColors()
+    val longToColor: (Long) -> Color = { Color(0xFF000000 or it) }
+    val keyboardBgColor = if (uiState.isDarkTheme) longToColor(kbColors.keyboardBgColorDark) else longToColor(kbColors.keyboardBgColor)
+    val themeSpecialKeyColor = KeyboardThemes.getSpecialKeyColor(uiState.themeId, uiState.isDarkTheme)
+    val keyBgColor = if (uiState.isDarkTheme) longToColor(kbColors.keyBgColorDark) else longToColor(kbColors.keyBgColor)
+    val keyTextColor = if (uiState.isDarkTheme) longToColor(kbColors.keyTextColorDark) else longToColor(kbColors.keyTextColor)
+    val specialKeyBgColor = if (uiState.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
+        ?: themeSpecialKeyColor else kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
+    val kbShadow = KeysConfigHelper.getKeyboardShadow()
+
+    val onGestureAction: (GestureAction, String) -> Unit = { action, value ->
+        when (action) {
+            GestureAction.SWITCH_ROUTE -> {
+                val route = when (value) {
+                    "emoji" -> KeyboardRoute.Emoji
+                    "symbol" -> KeyboardRoute.Symbol
+                    else -> null
+                }
+                if (route != null) viewModel.setRoute(route)
+            }
+            GestureAction.TOGGLE_ASCII -> {
+                callbacks.onKeyPress("ime_switch", uiState.isAsciiMode)
+            }
+            else -> callbacks.onGestureAction?.invoke(action, value) ?: Unit
+        }
+    }
+
+    when (keyboardState) {
         is KeyboardLayoutState.Chinese -> {
             KeyboardLayout(
                 onKeyPress = onKeyPress,
-                isShifted = isShifted,
-                isLandscape = isLandscape,
-                schemaName = schemaName,
-                enterKeyText = enterKeyText,
-                currentSchemaId = currentSchemaId,
-                isDarkTheme = isDarkTheme,
-                keyBackgroundColor = keyBackgroundColor,
-                keyTextColor = keyTextColor,
-                specialKeyBackgroundColor = specialKeyBackgroundColor,
-                keyboardBackgroundColor = keyboardBackgroundColor,
-                shadowEnabled = shadowEnabled,
-                shadowElevation = shadowElevation,
-                shadowShapeRadius = shadowShapeRadius,
+                viewModel = viewModel,
+                callbacks = callbacks,
+                uiState = uiState,
                 modifier = modifier,
-                onVoiceModeChange = onVoiceModeChange,
-                onCommitText = onCommitText,
-                isSttEnabled = isSttEnabled,
-                isVoiceMode = isVoiceMode,
-                onKeyPressDown = onKeyPressDown,
-                onCursorMove = onCursorMove,
-                onGestureAction = onGestureAction,
             )
         }
 
@@ -74,48 +70,48 @@ fun KeyboardLayoutScreen(
                 onKeyPress = onKeyPress,
                 isShifted = isShifted,
                 isLandscape = isLandscape,
-                enterKeyText = enterKeyText,
-                isDarkTheme = isDarkTheme,
-                keyBackgroundColor = keyBackgroundColor,
+                enterKeyText = uiState.enterKeyText,
+                isDarkTheme = uiState.isDarkTheme,
+                keyBackgroundColor = keyBgColor,
                 keyTextColor = keyTextColor,
-                specialKeyBackgroundColor = specialKeyBackgroundColor,
-                keyboardBackgroundColor = keyboardBackgroundColor,
-                shadowEnabled = shadowEnabled,
-                shadowElevation = shadowElevation,
-                shadowShapeRadius = shadowShapeRadius,
+                specialKeyBackgroundColor = specialKeyBgColor,
+                keyboardBackgroundColor = keyboardBgColor,
+                shadowEnabled = kbShadow.enabled,
+                shadowElevation = kbShadow.elevation.dp,
+                shadowShapeRadius = kbShadow.shapeRadius.dp,
                 modifier = modifier,
-                onKeyPressDown = onKeyPressDown,
+                onKeyPressDown = callbacks.onKeyPressDown,
             )
         }
 
         is KeyboardLayoutState.Number -> {
             NumberKeyboardLayout(
                 onKeyPress = onKeyPress,
-                keyBackgroundColor = keyBackgroundColor,
+                keyBackgroundColor = keyBgColor,
                 keyTextColor = keyTextColor,
-                specialKeyBackgroundColor = specialKeyBackgroundColor,
-                keyboardBackgroundColor = keyboardBackgroundColor,
-                shadowEnabled = shadowEnabled,
-                shadowElevation = shadowElevation,
-                shadowShapeRadius = shadowShapeRadius,
+                specialKeyBackgroundColor = specialKeyBgColor,
+                keyboardBackgroundColor = keyboardBgColor,
+                shadowEnabled = kbShadow.enabled,
+                shadowElevation = kbShadow.elevation.dp,
+                shadowShapeRadius = kbShadow.shapeRadius.dp,
                 modifier = modifier,
-                onKeyPressDown = onKeyPressDown,
+                onKeyPressDown = callbacks.onKeyPressDown,
             )
         }
 
         is KeyboardLayoutState.CommonSymbol -> {
             CommonSymbolKeyboardLayout(
                 onKeyPress = onKeyPress,
-                isAsciiMode = isAsciiMode,
-                keyBackgroundColor = keyBackgroundColor,
+                isAsciiMode = uiState.isAsciiMode,
+                keyBackgroundColor = keyBgColor,
                 keyTextColor = keyTextColor,
-                specialKeyBackgroundColor = specialKeyBackgroundColor,
-                keyboardBackgroundColor = keyboardBackgroundColor,
-                shadowEnabled = shadowEnabled,
-                shadowElevation = shadowElevation,
-                shadowShapeRadius = shadowShapeRadius,
+                specialKeyBackgroundColor = specialKeyBgColor,
+                keyboardBackgroundColor = keyboardBgColor,
+                shadowEnabled = kbShadow.enabled,
+                shadowElevation = kbShadow.elevation.dp,
+                shadowShapeRadius = kbShadow.shapeRadius.dp,
                 modifier = modifier,
-                onKeyPressDown = onKeyPressDown,
+                onKeyPressDown = callbacks.onKeyPressDown,
             )
         }
 
