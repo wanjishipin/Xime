@@ -67,6 +67,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kingzcheung.xime.keyboard.KeyboardDimensions
 import com.kingzcheung.xime.util.PermissionHelper
 import com.kingzcheung.xime.util.CharInfo
 import com.kingzcheung.xime.util.SubcharHelper
@@ -233,6 +234,7 @@ fun KeyboardLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(KeyboardDimensions.RowSpacing),
                 ) {
                     // 第一行
                     if (isVoiceMode) {
