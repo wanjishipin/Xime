@@ -325,6 +325,7 @@ fun KeyboardLayout(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .weight(1f)
+                                .fillMaxHeight()
                                 .background(keyboardBackgroundColor),
                         ) {
                             Row3KeyButton(
@@ -335,19 +336,19 @@ fun KeyboardLayout(
                                 backgroundColor = specialKeyBackgroundColor,
                                 iconColor = keyTextColor,
                                 modifier = Modifier
-                                    .width(40.dp)
+                                    .weight(1.4f)
                                     .fillMaxHeight(),
                                 shadowEnabled = shadowEnabled,
                                 shadowElevation = shadowElevation,
                                 shadowShapeRadius = shadowShapeRadius,
                             )
 
-                            Row(
-                                modifier = Modifier
-                                    .weight(7f)
-                                    .fillMaxHeight()
-                                    .background(keyboardBackgroundColor),
-                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .weight(7f)
+                                        .fillMaxHeight()
+                                        .background(keyboardBackgroundColor),
+                                ) {
                                 val bottomKeys = listOf("z", "x", "c", "v", "b", "n", "m")
                                 bottomKeys.forEach { key ->
                                     val rawSwipeUpText = KeysConfigHelper.getSwipeUpText(key)
@@ -438,7 +439,7 @@ fun KeyboardLayout(
                                 backgroundColor = specialKeyBackgroundColor,
                                 iconColor = keyTextColor,
                                 modifier = Modifier
-                                    .width(48.dp)
+                                    .weight(1.4f)
                                     .fillMaxHeight(),
                                 swipeText = "清空",
                                 onSwipe = { onKeyPress("clear_composition") },
