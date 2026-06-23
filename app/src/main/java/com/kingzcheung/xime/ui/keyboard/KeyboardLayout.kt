@@ -285,6 +285,7 @@ fun KeyboardLayout(
                                 swipeDownHintsEnabled = effectiveSwipeDownHintsEnabled,
                                 swipeUpHintsEnabled = swipeUpHintsEnabled,
                                 onCommitText = onCommitText,
+                                onGestureAction = onGestureAction,
                                 configVersion = cfgVer,
                             )
                         }
@@ -325,6 +326,7 @@ fun KeyboardLayout(
                                 swipeDownHintsEnabled = effectiveSwipeDownHintsEnabled,
                                 swipeUpHintsEnabled = swipeUpHintsEnabled,
                                 onCommitText = onCommitText,
+                                onGestureAction = onGestureAction,
                                 configVersion = cfgVer,
                             )
                         }
@@ -519,52 +521,98 @@ fun KeyboardLayout(
                             )
 
                             // 逗号 — 从配置读取 "'"
-                            val row4k2 = KeysConfigHelper.getKeyGesture("'")
-                            val k2Action = row4k2?.tap?.action
-                            val k2Tap = row4k2?.tap?.value?.takeIf { it.isNotEmpty() }
-                                ?: row4k2?.tap?.label?.takeIf { it.isNotEmpty() }
-                                ?: "，"
-                            val k2SwipeValue = row4k2?.swipeUp?.value?.takeIf { it.isNotEmpty() } ?: "。"
-                            val k2SwipeLabel = if (isAsciiMode) k2SwipeValue
-                                else (row4k2?.swipeUp?.label?.takeIf { it.isNotEmpty() } ?: k2SwipeValue)
-                            val k2Swipe = k2SwipeValue
-                            if (k2Action == GestureAction.TOGGLE_ASCII) {
+                            val k2KeyGesture = KeysConfigHelper.getKeyGesture("'", isAsciiMode)
+                            val k2TapAction = k2KeyGesture?.tap?.action
+                            val k2TapValue = k2KeyGesture?.tap?.value?.takeIf { it.isNotEmpty() }
+                                ?: k2KeyGesture?.tap?.label?.takeIf { it.isNotEmpty() }
+                                ?: if (isAsciiMode) "," else "，"
+                            val k2TapLabel = k2KeyGesture?.tap?.label?.takeIf { it.isNotEmpty() } ?: k2TapValue
+                            val k2SwipeUpRaw = k2KeyGesture?.swipeUp
+                            val k2SwipeUpLabel = if (isAsciiMode)
+                                (k2SwipeUpRaw?.value?.takeIf { it.isNotEmpty() } ?: "")
+                                else (k2SwipeUpRaw?.label?.takeIf { it.isNotEmpty() } ?: k2SwipeUpRaw?.value?.takeIf { it.isNotEmpty() } ?: "")
+                            val k2SwipeUpValue = k2SwipeUpRaw?.value?.takeIf { it.isNotEmpty() }
+                                ?: k2SwipeUpRaw?.label?.takeIf { it.isNotEmpty() }
+                            val k2SwipeUpDisplay = k2SwipeUpRaw?.display ?: DisplayMode.BOTH
+                            val k2SwipeUpCommitValue = k2SwipeUpValue
+                            val k2SwipeDownRaw = k2KeyGesture?.swipeDown
+                            val k2SwipeDownLabel = k2SwipeDownRaw?.label?.takeIf { it.isNotEmpty() }
+                            val k2SwipeDownAction = k2SwipeDownRaw?.action
+                            val k2SwipeDownValue = k2SwipeDownRaw?.value
+                            val k2SwipeDownDisplay = k2SwipeDownRaw?.display ?: DisplayMode.BOTH
+                            val k2SwipeDownBubbleText = if (!isAsciiMode && k2SwipeDownDisplay != DisplayMode.KEY) k2SwipeDownLabel else null
+                            val k2LongPressConfig = k2KeyGesture?.longPress
+                            val k2LongPressDisplay = k2LongPressConfig?.display ?: "key"
+                            val k2LongPressLabels = if (k2LongPressDisplay == "bubble") {
+                                k2LongPressConfig?.values?.map { it.label }?.filter { it.isNotEmpty() }
+                                    ?.ifEmpty { null }
+                            } else null
+                            val k2LongPressGestureMap = if (k2LongPressDisplay == "bubble") {
+                                k2LongPressConfig?.values?.associateBy { it.label }
+                            } else null
+                            val k2OnClick: () -> Unit = remember(k2TapAction, k2TapValue, onKeyPress, onGestureAction) {
+                                {
+                                    if (k2TapAction != null && k2TapAction != GestureAction.COMMIT) {
+                                        onGestureAction?.invoke(k2TapAction, k2TapValue)
+                                    } else {
+                                        onKeyPress(k2TapValue)
+                                    }
+                                }
+                            }
+                            val k2OnSwipeDown: ((String) -> Unit)? = if (k2SwipeDownAction != null && k2SwipeDownLabel != null) {
+                                remember(k2SwipeDownAction, k2SwipeDownValue, k2SwipeDownLabel, onKeyPress, onGestureAction, onCommitText) {
+                                    val label = k2SwipeDownLabel
+                                    { _: String ->
+                                        if (k2SwipeDownAction == GestureAction.COMMIT) {
+                                            (onCommitText ?: onKeyPress)(k2SwipeDownValue?.ifEmpty { label } ?: label)
+                                        } else {
+                                            onGestureAction?.invoke(k2SwipeDownAction, k2SwipeDownValue?.ifEmpty { label } ?: label)
+                                        }
+                                        Unit
+                                    }
+                                }
+                            } else null
+                            val k2OnLongPressSelect: ((String) -> Unit)? = remember(k2LongPressGestureMap, onGestureAction, onCommitText, onKeyPress) {
+                                { selectedLabel: String ->
+                                    val gesture = k2LongPressGestureMap?.get(selectedLabel)
+                                    if (gesture != null && gesture.action != GestureAction.COMMIT) {
+                                        onGestureAction?.invoke(gesture.action!!, gesture.value.ifEmpty { selectedLabel })
+                                    } else {
+                                        (onCommitText ?: onKeyPress)(selectedLabel)
+                                    }
+                                    Unit
+                                }
+                            }
+                            if (k2TapAction == GestureAction.TOGGLE_ASCII) {
                                 IconKeyButton(
                                     icon = rememberVectorPainter(Icons.Default.Language),
-                                    onClick = {
-                                        if (k2Action != null && k2Action != GestureAction.COMMIT) {
-                                            onGestureAction?.invoke(k2Action, k2Tap)
-                                        } else {
-                                            onKeyPress(k2Tap)
-                                        }
-                                    },
+                                    onClick = k2OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     iconColor = keyTextColor,
                                     modifier = Modifier.weight(0.8f),
-                                    onPress = { onKeyPressDown?.invoke(k2Swipe) },
+                                    onPress = { onKeyPressDown?.invoke(k2TapValue) },
                                     shadowEnabled = shadowEnabled,
                                     shadowElevation = shadowElevation,
                                     shadowShapeRadius = shadowShapeRadius,
                                 )
                             } else {
                                 SwipeableKeyButton(
-                                    text = k2Tap,
-                                    onClick = {
-                                        if (k2Action != null && k2Action != GestureAction.COMMIT) {
-                                            onGestureAction?.invoke(k2Action, k2Tap)
-                                        } else {
-                                            onKeyPress(k2Tap)
-                                        }
-                                    },
+                                    text = k2TapLabel,
+                                    onClick = k2OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     textColor = keyTextColor,
                                     modifier = Modifier.weight(0.8f),
-                                    swipeText = k2SwipeLabel,
-                                    onSwipe = { onKeyPress(k2Swipe) },
+                                    swipeText = k2SwipeUpLabel,
+                                    swipeDownText = k2SwipeDownBubbleText,
+                                    swipeDownKeyLabel = if (!isAsciiMode && (k2SwipeDownDisplay == DisplayMode.KEY || k2SwipeDownDisplay == DisplayMode.BOTH)) k2SwipeDownLabel else null,
+                                    onSwipe = if (k2SwipeUpCommitValue != null) { { onKeyPress(k2SwipeUpCommitValue) } } else null,
+                                    onSwipeDown = k2OnSwipeDown,
                                     onSwipeStateChange = { state, bounds ->
                                         processSwipeState(state, bounds)
                                     },
-                                    onPress = { onKeyPressDown?.invoke(k2Swipe) },
+                                    onPress = { onKeyPressDown?.invoke(k2TapValue) },
+                                    onLongPressSelect = k2OnLongPressSelect,
+                                    longPressItems = k2LongPressLabels,
                                     shadowEnabled = shadowEnabled,
                                     shadowElevation = shadowElevation,
                                     shadowShapeRadius = shadowShapeRadius,
@@ -676,47 +724,101 @@ fun KeyboardLayout(
                             )
                         } else {
                             // shift_l — 从配置读取
-                            val row4k4 = KeysConfigHelper.getKeyGesture("shift_l")
-                            val k4Action = row4k4?.tap?.action
-                            val k4Value = row4k4?.tap?.value?.takeIf { it.isNotEmpty() } ?: row4k4?.tap?.label?.takeIf { it.isNotEmpty() } ?: "ime_switch"
-                            val k4Label = row4k4?.tap?.label?.takeIf { it.isNotEmpty() } ?: "中"
-                            if (k4Action == GestureAction.TOGGLE_ASCII) {
+                            val k4KeyGesture = KeysConfigHelper.getKeyGesture("shift_l", isAsciiMode)
+                            val k4TapAction = k4KeyGesture?.tap?.action
+                            val k4TapValue = k4KeyGesture?.tap?.value?.takeIf { it.isNotEmpty() }
+                                ?: k4KeyGesture?.tap?.label?.takeIf { it.isNotEmpty() }
+                                ?: "ime_switch"
+                            val k4TapLabel = k4KeyGesture?.tap?.label?.takeIf { it.isNotEmpty() }
+                                ?: if (isAsciiMode) "中" else "英"
+                            val k4SwipeUpRaw = k4KeyGesture?.swipeUp
+                            val k4SwipeUpLabel = if (isAsciiMode)
+                                (k4SwipeUpRaw?.value?.takeIf { it.isNotEmpty() } ?: "")
+                                else (k4SwipeUpRaw?.label?.takeIf { it.isNotEmpty() } ?: k4SwipeUpRaw?.value?.takeIf { it.isNotEmpty() } ?: "")
+                            val k4SwipeUpValue = k4SwipeUpRaw?.value?.takeIf { it.isNotEmpty() }
+                                ?: k4SwipeUpRaw?.label?.takeIf { it.isNotEmpty() }
+                            val k4SwipeUpAction = k4SwipeUpRaw?.action
+                            val k4SwipeDownRaw = k4KeyGesture?.swipeDown
+                            val k4SwipeDownLabel = k4SwipeDownRaw?.label?.takeIf { it.isNotEmpty() }
+                            val k4SwipeDownAction = k4SwipeDownRaw?.action
+                            val k4SwipeDownValue = k4SwipeDownRaw?.value
+                            val k4SwipeDownDisplay = k4SwipeDownRaw?.display ?: DisplayMode.BOTH
+                            val k4SwipeDownBubbleText = if (!isAsciiMode && k4SwipeDownDisplay != DisplayMode.KEY) k4SwipeDownLabel else null
+                            val k4LongPressConfig = k4KeyGesture?.longPress
+                            val k4LongPressDisplay = k4LongPressConfig?.display ?: "key"
+                            val k4LongPressLabels = if (k4LongPressDisplay == "bubble") {
+                                k4LongPressConfig?.values?.map { it.label }?.filter { it.isNotEmpty() }
+                                    ?.ifEmpty { null }
+                            } else null
+                            val k4LongPressGestureMap = if (k4LongPressDisplay == "bubble") {
+                                k4LongPressConfig?.values?.associateBy { it.label }
+                            } else null
+                            val k4OnClick: () -> Unit = remember(k4TapAction, k4TapValue, onKeyPress, onGestureAction) {
+                                {
+                                    if (k4TapAction != null && k4TapAction != GestureAction.COMMIT) {
+                                        onGestureAction?.invoke(k4TapAction, k4TapValue)
+                                    } else {
+                                        onKeyPress(k4TapValue)
+                                    }
+                                }
+                            }
+                            val k4OnSwipe: ((String) -> Unit)? = if (k4SwipeUpValue != null && k4SwipeUpAction != GestureAction.NONE) {
+                                remember(k4SwipeUpValue, onKeyPress) { { onKeyPress(k4SwipeUpValue) } }
+                            } else null
+                            val k4OnSwipeDown: ((String) -> Unit)? = if (k4SwipeDownAction != null && k4SwipeDownLabel != null) {
+                                remember(k4SwipeDownAction, k4SwipeDownValue, k4SwipeDownLabel, onKeyPress, onGestureAction, onCommitText) {
+                                    val label = k4SwipeDownLabel
+                                    { _: String ->
+                                        if (k4SwipeDownAction == GestureAction.COMMIT) {
+                                            (onCommitText ?: onKeyPress)(k4SwipeDownValue?.ifEmpty { label } ?: label)
+                                        } else {
+                                            onGestureAction?.invoke(k4SwipeDownAction, k4SwipeDownValue?.ifEmpty { label } ?: label)
+                                        }
+                                        Unit
+                                    }
+                                }
+                            } else null
+                            val k4OnLongPressSelect: ((String) -> Unit)? = remember(k4LongPressGestureMap, onGestureAction, onCommitText, onKeyPress) {
+                                { selectedLabel: String ->
+                                    val gesture = k4LongPressGestureMap?.get(selectedLabel)
+                                    if (gesture != null && gesture.action != GestureAction.COMMIT) {
+                                        onGestureAction?.invoke(gesture.action!!, gesture.value.ifEmpty { selectedLabel })
+                                    } else {
+                                        (onCommitText ?: onKeyPress)(selectedLabel)
+                                    }
+                                    Unit
+                                }
+                            }
+                            if (k4TapAction == GestureAction.TOGGLE_ASCII) {
                                 IconKeyButton(
                                     icon = rememberVectorPainter(Icons.Default.Language),
-                                    onClick = {
-                                        if (k4Action != null && k4Action != GestureAction.COMMIT) {
-                                            onGestureAction?.invoke(k4Action, k4Value)
-                                        } else {
-                                            onKeyPress(k4Value)
-                                        }
-                                    },
+                                    onClick = k4OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     iconColor = keyTextColor,
                                     modifier = Modifier.weight(0.8f),
-                                    onPress = { onKeyPressDown?.invoke(k4Value) },
+                                    onPress = { onKeyPressDown?.invoke(k4TapValue) },
                                     shadowEnabled = shadowEnabled,
                                     shadowElevation = shadowElevation,
                                     shadowShapeRadius = shadowShapeRadius,
                                 )
                             } else {
-                                val k4SwipeValue = row4k4?.swipeUp?.value?.takeIf { it.isNotEmpty() }
-                                val k4SwipeLabel = if (isAsciiMode) (k4SwipeValue ?: "")
-                                    else (row4k4?.swipeUp?.label?.takeIf { it.isNotEmpty() } ?: k4SwipeValue ?: "")
                                 SwipeableKeyButton(
-                                    text = k4Label,
-                                    onClick = {
-                                        if (k4Action != null && k4Action != GestureAction.COMMIT) {
-                                            onGestureAction?.invoke(k4Action, k4Value)
-                                        } else {
-                                            onKeyPress(k4Value)
-                                        }
-                                    },
+                                    text = k4TapLabel,
+                                    onClick = k4OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     textColor = keyTextColor,
                                     modifier = Modifier.weight(0.8f),
-                                    swipeText = k4SwipeLabel,
-                                    onSwipe = if (k4SwipeValue != null) { { onKeyPress(k4SwipeValue) } } else null,
-                                    onPress = { onKeyPressDown?.invoke(k4Value) },
+                                    swipeText = k4SwipeUpLabel,
+                                    swipeDownText = k4SwipeDownBubbleText,
+                                    swipeDownKeyLabel = if (!isAsciiMode && (k4SwipeDownDisplay == DisplayMode.KEY || k4SwipeDownDisplay == DisplayMode.BOTH)) k4SwipeDownLabel else null,
+                                    onSwipe = k4OnSwipe,
+                                    onSwipeDown = k4OnSwipeDown,
+                                    onSwipeStateChange = { state, bounds ->
+                                        processSwipeState(state, bounds)
+                                    },
+                                    onPress = { onKeyPressDown?.invoke(k4TapValue) },
+                                    onLongPressSelect = k4OnLongPressSelect,
+                                    longPressItems = k4LongPressLabels,
                                     shadowEnabled = shadowEnabled,
                                     shadowElevation = shadowElevation,
                                     shadowShapeRadius = shadowShapeRadius,
