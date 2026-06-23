@@ -115,7 +115,16 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     }
 
     fun setKeyboardState(state: KeyboardLayoutState) {
+        if (state is KeyboardLayoutState.English) {
+            _isShifted.value = false
+            _shiftMode.value = ShiftMode.OFF
+        }
         _keyboardState.value = state
+    }
+
+    fun resetShift() {
+        _isShifted.value = false
+        _shiftMode.value = ShiftMode.OFF
     }
 
     fun setRoute(route: KeyboardRoute) {

@@ -593,6 +593,25 @@ public:
         }
     }
 
+    void setOption(const char* option, Bool value) {
+        if (!rime || !session_id_) {
+            LOGE("setOption: rime or session not available");
+            return;
+        }
+        rime->set_option(session_id_, option, value);
+        LOGI("setOption: %s = %s", option, value ? "true" : "false");
+    }
+
+    Bool getOption(const char* option) {
+        if (!rime || !session_id_) {
+            LOGE("getOption: rime or session not available");
+            return false;
+        }
+        Bool result = rime->get_option(session_id_, option);
+        LOGD("getOption: %s = %s", option, result ? "true" : "false");
+        return result;
+    }
+
     void destroy() {
         if (rime) {
             if (session_id_) {
@@ -962,6 +981,34 @@ Java_com_kingzcheung_xime_rime_RimeEngine_nativeGetAvailableSchemas(
     }
     
     return result;
+}
+
+// 设置 Rime 选项
+JNIEXPORT void JNICALL
+Java_com_kingzcheung_xime_rime_RimeEngine_nativeSetOption(
+    JNIEnv* env,
+    jobject thiz,
+    jstring option,
+    jboolean value
+) {
+    const char* option_ptr = env->GetStringUTFChars(option, nullptr);
+    if (!option_ptr) return;
+    Rime::Instance().setOption(option_ptr, value == JNI_TRUE);
+    env->ReleaseStringUTFChars(option, option_ptr);
+}
+
+// 读取 Rime 选项
+JNIEXPORT jboolean JNICALL
+Java_com_kingzcheung_xime_rime_RimeEngine_nativeGetOption(
+    JNIEnv* env,
+    jobject thiz,
+    jstring option
+) {
+    const char* option_ptr = env->GetStringUTFChars(option, nullptr);
+    if (!option_ptr) return JNI_FALSE;
+    Bool result = Rime::Instance().getOption(option_ptr);
+    env->ReleaseStringUTFChars(option, option_ptr);
+    return result ? JNI_TRUE : JNI_FALSE;
 }
 
 // 销毁引擎

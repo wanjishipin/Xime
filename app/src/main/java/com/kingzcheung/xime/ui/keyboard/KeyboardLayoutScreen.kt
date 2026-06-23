@@ -1,13 +1,9 @@
 package com.kingzcheung.xime.ui.keyboard
 
-import android.content.res.Configuration
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.kingzcheung.xime.keyboard.GestureAction
 import com.kingzcheung.xime.keyboard.KeyboardRoute
 import com.kingzcheung.xime.settings.KeysConfigHelper
@@ -24,9 +20,6 @@ fun KeyboardLayoutScreen(
     onKeyPress: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isShifted by viewModel.isShifted.collectAsStateWithLifecycle()
-    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-
     val kbColors = KeysConfigHelper.getKeyboardColors()
     val longToColor: (Long) -> Color = { Color(0xFF000000 or it) }
     val keyboardBgColor = if (uiState.isDarkTheme) longToColor(kbColors.keyboardBgColorDark) else longToColor(kbColors.keyboardBgColor)
@@ -48,6 +41,7 @@ fun KeyboardLayoutScreen(
                 if (route != null) viewModel.setRoute(route)
             }
             GestureAction.TOGGLE_ASCII -> {
+                viewModel.resetShift()
                 callbacks.onKeyPress("ime_switch", uiState.isAsciiMode)
             }
             else -> callbacks.onGestureAction?.invoke(action, value) ?: Unit
@@ -61,26 +55,19 @@ fun KeyboardLayoutScreen(
                 viewModel = viewModel,
                 callbacks = callbacks,
                 uiState = uiState,
+                isAsciiMode = false,
                 modifier = modifier,
             )
         }
 
         is KeyboardLayoutState.English -> {
-            EnglishKeyboardLayout(
+            KeyboardLayout(
                 onKeyPress = onKeyPress,
-                isShifted = isShifted,
-                isLandscape = isLandscape,
-                enterKeyText = uiState.enterKeyText,
-                isDarkTheme = uiState.isDarkTheme,
-                keyBackgroundColor = keyBgColor,
-                keyTextColor = keyTextColor,
-                specialKeyBackgroundColor = specialKeyBgColor,
-                keyboardBackgroundColor = keyboardBgColor,
-                shadowEnabled = kbShadow.enabled,
-                shadowElevation = kbShadow.elevation.dp,
-                shadowShapeRadius = kbShadow.shapeRadius.dp,
+                viewModel = viewModel,
+                callbacks = callbacks,
+                uiState = uiState,
+                isAsciiMode = true,
                 modifier = modifier,
-                onKeyPressDown = callbacks.onKeyPressDown,
             )
         }
 
