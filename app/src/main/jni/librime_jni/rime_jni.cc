@@ -181,25 +181,33 @@ public:
             rime->free_commit(&commit);
         }
 
+    RIME_STRUCT(RimeContext, context);
+    if (rime->get_context(session_id_, &context)) {
+        // 优先使用 preedit（经过 preedit_format 格式化后的文本），
+        // 例如 stroke 方案中会将 hspnz 转为 一丨丿丶乛
+        if (context.composition.preedit && strlen(context.composition.preedit) > 0) {
+            result.inputText = context.composition.preedit;
+        } else {
+            const char* input = rime->get_input(session_id_);
+            result.inputText = input ? input : "";
+        }
+        if (context.menu.num_candidates > 0) {
+            for (int i = 0; i < context.menu.num_candidates; ++i) {
+                const char* text = context.menu.candidates[i].text;
+                const char* comment = context.menu.candidates[i].comment;
+                result.candidates.push_back(std::make_pair(
+                    text ? text : "",
+                    comment ? comment : ""
+                ));
+            }
+        }
+        result.hasNextPage = !context.menu.is_last_page;
+        result.hasPrevPage = context.menu.page_no > 0;
+        rime->free_context(&context);
+    } else {
         const char* input = rime->get_input(session_id_);
         result.inputText = input ? input : "";
-
-        RIME_STRUCT(RimeContext, context);
-        if (rime->get_context(session_id_, &context)) {
-            if (context.menu.num_candidates > 0) {
-                for (int i = 0; i < context.menu.num_candidates; ++i) {
-                    const char* text = context.menu.candidates[i].text;
-                    const char* comment = context.menu.candidates[i].comment;
-                    result.candidates.push_back(std::make_pair(
-                        text ? text : "",
-                        comment ? comment : ""
-                    ));
-                }
-            }
-            result.hasNextPage = !context.menu.is_last_page;
-            result.hasPrevPage = context.menu.page_no > 0;
-            rime->free_context(&context);
-        }
+    }
 
         RIME_STRUCT(RimeStatus, status);
         if (rime->get_status(session_id_, &status)) {
@@ -593,6 +601,25 @@ public:
         }
     }
 
+    void setOption(const char* option, Bool value) {
+        if (!rime || !session_id_) {
+            LOGE("setOption: rime or session not available");
+            return;
+        }
+        rime->set_option(session_id_, option, value);
+        LOGI("setOption: %s = %s", option, value ? "true" : "false");
+    }
+
+    Bool getOption(const char* option) {
+        if (!rime || !session_id_) {
+            LOGE("getOption: rime or session not available");
+            return false;
+        }
+        Bool result = rime->get_option(session_id_, option);
+        LOGD("getOption: %s = %s", option, result ? "true" : "false");
+        return result;
+    }
+
     void destroy() {
         if (rime) {
             if (session_id_) {
@@ -962,6 +989,34 @@ Java_com_kingzcheung_xime_rime_RimeEngine_nativeGetAvailableSchemas(
     }
     
     return result;
+}
+
+// 设置 Rime 选项
+JNIEXPORT void JNICALL
+Java_com_kingzcheung_xime_rime_RimeEngine_nativeSetOption(
+    JNIEnv* env,
+    jobject thiz,
+    jstring option,
+    jboolean value
+) {
+    const char* option_ptr = env->GetStringUTFChars(option, nullptr);
+    if (!option_ptr) return;
+    Rime::Instance().setOption(option_ptr, value == JNI_TRUE);
+    env->ReleaseStringUTFChars(option, option_ptr);
+}
+
+// 读取 Rime 选项
+JNIEXPORT jboolean JNICALL
+Java_com_kingzcheung_xime_rime_RimeEngine_nativeGetOption(
+    JNIEnv* env,
+    jobject thiz,
+    jstring option
+) {
+    const char* option_ptr = env->GetStringUTFChars(option, nullptr);
+    if (!option_ptr) return JNI_FALSE;
+    Bool result = Rime::Instance().getOption(option_ptr);
+    env->ReleaseStringUTFChars(option, option_ptr);
+    return result ? JNI_TRUE : JNI_FALSE;
 }
 
 // 销毁引擎

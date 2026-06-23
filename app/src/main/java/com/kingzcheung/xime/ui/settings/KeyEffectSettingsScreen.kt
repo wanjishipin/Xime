@@ -131,7 +131,7 @@ fun KeyEffectSettingsContent(
                                 value = uiState.soundVolume.toFloat(),
                                 onValueChange = { viewModel.setSoundVolume(it.toInt()) },
                                 valueRange = 0f..100f,
-                                steps = 10
+                                steps = 1
                             )
                         }
                     }
@@ -194,7 +194,7 @@ fun KeyEffectSettingsContent(
                                 value = uiState.vibrationIntensity.toFloat(),
                                 onValueChange = { viewModel.setVibrationIntensity(it.toInt()) },
                                 valueRange = 0f..100f,
-                                steps = 10
+                                steps = 1
                             )
                         }
                     }

@@ -239,6 +239,16 @@ class RimeEngine {
         return nativeIsAsciiMode()
     }
 
+    fun setOption(option: String, value: Boolean) {
+        if (!nativeHasSession()) return
+        nativeSetOption(option, value)
+    }
+
+    fun getOption(option: String): Boolean {
+        if (!nativeHasSession()) return false
+        return nativeGetOption(option)
+    }
+
     fun setPageSize(schemaId: String, pageSize: Int) {
         if (!isInitialized) return
         nativeSetPageSize(schemaId, pageSize)
@@ -297,6 +307,8 @@ class RimeEngine {
     private external fun nativeClearComposition()
     private external fun nativeToggleAsciiMode(): Boolean
     private external fun nativeIsAsciiMode(): Boolean
+    private external fun nativeSetOption(option: String, value: Boolean)
+    private external fun nativeGetOption(option: String): Boolean
     private external fun nativeSwitchSchema(schemaId: String): Boolean
     private external fun nativeStartMaintenance(full: Boolean): Boolean
     private external fun nativeDeploy(): Boolean

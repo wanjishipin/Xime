@@ -16,6 +16,8 @@ import com.kingzcheung.xime.speech.RecognitionState
 import com.kingzcheung.xime.ui.keyboard.KeyboardLayoutState
 import com.kingzcheung.xime.ui.keyboard.initialKeyboardLayoutState
 
+enum class ShiftMode { OFF, SINGLE, CAPS }
+
 data class KeyboardUiState(
     val candidates: List<String> = emptyList(),
     val candidateComments: List<String> = emptyList(),
@@ -62,6 +64,9 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private val _isShifted = MutableStateFlow(false)
     val isShifted: StateFlow<Boolean> = _isShifted.asStateFlow()
 
+    private val _shiftMode = MutableStateFlow(ShiftMode.OFF)
+    val shiftMode: StateFlow<ShiftMode> = _shiftMode.asStateFlow()
+
     private val _keyboardState = MutableStateFlow<KeyboardLayoutState>(KeyboardLayoutState.Chinese)
     val keyboardState: StateFlow<KeyboardLayoutState> = _keyboardState.asStateFlow()
 
@@ -76,8 +81,50 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         _isShifted.value = shifted
     }
 
+    fun singleTapShift() {
+        when (_shiftMode.value) {
+            ShiftMode.OFF, ShiftMode.SINGLE -> {
+                _isShifted.value = true
+                _shiftMode.value = ShiftMode.SINGLE
+            }
+            ShiftMode.CAPS -> {
+                _isShifted.value = false
+                _shiftMode.value = ShiftMode.OFF
+            }
+        }
+    }
+
+    fun doubleTapShift() {
+        when (_shiftMode.value) {
+            ShiftMode.CAPS -> {
+                _isShifted.value = false
+                _shiftMode.value = ShiftMode.OFF
+            }
+            else -> {
+                _isShifted.value = true
+                _shiftMode.value = ShiftMode.CAPS
+            }
+        }
+    }
+
+    fun onCharacterTyped() {
+        if (_shiftMode.value == ShiftMode.SINGLE) {
+            _isShifted.value = false
+            _shiftMode.value = ShiftMode.OFF
+        }
+    }
+
     fun setKeyboardState(state: KeyboardLayoutState) {
+        if (state is KeyboardLayoutState.English) {
+            _isShifted.value = false
+            _shiftMode.value = ShiftMode.OFF
+        }
         _keyboardState.value = state
+    }
+
+    fun resetShift() {
+        _isShifted.value = false
+        _shiftMode.value = ShiftMode.OFF
     }
 
     fun setRoute(route: KeyboardRoute) {
@@ -86,6 +133,7 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
 
     fun resetKeyboard(isAsciiMode: Boolean, schemaId: String = "") {
         _isShifted.value = false
+        _shiftMode.value = ShiftMode.OFF
         _keyboardState.value = initialKeyboardLayoutState(isAsciiMode, schemaId)
         _currentRoute.value = KeyboardRoute.Keyboard
     }

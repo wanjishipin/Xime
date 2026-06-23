@@ -252,6 +252,8 @@ fun KeyboardView(
                     val fullScreenOnKeyPress: (String) -> Unit = { key ->
                         when (key) {
                             "shift" -> viewModel.toggleShift()
+                            "shift_single" -> viewModel.singleTapShift()
+                            "shift_caps" -> viewModel.doubleTapShift()
                             "mode_change" -> {
                                 viewModel.setKeyboardState(keyboardState.transition(
                                     KeyboardLayoutAction.SwitchToCommonSymbol, state.isAsciiMode
@@ -260,7 +262,10 @@ fun KeyboardView(
                             }
                             "mode_change_symbol" -> viewModel.setRoute(KeyboardRoute.Symbol)
                             "emoji" -> viewModel.setRoute(KeyboardRoute.Emoji)
-                            else -> callbacks.onKeyPress(key, isShifted)
+                            else -> {
+                                callbacks.onKeyPress(key, isShifted)
+                                viewModel.onCharacterTyped()
+                            }
                         }
                     }
                     val numberOnKeyPress: (String) -> Unit = { key ->

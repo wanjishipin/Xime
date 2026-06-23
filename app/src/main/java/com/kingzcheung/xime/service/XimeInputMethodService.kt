@@ -1544,12 +1544,14 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                     }
                 }
                 "word_separator" -> {
-                    val processed = rimeEngine.processKey(0x20, 0)
-                    if (processed) {
-                        val result = rimeEngine.getProcessResult(processed)
-                        uiEventChannel.trySend {
-                            if (result.committedText.isNotEmpty()) commitText(result.committedText)
-                            updateUIWithResult(result)
+                    if (candState.isComposing || candState.inputText.isNotEmpty()) {
+                        val result = rimeEngine.processKeyAndGetResult(0x27, 0)
+                        if (result.processed) {
+                            uiEventChannel.trySend {
+                                updateUIWithResult(result)
+                            }
+                        } else {
+                            needsUIUpdate = true
                         }
                     } else {
                         needsUIUpdate = true
@@ -1610,6 +1612,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                         val char = if (isShifted) key.uppercase() else key
                         val keyCode = key.lowercase()[0].code
                         val mask = if (isShifted) KeyEvent.META_SHIFT_ON else 0
+                        val isLetter = key.matches(Regex("[a-zA-Z]"))
+                        val isShiftedChinese = isShifted && !state.isAsciiMode && isLetter
 
                         val t0 = System.nanoTime()
                         val processed = rimeEngine.processKey(keyCode, mask)
@@ -1619,14 +1623,21 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                         }
                         if (processed) {
                             val result = rimeEngine.getProcessResult(processed)
-                            uiEventChannel.trySend {
-                                if (result.committedText.isNotEmpty()) commitText(result.committedText)
-                                updateUIWithResult(result)
-                                if (calculatorEngine.isActive()) updateCalculatorCandidates()
+                            if (isShiftedChinese && result.committedText != char) {
+                                rimeEngine.clearComposition()
+                                committedText = char
+                                needsUIUpdate = true
+                                Log.d(TAG, "Shift+letter in Chinese mode: Rime consumed key but didn't produce uppercase, committing '$char' directly")
+                            } else {
+                                uiEventChannel.trySend {
+                                    if (result.committedText.isNotEmpty()) commitText(result.committedText)
+                                    updateUIWithResult(result)
+                                    if (calculatorEngine.isActive()) updateCalculatorCandidates()
+                                }
                             }
                         } else {
                             val isAscii = state.isAsciiMode
-                            if (!candState.isComposing) {
+                            if (!candState.isComposing || isShiftedChinese) {
                                 if (isAscii) {
                                     val charToCommit = if (isShifted) char.uppercase() else char.lowercase()
                                     val currentPending = candState.pendingEnglishText

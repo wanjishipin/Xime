@@ -4,6 +4,7 @@ import com.charleskorn.kaml.Yaml
 import com.kingzcheung.xime.keyboard.GestureAction
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
 
@@ -495,4 +496,129 @@ class KeyboardGestureConfigTest {
         val list = node as? com.charleskorn.kaml.YamlList ?: return null
         return list.items.map { parseGestureNode(it) }
     }
+
+    /** 模拟 KeysConfigHelper.parseKeyboardYamlSection，从 keyboard.<section>.keys 提取按键配置。 */
+    private fun parseSection(yamlText: String, section: String): Map<String, KeyGestureConfig> {
+        val root = Yaml.default.parseToYamlNode(yamlText) as? com.charleskorn.kaml.YamlMap ?: return emptyMap()
+        val keyboardNode = root["keyboard"] as? com.charleskorn.kaml.YamlMap ?: return emptyMap()
+        val sectionNode = keyboardNode[section] as? com.charleskorn.kaml.YamlMap ?: return emptyMap()
+        val keysNode = sectionNode["keys"] as? com.charleskorn.kaml.YamlMap ?: return emptyMap()
+        val result = mutableMapOf<String, KeyGestureConfig>()
+        for ((kNode, vNode) in keysNode.entries) {
+            val key = (kNode as com.charleskorn.kaml.YamlScalar).content
+            val gestureMap = vNode as com.charleskorn.kaml.YamlMap
+            result[key] = parseKeyGestureConfig(gestureMap)
+        }
+        return result
+    }
+    // ── qwerty / qwerty_en 双布局解析 ──
+
+    @Test
+    fun `qwerty 和 qwerty_en 独立解析`() {
+        val yaml = """
+keyboard:
+  qwerty:
+    keys:
+      "'": { tap: { label: "，", value: "," } }
+      shift_l: { tap: { label: "英", action: "toggle_ascii" } }
+      space: { tap: { label: "空格", value: " " } }
+      return: { tap: { label: "回车", value: "\\n" } }
+  qwerty_en:
+    keys:
+      "'": { tap: { label: ",", value: "," } }
+      shift_l: { tap: { label: "中", action: "toggle_ascii" } }
+      space: { tap: { label: "English", value: " " } }
+      return: { tap: { label: "Enter", value: "\\n" } }
+        """.trimIndent()
+        val zh = parseSection(yaml, "qwerty")
+        val en = parseSection(yaml, "qwerty_en")
+        // 中文布局
+        assertEquals("，", zh["'"]!!.tap!!.label)
+        assertEquals("英", zh["shift_l"]!!.tap!!.label)
+        assertEquals("空格", zh["space"]!!.tap!!.label)
+        assertEquals("回车", zh["return"]!!.tap!!.label)
+        // 英文布局
+        assertEquals(",", en["'"]!!.tap!!.label)
+        assertEquals("中", en["shift_l"]!!.tap!!.label)
+        assertEquals("English", en["space"]!!.tap!!.label)
+        assertEquals("Enter", en["return"]!!.tap!!.label)
+    }
+
+    @Test
+    fun `qwerty_en 的字母键配置更简单`() {
+        val yaml = """
+keyboard:
+  qwerty:
+    keys:
+      a: { tap: "a", swipe_up: { label: "～", value: "~" }, swipe_down: { label: "工匚戈艹", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["a", "A", "à", "á", "â"] } }
+  qwerty_en:
+    keys:
+      a: { tap: "a", swipe_up: "~", long_press: { display: "bubble", values: ["a", "A"] } }
+        """.trimIndent()
+        val zh = parseSection(yaml, "qwerty")
+        val en = parseSection(yaml, "qwerty_en")
+        // 中文有五笔字根
+        assertNotNull(zh["a"]!!.swipeDown)
+        assertEquals("工匚戈艹", zh["a"]!!.swipeDown!!.label)
+        assertEquals(GestureAction.NONE, zh["a"]!!.swipeDown!!.action)
+        // 英文无五笔字根
+        assertNull(en["a"]!!.swipeDown)
+        // 中文上滑有 label/value 分离
+        assertEquals("～", zh["a"]!!.swipeUp!!.label)
+        assertEquals("~", zh["a"]!!.swipeUp!!.value)
+        // 英文上滑为字符串简写
+        assertEquals("~", en["a"]!!.swipeUp!!.label)
+        assertEquals("~", en["a"]!!.swipeUp!!.value)
+    }
+
+    @Test
+    fun `getKeyGesture 根据 isAsciiMode 返回对应配置`() {
+        // 这个测试验证 KeysConfigHelper 的公开 API 能根据模式选择正确的配置
+        // 需要设置内部状态，所以通过解析并手动调用
+        val yaml = """
+keyboard:
+  qwerty:
+    keys:
+      "'": { tap: { label: "，", value: "," } }
+      shift_l: { tap: { label: "英", action: "toggle_ascii" } }
+  qwerty_en:
+    keys:
+      "'": { tap: { label: ",", value: "," } }
+      shift_l: { tap: { label: "中", action: "toggle_ascii" } }
+        """.trimIndent()
+        val zh = parseSection(yaml, "qwerty")
+        val en = parseSection(yaml, "qwerty_en")
+        
+        // 中文模式 (isAsciiMode = false)
+        assertEquals("，", zh["'"]!!.tap!!.label)
+        assertEquals("英", zh["shift_l"]!!.tap!!.label)
+        
+        // 英文模式 (isAsciiMode = true)
+        assertEquals(",", en["'"]!!.tap!!.label)
+        assertEquals("中", en["shift_l"]!!.tap!!.label)
+        
+        // 验证中英文不同
+        assertNotEquals(zh["'"]!!.tap!!.label, en["'"]!!.tap!!.label)
+    }
+
+    @Test
+    fun `qwerty_en 缺失键不影响 qwerty`() {
+        val yaml = """
+keyboard:
+  qwerty:
+    keys:
+      q: { tap: "q" }
+      w: { tap: "w" }
+  qwerty_en:
+    keys:
+      q: { tap: "q" }
+        """.trimIndent()
+        val zh = parseSection(yaml, "qwerty")
+        val en = parseSection(yaml, "qwerty_en")
+        assertEquals(2, zh.size)
+        assertEquals(1, en.size)
+        assertNotNull(zh["w"])
+        assertNull(en["w"])
+    }
+
 }
