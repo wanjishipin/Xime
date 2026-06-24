@@ -82,9 +82,10 @@ fun CandidateBar(
     visuals: CandidateBarVisuals,
     callbacks: CandidateBarCallbacks,
     @SuppressLint("ModifierParameter") modifier: Modifier = Modifier,
+    isFloatingMode: Boolean = false,
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = !isFloatingMode && configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     val horizontalPadding = if (isLandscape) 50.dp else 8.dp
     val context = LocalContext.current
     val showComments = SettingsPreferences.showCandidateComments(context)

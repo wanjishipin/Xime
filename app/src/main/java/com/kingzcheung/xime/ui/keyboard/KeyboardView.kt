@@ -49,6 +49,7 @@ import com.kingzcheung.xime.ui.theme.KeyboardThemes
 import com.kingzcheung.xime.viewmodel.KeyboardUiState
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 val LocalStretchFactor = compositionLocalOf { 1f }
 val LocalSuppressCursorMove = compositionLocalOf { mutableStateOf(false) }
@@ -102,11 +103,15 @@ fun KeyboardView(
     val dividerColor = if (state.isDarkTheme) androidx.compose.ui.graphics.Color(0xFF3C4043) else androidx.compose.ui.graphics.Color(0xFFDADCE0)
 
     val clipboardTab = (currentRoute as? KeyboardRoute.Clipboard)?.tab ?: 0
+    val screenW = LocalConfiguration.current.screenWidthDp
+    val screenH = LocalConfiguration.current.screenHeightDp
+    val cardWidthDp = (minOf(screenW, screenH) * 0.85f).roundToInt()
+    val floatScaleFactor = if (state.isFloatingMode) cardWidthDp.toFloat() / screenW.toFloat() else 0.85f
 
     val contentModifier = modifier.background(keyboardBgColor)
     FloatingKeyboardContainer(
         isFloatingMode = state.isFloatingMode,
-        scaleFactor = 0.85f,
+        scaleFactor = floatScaleFactor,
         offsetX = state.floatingOffsetX,
         offsetY = state.floatingOffsetY,
         backgroundColor = keyboardBgColor,
@@ -139,6 +144,7 @@ fun KeyboardView(
             CandidateBar(
                 state = candidateBarState,
                 currentRoute = currentRoute,
+                isFloatingMode = state.isFloatingMode,
                 toolbarActions = state.toolbarButtons.mapNotNull { id ->
                     val button = ToolbarButton.fromId(id) ?: return@mapNotNull null
                     val onClick: () -> Unit = when (button) {

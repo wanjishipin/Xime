@@ -611,7 +611,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                         Log.d(TAG, "HeightSync: mode=${if (state.showKeyboardResize) "resize" else "normal"} height=$contentHeight navBarDp=${navBarDp.value} padding=${state.keyboardBottomPaddingDp} hasNavBar=$hasNavBar totalDp=$totalDp")
                         SideEffect {
                             keyboardContainer.updateHeight(totalDp)
-                            currentEffectiveKeyboardHeight = floatingCardContentHeight
+                            currentEffectiveKeyboardHeight = if (state.isFloatingMode) floatingCardContentHeight + 48 else effectiveKeyboardHeight
                         }
                         if (state.isCompact && cand.isComposing) {
                             FloatingCandidateBar(
@@ -821,8 +821,10 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                         val s = uiState.value
                                         val screenW = resources.configuration.screenWidthDp
                                         val screenH = resources.configuration.screenHeightDp
-                                        val halfMargin = ((screenW - screenW * 0.85f) / 2f).roundToInt()
-                                        val maxY = (screenH * 0.8f).roundToInt()
+                                        val portraitWidth = minOf(screenW, screenH)
+                                        val cardWidth = (portraitWidth * 0.85f).roundToInt()
+                                        val halfMargin = ((screenW - cardWidth) / 2f).roundToInt()
+                                        val maxY = (screenH * 0.9f).roundToInt()
                                         uiState.value = s.copy(
                                             floatingOffsetX = (s.floatingOffsetX + dx).roundToInt().coerceIn(-halfMargin, halfMargin),
                                             floatingOffsetY = (s.floatingOffsetY + dy).roundToInt().coerceIn(0, maxY),
