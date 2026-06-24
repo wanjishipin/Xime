@@ -3,6 +3,7 @@ package com.kingzcheung.xime.ui.keyboard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,14 +20,15 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
+private const val DRAG_BAR_HEIGHT = 18
+
 @Composable
 fun FloatingKeyboardContainer(
     isFloatingMode: Boolean,
     scaleFactor: Float,
-    cardWidthDp: Int = 0,
     offsetX: Int,
     offsetY: Int,
-    dragAreaHeightDp: Int = 48,
+    backgroundColor: Color = Color.Transparent,
     onDrag: (dx: Float, dy: Float) -> Unit,
     onDragEnd: () -> Unit,
     keyboardContent: @Composable () -> Unit,
@@ -44,65 +46,53 @@ fun FloatingKeyboardContainer(
     ) {
         Box(
             modifier = Modifier
-                .width(if (cardWidthDp > 0) cardWidthDp.dp else androidx.compose.ui.unit.Dp.Unspecified)
-                .fillMaxWidth(if (cardWidthDp > 0) 1f else scaleFactor)
+                .fillMaxWidth(scaleFactor)
                 .offset(x = offsetX.dp, y = (-offsetY).dp)
                 .shadow(12.dp, RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
         ) {
-            keyboardContent()
-
-            DragSurface(
-                modifier = Modifier.align(Alignment.TopCenter),
-                dragAreaHeightDp = dragAreaHeightDp,
-                onDrag = { dx, dy ->
-                    onDrag(dx, -dy)
-                },
-                onDragEnd = onDragEnd,
-            )
+            Column {
+                DragBar(
+                    backgroundColor = backgroundColor,
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        val dxDp = with(density) { dragAmount.x.toDp().value }
+                        val dyDp = with(density) { dragAmount.y.toDp().value }
+                        onDrag(dxDp, -dyDp)
+                    },
+                    onDragEnd = onDragEnd
+                )
+                keyboardContent()
+            }
         }
     }
 }
 
 @Composable
-private fun DragSurface(
-    modifier: Modifier = Modifier,
-    dragAreaHeightDp: Int,
-    onDrag: (dxDp: Float, dyDp: Float) -> Unit,
+private fun DragBar(
+    backgroundColor: Color,
+    onDrag: (change: androidx.compose.ui.input.pointer.PointerInputChange, dragAmount: androidx.compose.ui.geometry.Offset) -> Unit,
     onDragEnd: () -> Unit,
 ) {
-    val density = LocalDensity.current
-
     Box(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .height(dragAreaHeightDp.dp)
+            .height(DRAG_BAR_HEIGHT.dp)
+            .background(backgroundColor)
+            .pointerInput(Unit) {
+                detectDragGestures(
+                    onDrag = onDrag,
+                    onDragEnd = onDragEnd
+                )
+            },
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(dragAreaHeightDp.dp)
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDrag = { change, dragAmount ->
-                            change.consume()
-                            val dxDp = with(density) { dragAmount.x.toDp().value }
-                            val dyDp = with(density) { dragAmount.y.toDp().value }
-                            onDrag(dxDp, dyDp)
-                        },
-                        onDragEnd = onDragEnd
-                    )
-                }
-        )
-
         Box(
             modifier = Modifier
                 .width(36.dp)
                 .height(5.dp)
                 .clip(RoundedCornerShape(3.dp))
-                .background(Color.White.copy(alpha = 0.7f))
-                .align(Alignment.TopCenter)
-                .offset(y = 4.dp)
+                .background(Color.White.copy(alpha = 0.6f))
         )
     }
 }

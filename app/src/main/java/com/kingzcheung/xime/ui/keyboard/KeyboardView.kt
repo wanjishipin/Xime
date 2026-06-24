@@ -103,20 +103,20 @@ fun KeyboardView(
 
     val clipboardTab = (currentRoute as? KeyboardRoute.Clipboard)?.tab ?: 0
 
+    val contentModifier = modifier.background(keyboardBgColor)
     FloatingKeyboardContainer(
         isFloatingMode = state.isFloatingMode,
         scaleFactor = 0.85f,
-        cardWidthDp = floatingCardWidthDp,
         offsetX = state.floatingOffsetX,
         offsetY = state.floatingOffsetY,
+        backgroundColor = keyboardBgColor,
         onDrag = { dx, dy -> callbacks.onFloatingKeyboardDrag?.invoke(dx, dy) },
         onDragEnd = { callbacks.onFloatingKeyboardDragEnd?.invoke() },
     ) {
-    Box(modifier = modifier.background(keyboardBgColor)) {
+    Box(modifier = contentModifier) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .fillMaxHeight()
         ) {
             val candidateBarState = remember(
                 state.candidates, state.candidateComments, state.inputText, state.preeditText, state.isComposing,
