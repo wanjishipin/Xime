@@ -28,6 +28,7 @@ fun FloatingKeyboardContainer(
     scaleFactor: Float,
     offsetX: Int,
     offsetY: Int,
+    minOffsetY: Int = 0,
     backgroundColor: Color = Color.Transparent,
     onDrag: (dx: Float, dy: Float) -> Unit,
     onDragEnd: () -> Unit,
@@ -39,6 +40,7 @@ fun FloatingKeyboardContainer(
     }
 
     val density = LocalDensity.current
+    val safeOffsetY = offsetY.coerceAtLeast(minOffsetY)
 
     Box(
         modifier = Modifier.fillMaxSize(),
@@ -47,9 +49,10 @@ fun FloatingKeyboardContainer(
         Box(
             modifier = Modifier
                 .fillMaxWidth(scaleFactor)
-                .offset(x = offsetX.dp, y = (-offsetY).dp)
+                .offset(x = offsetX.dp, y = (-safeOffsetY).dp)
                 .shadow(12.dp, RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
+
         ) {
             Column {
                 DragBar(

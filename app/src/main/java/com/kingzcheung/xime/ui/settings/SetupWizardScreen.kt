@@ -2,7 +2,6 @@ package com.kingzcheung.xime.ui.settings
 
 import android.content.Context
 import android.content.Intent
-import android.os.Build
 import android.provider.Settings
 import android.util.Log
 import android.view.inputmethod.InputMethodManager
@@ -10,16 +9,12 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -28,7 +23,6 @@ import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.rime.RimeConfigHelper
 import com.kingzcheung.xime.rime.RimeEngine
 import com.kingzcheung.xime.settings.SchemaManager
-import com.kingzcheung.xime.settings.SchemaMeta
 import com.kingzcheung.xime.settings.SettingsPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -242,7 +236,7 @@ private fun EnableImeStep(onNext: () -> Unit) {
             onClick = {
                 context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
         ) {
             Text("去系统设置启用")
         }
@@ -257,7 +251,7 @@ private fun EnableImeStep(onNext: () -> Unit) {
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = onNext,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
             ) {
                 Text("下一步")
             }
@@ -273,7 +267,7 @@ private fun EnableImeStep(onNext: () -> Unit) {
                 onClick = {
                     scope.launch { isEnabled = checkImeEnabled(context) }
                 },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
             ) {
                 Text("检查状态")
             }
@@ -335,7 +329,7 @@ private fun SelectSchemasStep(
 
         Button(
             onClick = { onNavigateToSchemaSettings() },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
         ) {
             Text("去设置选择方案")
         }
@@ -359,82 +353,13 @@ private fun SelectSchemasStep(
             Spacer(Modifier.height(16.dp))
             Button(
                 onClick = onNext,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
             ) {
                 Text("下一步")
             }
         }
 
         Spacer(Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun CompilingStep(
-    context: Context,
-    enabledSchemas: List<String>,
-    progress: String,
-    done: Boolean,
-    error: Boolean,
-    onProgress: (String) -> Unit,
-    onDone: () -> Unit,
-    onError: () -> Unit
-) {
-    val scope = rememberCoroutineScope()
-
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.weight(1f))
-
-        Text(
-            text = "步骤 3：编译词库",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "正在初始化并编译输入方案，请稍候...",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(32.dp))
-
-        if (!done && !error) {
-            CircularProgressIndicator(modifier = Modifier.size(64.dp))
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = progress.ifEmpty { "正在初始化..." },
-                fontSize = 13.sp,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        } else if (error) {
-            Text(
-                text = "编译失败，请检查方案配置后重试",
-                color = MaterialTheme.colorScheme.error
-            )
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = {
-                onProgress("")
-                scope.launch {
-                    doCompile(context, enabledSchemas, onProgress, onDone, onError)
-                }
-            }) {
-                Text("重试")
-            }
-        } else {
-            Text(
-                text = "✓ 编译完成",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        doCompile(context, enabledSchemas, onProgress, onDone, onError)
     }
 }
 
@@ -497,7 +422,7 @@ private fun SwitchToImeStep(onCompleted: () -> Unit) {
                 val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
                 imm?.showInputMethodPicker()
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
         ) {
             Text("弹出输入法选择器")
         }
@@ -506,7 +431,7 @@ private fun SwitchToImeStep(onCompleted: () -> Unit) {
 
         Button(
             onClick = onCompleted,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
         ) {
             Text("完成设置")
         }

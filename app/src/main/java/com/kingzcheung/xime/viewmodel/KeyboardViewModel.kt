@@ -58,6 +58,7 @@ data class KeyboardUiState(
     val isFloatingMode: Boolean = false,
     val floatingOffsetX: Int = 0,
     val floatingOffsetY: Int = 0,
+    val floatingMinOffsetY: Int = 0,
 )
 
 class KeyboardViewModel(application: Application) : AndroidViewModel(application) {
