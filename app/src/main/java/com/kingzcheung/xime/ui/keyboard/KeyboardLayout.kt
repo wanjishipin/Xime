@@ -316,6 +316,7 @@ fun KeyboardLayout(
                                     keyboardBackgroundColor = keyboardBackgroundColor,
                                 ),
                                 isShifted = isShifted,
+                                isAsciiMode = isAsciiMode,
                                 modifier = Modifier.padding(horizontal = 16.dp),
                                 onSwipeStateChange = { state, bounds ->
                                     processSwipeState(

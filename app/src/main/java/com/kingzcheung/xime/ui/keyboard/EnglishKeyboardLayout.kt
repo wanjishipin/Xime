@@ -47,6 +47,7 @@ import com.kingzcheung.xime.util.CharInfo
  * 纯英文键盘布局，无中文字根/手势配置，跟随 Shift 切换大小写。
  * 样式完全对齐 KeyboardLayout。
  */
+@Deprecated("已废弃，英文键盘由 KeyboardLayout(isAsciiMode=true) 统一渲染", ReplaceWith("KeyboardLayout"))
 @Composable
 fun EnglishKeyboardLayout(
     onKeyPress: (String) -> Unit,
