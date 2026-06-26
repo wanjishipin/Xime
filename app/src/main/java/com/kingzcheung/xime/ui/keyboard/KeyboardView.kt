@@ -6,21 +6,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Keyboard
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -36,7 +27,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -457,23 +447,26 @@ fun KeyboardView(
             ) {
             when (currentRoute) {
                 is KeyboardRoute.Menu -> MenuBar(
-                isVisible = true,
-                isDarkTheme = state.isDarkTheme,
-                darkMode = state.darkMode,
-                backgroundColor = keyboardBgColor,
-                bottomPaddingDp = state.keyboardBottomPaddingDp,
-                onDismiss = { viewModel.setRoute(KeyboardRoute.Keyboard) },
-                onClipboard = { viewModel.setRoute(KeyboardRoute.Clipboard(0)); callbacks.onClipboard?.invoke() },
-                onQuickSend = { viewModel.setRoute(KeyboardRoute.Clipboard(1)); callbacks.onQuickSend?.invoke() },
-                onKeyboardResize = { callbacks.onKeyboardResize?.invoke(); viewModel.setRoute(KeyboardRoute.Keyboard) },
-                onEmoji = { viewModel.setRoute(KeyboardRoute.Emoji) },
-                onReloadConfig = { callbacks.onReloadConfig?.invoke(); viewModel.setRoute(KeyboardRoute.Keyboard) },
-                onSettings = { callbacks.onSettings?.invoke(); viewModel.setRoute(KeyboardRoute.Keyboard) },
-                onSchemaList = { viewModel.setRoute(KeyboardRoute.SchemaList) },
-                onToggleDarkMode = { callbacks.onToggleDarkMode?.invoke() },
-                onToolbarCustomize = { viewModel.setRoute(KeyboardRoute.ToolbarCustomize) },
-                onFloatingModeToggle = { callbacks.onFloatingModeChange?.invoke(!state.isFloatingMode); viewModel.setRoute(KeyboardRoute.Keyboard) },
-                isFloatingMode = state.isFloatingMode,
+                    state = MenuBarState(
+                        isVisible = true,
+                        isDarkTheme = state.isDarkTheme,
+                        darkMode = state.darkMode,
+                        backgroundColor = keyboardBgColor,
+                        isFloatingMode = state.isFloatingMode,
+                    ),
+                    callbacks = MenuBarCallbacks(
+                        onDismiss = { viewModel.setRoute(KeyboardRoute.Keyboard) },
+                        onClipboard = { viewModel.setRoute(KeyboardRoute.Clipboard(0)); callbacks.onClipboard?.invoke() },
+                        onQuickSend = { viewModel.setRoute(KeyboardRoute.Clipboard(1)); callbacks.onQuickSend?.invoke() },
+                        onKeyboardResize = { callbacks.onKeyboardResize?.invoke(); viewModel.setRoute(KeyboardRoute.Keyboard) },
+                        onEmoji = { viewModel.setRoute(KeyboardRoute.Emoji) },
+                        onReloadConfig = { callbacks.onReloadConfig?.invoke(); viewModel.setRoute(KeyboardRoute.Keyboard) },
+                        onSettings = { callbacks.onSettings?.invoke(); viewModel.setRoute(KeyboardRoute.Keyboard) },
+                        onSchemaList = { viewModel.setRoute(KeyboardRoute.SchemaList) },
+                        onToggleDarkMode = { callbacks.onToggleDarkMode?.invoke() },
+                        onToolbarCustomize = { viewModel.setRoute(KeyboardRoute.ToolbarCustomize) },
+                        onFloatingModeToggle = { callbacks.onFloatingModeChange?.invoke(!state.isFloatingMode); viewModel.setRoute(KeyboardRoute.Keyboard) },
+                    ),
                     modifier = Modifier.fillMaxWidth().fillMaxHeight()
                 )
                 is KeyboardRoute.Clipboard -> ClipboardView(

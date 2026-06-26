@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -20,21 +19,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.twotone.Assignment
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.ContentPaste
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.EmojiEmotions
-import androidx.compose.material.icons.filled.Keyboard
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.Height
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.twotone.Assignment
-import androidx.compose.material.icons.twotone.Bolt
-import androidx.compose.material.icons.twotone.BorderTop
 import androidx.compose.material.icons.twotone.DarkMode
-import androidx.compose.material.icons.twotone.ElectricBolt
 import androidx.compose.material.icons.twotone.EmojiEmotions
 import androidx.compose.material.icons.twotone.Keyboard
 import androidx.compose.material.icons.twotone.LightMode
@@ -66,79 +52,85 @@ data class MenuItem(
     val action: () -> Unit
 )
 
+data class MenuBarState(
+    val isVisible: Boolean,
+    val isDarkTheme: Boolean,
+    val darkMode: Int = 2,
+    val backgroundColor: Color,
+    val isFloatingMode: Boolean = false,
+)
+
+data class MenuBarCallbacks(
+    val onDismiss: () -> Unit,
+    val onClipboard: () -> Unit,
+    val onQuickSend: () -> Unit,
+    val onKeyboardResize: () -> Unit,
+    val onEmoji: () -> Unit,
+    val onReloadConfig: () -> Unit,
+    val onSettings: () -> Unit,
+    val onSchemaList: () -> Unit,
+    val onToggleDarkMode: () -> Unit,
+    val onFloatingModeToggle: (() -> Unit)? = null,
+    val onToolbarCustomize: () -> Unit = {},
+)
+
 @Composable
 fun MenuBar(
-    isVisible: Boolean,
-    isDarkTheme: Boolean,
-    darkMode: Int = 2,
-    backgroundColor: Color,
-    onDismiss: () -> Unit,
-    onClipboard: () -> Unit,
-    onQuickSend: () -> Unit,
-    onKeyboardResize: () -> Unit,
-    onEmoji: () -> Unit,
-    onReloadConfig: () -> Unit,
-    onSettings: () -> Unit,
-    onSchemaList: () -> Unit,
-    onToggleDarkMode: () -> Unit,
-    onFloatingModeToggle: (() -> Unit)? = null,
-    isFloatingMode: Boolean = false,
-    onToolbarCustomize: () -> Unit = {},
-    bottomPaddingDp: Int = 0,
+    state: MenuBarState,
+    callbacks: MenuBarCallbacks,
     modifier: Modifier = Modifier
 ) {
-    if (!isVisible) return
+    if (!state.isVisible) return
     
-    val textColor = if (isDarkTheme) Color(0xFFE8EAED) else Color(0xFF202124)
-    val itemBgColor = if (isDarkTheme) Color(0xFF45474A) else Color.White
+    val textColor = if (state.isDarkTheme) Color(0xFFE8EAED) else Color(0xFF202124)
+    val itemBgColor = if (state.isDarkTheme) Color(0xFF45474A) else Color.White
     val configuration = LocalConfiguration.current
-    val isLandscape = !isFloatingMode && configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val isLandscape = !state.isFloatingMode && configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     
     val clipboardIcon = rememberVectorPainter(Icons.AutoMirrored.TwoTone.Assignment)
     val quickSendIcon = rememberVectorPainter(Icons.TwoTone.Quickreply)
     val keyboardResizeIcon = rememberVectorPainter(Icons.TwoTone.SettingsOverscan)
     val emojiIcon = rememberVectorPainter(Icons.TwoTone.EmojiEmotions)
-    val darkModeIcon = when (darkMode) {
+    val darkModeIcon = when (state.darkMode) {
         0 -> rememberVectorPainter(Icons.TwoTone.DarkMode)
         1 -> rememberVectorPainter(Icons.TwoTone.LightMode)
-        else -> rememberVectorPainter(if (isDarkTheme) Icons.TwoTone.LightMode else Icons.TwoTone.DarkMode)
+        else -> rememberVectorPainter(if (state.isDarkTheme) Icons.TwoTone.LightMode else Icons.TwoTone.DarkMode)
     }
     val deployIcon = rememberVectorPainter(Icons.TwoTone.Rotate90DegreesCcw)
     val customizeIcon = rememberVectorPainter(Icons.TwoTone.Padding)
     val schemaIcon = rememberVectorPainter(Icons.TwoTone.Keyboard)
     val settingsIcon = rememberVectorPainter(Icons.TwoTone.Settings)
 
-    val darkModeLabel = when (darkMode) {
+    val darkModeLabel = when (state.darkMode) {
         0 -> "深色模式"
         1 -> "浅色模式"
         else -> "跟随系统"
     }
 
     val floatingIcon = rememberVectorPainter(Icons.TwoTone.PictureInPicture)
-    val floatingLabel = if (isFloatingMode) "退出悬浮" else "悬浮模式"
-    val floatingAction = onFloatingModeToggle ?: {}
+    val floatingLabel = if (state.isFloatingMode) "退出悬浮" else "悬浮模式"
+    val floatingAction = callbacks.onFloatingModeToggle ?: {}
 
-    val menuItems = remember(darkModeIcon, darkModeLabel, isFloatingMode) {
+    val menuItems = remember(darkModeIcon, darkModeLabel, state.isFloatingMode) {
         listOf(
-            MenuItem(clipboardIcon, "剪贴板", onClipboard),
-            MenuItem(quickSendIcon, "快捷发送", onQuickSend),
-            MenuItem(keyboardResizeIcon, "键盘调节", onKeyboardResize),
-            MenuItem(emojiIcon, "表情", onEmoji),
+            MenuItem(clipboardIcon, "剪贴板", callbacks.onClipboard),
+            MenuItem(quickSendIcon, "快捷发送", callbacks.onQuickSend),
+            MenuItem(keyboardResizeIcon, "键盘调节", callbacks.onKeyboardResize),
+            MenuItem(emojiIcon, "表情", callbacks.onEmoji),
             MenuItem(floatingIcon, floatingLabel, floatingAction),
-            MenuItem(darkModeIcon, darkModeLabel, onToggleDarkMode),
-            MenuItem(deployIcon, "部署方案", onReloadConfig),
-            MenuItem(customizeIcon, "定制工具栏", onToolbarCustomize),
-            MenuItem(schemaIcon, "输入方案", onSchemaList),
-            MenuItem(settingsIcon, "设置", onSettings)
+            MenuItem(darkModeIcon, darkModeLabel, callbacks.onToggleDarkMode),
+            MenuItem(deployIcon, "部署方案", callbacks.onReloadConfig),
+            MenuItem(customizeIcon, "定制工具栏", callbacks.onToolbarCustomize),
+            MenuItem(schemaIcon, "输入方案", callbacks.onSchemaList),
+            MenuItem(settingsIcon, "设置", callbacks.onSettings)
         )
     }
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(backgroundColor),
+            .background(state.backgroundColor),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        // 导航区（与候选栏高度一致）
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -150,8 +142,8 @@ fun MenuBar(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                    .clickable { onDismiss() },
+                    .background(if (state.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                    .clickable { callbacks.onDismiss() },
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -162,7 +154,6 @@ fun MenuBar(
                 )
             }
         }
-
         // 内容区（菜单项）
         if (isLandscape) {
             // 横屏：一行 8 列
