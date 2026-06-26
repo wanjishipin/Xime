@@ -256,6 +256,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             isFloatingMode = isFloatingMode,
             floatingOffsetX = clampedX,
             floatingOffsetY = clampedY,
+            isGlassEffectEnabled = SettingsPreferences.isGlassEffectEnabled(this@XimeInputMethodService),
         )
     }
     
@@ -1115,6 +1116,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             inputSessionId = System.nanoTime(),
             isSttEnabled = SettingsPreferences.isSttEnabled(this@XimeInputMethodService)
         )
+
+        // 重置键盘布局到初始状态，避免切换应用后仍残留之前的布局（如英文、数字、符号）
+        if (RimeEngine.isInitialized()) {
+            keyboardViewModel.resetKeyboard(rimeEngine.isAsciiMode())
+        }
 
         // 先重置候选状态到初始值，避免前一 session 的残留状态影响新输入
         candidateState.value = CandidateState()

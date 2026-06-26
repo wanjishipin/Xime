@@ -17,6 +17,7 @@ object SettingsPreferences {
     private const val KEY_VIBRATION_ENABLED = "vibration_enabled"
     private const val KEY_VIBRATION_INTENSITY = "vibration_intensity"
     private const val KEY_KEYBOARD_THEME = "keyboard_theme"
+    private const val KEY_GLASS_EFFECT = "glass_effect"
     
     private const val KEY_SMART_PREDICTION_ENABLED = "smart_prediction_enabled"
     private const val KEY_PREDICTION_MODEL_REPO = "prediction_model_repo"
@@ -170,6 +171,14 @@ object SettingsPreferences {
     
     fun setKeyboardTheme(context: Context, themeId: String) {
         getPrefs(context).edit().putString(KEY_KEYBOARD_THEME, themeId).apply()
+    }
+
+    fun isGlassEffectEnabled(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_GLASS_EFFECT, false)
+    }
+
+    fun setGlassEffectEnabled(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_GLASS_EFFECT, enabled).apply()
     }
     
     fun isPluginEnabled(context: Context, pluginId: String): Boolean {

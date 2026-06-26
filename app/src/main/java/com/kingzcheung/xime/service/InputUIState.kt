@@ -34,4 +34,5 @@ data class InputUIState(
     val isFloatingMode: Boolean = false,
     val floatingOffsetX: Int = 0,
     val floatingOffsetY: Int = 0,
+    val isGlassEffectEnabled: Boolean = false,
 )

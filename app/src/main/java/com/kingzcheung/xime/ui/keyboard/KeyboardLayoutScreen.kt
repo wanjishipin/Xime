@@ -83,6 +83,7 @@ fun KeyboardLayoutScreen(
                 shadowShapeRadius = kbShadow.shapeRadius.dp,
                 modifier = modifier,
                 onKeyPressDown = callbacks.onKeyPressDown,
+                isFloatingMode = uiState.isFloatingMode,
             )
         }
 
@@ -99,6 +100,7 @@ fun KeyboardLayoutScreen(
                 shadowShapeRadius = kbShadow.shapeRadius.dp,
                 modifier = modifier,
                 onKeyPressDown = callbacks.onKeyPressDown,
+                isFloatingMode = uiState.isFloatingMode,
             )
         }
 
@@ -114,6 +116,7 @@ fun KeyboardLayoutScreen(
                 shadowShapeRadius = kbShadow.shapeRadius.dp,
                 modifier = modifier,
                 onKeyPressDown = callbacks.onKeyPressDown,
+                isFloatingMode = uiState.isFloatingMode,
             )
         }
 

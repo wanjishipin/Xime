@@ -64,6 +64,7 @@ fun StrokeKeyboardLayout(
     shadowShapeRadius: Dp = 8.dp,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
+    isFloatingMode: Boolean = false,
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape =
@@ -97,7 +98,8 @@ fun StrokeKeyboardLayout(
             .drawWithContent {
                 drawContent()
                 bubbleData?.let { drawSwipeBubble(it) }
-            }) {
+            }
+            .padding(bottom = if (isFloatingMode) 0.dp else 10.dp)) {
         if (isLandscape) {
             Row(
                 modifier = Modifier

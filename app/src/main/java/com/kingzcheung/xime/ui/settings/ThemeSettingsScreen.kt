@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.twotone.BlurOn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -166,6 +167,26 @@ fun ThemeSettingsContent(
                 }
             }
             
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "玻璃效果",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
+            item {
+                SettingsToggleItem(
+                    icon = Icons.TwoTone.BlurOn,
+                    title = "玻璃质感",
+                    subtitle = "键盘背景叠加高光与折射渐变，模拟半透玻璃效果",
+                    checked = uiState.isGlassEffectEnabled,
+                    onCheckedChange = { viewModel.setGlassEffectEnabled(it) }
+                )
+            }
+
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(

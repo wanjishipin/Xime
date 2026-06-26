@@ -60,6 +60,7 @@ fun NumberKeyboardLayout(
     shadowShapeRadius: Dp = 8.dp,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
+    isFloatingMode: Boolean = false,
 ) {
 
     val configuration = LocalConfiguration.current
@@ -94,7 +95,8 @@ fun NumberKeyboardLayout(
             .drawWithContent {
                 drawContent()
                 bubbleData?.let { drawSwipeBubble(it) }
-            }) {
+            }
+            .padding(bottom = if (isFloatingMode) 0.dp else 10.dp)) {
         if (isLandscape) {
             // 横屏：左侧常用符号区 + 右侧数字键盘
             Row(

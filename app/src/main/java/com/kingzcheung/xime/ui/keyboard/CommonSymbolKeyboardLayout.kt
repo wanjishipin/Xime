@@ -40,6 +40,7 @@ fun CommonSymbolKeyboardLayout(
     shadowShapeRadius: Dp = 8.dp,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
+    isFloatingMode: Boolean = false,
 ) {
     val row2Symbols = if (isAsciiMode) {
         listOf("@", "#", "$", "&", "_", "-", "+", "(", ")", "/")
@@ -81,7 +82,8 @@ fun CommonSymbolKeyboardLayout(
             .drawWithContent {
                 drawContent()
                 bubbleData?.let { drawSwipeBubble(it) }
-            },
+            }
+            .padding(bottom = if (isFloatingMode) 0.dp else 10.dp),
     ) {
         Column(
             modifier = Modifier
