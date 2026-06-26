@@ -1805,6 +1805,14 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                     committedText = char
                                     needsUIUpdate = true
                                 }
+                            } else {
+                                val candidateText = if (rimeEngine.selectCandidate(0)) {
+                                    rimeEngine.commit()
+                                } else {
+                                    ""
+                                }
+                                committedText = candidateText + char
+                                needsUIUpdate = true
                             }
                         }
                     }
