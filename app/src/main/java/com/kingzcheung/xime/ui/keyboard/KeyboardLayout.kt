@@ -86,6 +86,7 @@ import androidx.compose.material.icons.twotone.KeyboardControlKey
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.TextUnit
@@ -106,21 +107,11 @@ fun KeyboardLayout(
 
     var visualIsShifted by remember { mutableStateOf(false) }
     LaunchedEffect(isShifted) {
-        if (isShifted) {
-            delay(250L)
-            visualIsShifted = isShifted
-        } else {
-            visualIsShifted = isShifted
-        }
+        visualIsShifted = isShifted
     }
     var visualShiftMode by remember { mutableStateOf(ShiftMode.OFF) }
     LaunchedEffect(shiftMode) {
-        if (shiftMode == ShiftMode.SINGLE) {
-            delay(250L)
-            visualShiftMode = shiftMode
-        } else {
-            visualShiftMode = shiftMode
-        }
+        visualShiftMode = shiftMode
     }
 
     val isLandscape = !uiState.isFloatingMode && LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -1096,16 +1087,26 @@ private fun ShiftCapsKeyButton(
         modifier = modifier
             .fillMaxHeight()
             .pointerInput(Unit) {
-                detectTapGestures(
-                    onPress = {
-                        isPressed = true
-                        onKeyPressDown?.invoke("shift")
-                        onKeyPress("shift_single")
-                        tryAwaitRelease()
-                        isPressed = false
-                    },
-                    onDoubleTap = { onKeyPress("shift_caps") },
-                )
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    isPressed = true
+                    onKeyPressDown?.invoke("shift")
+                    onKeyPress("shift_single")
+
+                    val firstUp = waitForUpOrCancellation()
+                    if (firstUp != null) {
+                        val secondDown = withTimeoutOrNull(
+                            viewConfiguration.doubleTapTimeoutMillis
+                        ) {
+                            awaitFirstDown(requireUnconsumed = false)
+                        }
+                        if (secondDown != null) {
+                            onKeyPress("shift_caps")
+                            waitForUpOrCancellation()
+                        }
+                    }
+                    isPressed = false
+                }
             }
             .padding(horizontal = 2.dp, vertical = 4.25.dp)
             .then(shadowModifier)
