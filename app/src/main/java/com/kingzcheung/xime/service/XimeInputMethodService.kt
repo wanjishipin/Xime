@@ -607,7 +607,19 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             onPerformSearch = { pendingVoiceAction = { performSearch() } },
             onStopRecognition = { voiceRecognitionHandler.stopRecognition() },
             isRecording = { voiceRecordingStarted },
-            setRecording = { voiceRecordingStarted = it }
+            setRecording = { voiceRecordingStarted = it },
+            onVoiceDismiss = {
+                val action = pendingVoiceAction
+                pendingVoiceAction = null
+                action?.invoke()
+                uiState.value = uiState.value.copy(
+                    isVoiceMode = false,
+                    voiceButtonState = VoiceButtonState(),
+                    voiceRecognizedText = ""
+                )
+                keyboardViewModel.setRoute(KeyboardRoute.Keyboard)
+                isTrackingVoiceButtons = false
+            }
         )
         
         val composeView = ComposeView(this).apply {
@@ -1017,9 +1029,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                     return true
                 }
                 KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_ENTER -> {
-                    selectCandidate(highlightIndex.intValue)
-                    highlightIndex.intValue = 0
-                    return true
+                    if (candidateState.value.candidates.isNotEmpty()) {
+                        selectCandidate(highlightIndex.intValue)
+                        highlightIndex.intValue = 0
+                        return true
+                    }
                 }
                 KeyEvent.KEYCODE_1 -> { selectCandidate(0); highlightIndex.intValue = 0; return true }
                 KeyEvent.KEYCODE_2 -> { selectCandidate(1); highlightIndex.intValue = 0; return true }

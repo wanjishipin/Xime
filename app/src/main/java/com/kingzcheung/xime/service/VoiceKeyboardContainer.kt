@@ -22,7 +22,8 @@ class VoiceKeyboardContainer(
     private val onPerformSearch: () -> Unit,
     private val onStopRecognition: () -> Unit,
     private val isRecording: () -> Boolean,
-    private val setRecording: (Boolean) -> Unit
+    private val setRecording: (Boolean) -> Unit,
+    private val onVoiceDismiss: () -> Unit = {}
 ) : FrameLayout(context) {
 
     private var isTrackingVoiceButtons = false
@@ -215,6 +216,10 @@ class VoiceKeyboardContainer(
             if (isRecording()) {
                 onStopRecognition()
                 setRecording(false)
+            }
+
+            if (state.isVoiceMode) {
+                onVoiceDismiss()
             }
         }
 

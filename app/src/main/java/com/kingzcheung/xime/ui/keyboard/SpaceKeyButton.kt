@@ -76,16 +76,19 @@ fun SpaceKeyButton(
                         onVoiceModeChange?.invoke(true)
                     }
                     
-                    waitForUpOrCancellation()
-                    longPressJob.cancel()
-                    
-                    if (longPressTriggered) {
-                        onVoiceModeChange?.invoke(false)
-                    } else {
-                        onClick()
+                    try {
+                        waitForUpOrCancellation()
+                    } finally {
+                        longPressJob.cancel()
+                        
+                        if (longPressTriggered) {
+                            onVoiceModeChange?.invoke(false)
+                        } else {
+                            onClick()
+                        }
+                        
+                        isPressed = false
                     }
-                    
-                    isPressed = false
                 }
             },
         contentAlignment = Alignment.Center
