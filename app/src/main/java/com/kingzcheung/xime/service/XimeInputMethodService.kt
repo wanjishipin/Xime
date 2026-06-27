@@ -9,6 +9,7 @@ import android.os.Looper
 import android.util.Log
 import android.view.KeyEvent
 import android.view.View
+import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
@@ -37,6 +38,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -51,9 +53,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.ui.keyboard.KeyboardResizeOverlay
-import com.kingzcheung.xime.ui.keyboard.FloatingCandidateBar
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.pointer.pointerInput
+import com.kingzcheung.xime.ui.keyboard.HardwareKeyboardCandidateBar
 import androidx.core.content.FileProvider
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
@@ -112,6 +112,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         private const val DARK_MODE_LIGHT = 0
         private const val DARK_MODE_DARK = 1
         private const val DARK_MODE_SYSTEM = 2
+        private const val HARDWARE_CANDIDATE_BAR_HEIGHT = 72
     }
 
     private val lifecycleRegistry = LifecycleRegistry(this)
@@ -646,50 +647,48 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .onPreviewKeyEvent { keyEvent ->
-                                Log.d(TAG, "Compose keyEvent received")
-                                val native = keyEvent.nativeKeyEvent ?: return@onPreviewKeyEvent false
-                                if (native.action != KeyEvent.ACTION_DOWN) return@onPreviewKeyEvent false
-                                val key = keyCodeToKey(native.keyCode, native.isShiftPressed)
-                                if (key != null) {
-                                    Log.d(TAG, "Compose HW key: ${native.keyCode} -> $key")
-                                    handleKeyPress(key, native.isShiftPressed)
-                                    true
-                                } else {
-                                    false
-                                }
-                            }
                             .height(
-                                if (state.isCompact) {
-                                    if (cand.isComposing) 110.dp else 1.dp
-                                } else if (state.isFloatingMode) effectiveScreenH.dp
+                                if (state.isCompact || state.isFloatingMode) effectiveScreenH.dp
                                 else if (state.showKeyboardResize) ((screenHeightDp * 7) / 10 + 100).dp
                                 else (keyboardHeight + state.keyboardBottomPaddingDp).dp + (if (hasNavBar) navBarDp else 0.dp)
                             )
                     ) {
                         // Sync FrameLayout height with Compose content height
                         val contentHeight = if (state.showKeyboardResize) state.resizePreviewHeightDp else floatingCardContentHeight
-                        val totalDp = if (state.isFloatingMode) effectiveScreenH
+                        val totalDp = if (state.isCompact || state.isFloatingMode) effectiveScreenH
                             else contentHeight + state.keyboardBottomPaddingDp + actualNavBarDp
                         Log.d(TAG, "HeightSync: mode=${if (state.showKeyboardResize) "resize" else "normal"} height=$contentHeight navBarDp=${navBarDp.value} padding=${state.keyboardBottomPaddingDp} hasNavBar=$hasNavBar totalDp=$totalDp")
                         SideEffect {
                             keyboardContainer.updateHeight(totalDp)
-                            currentEffectiveKeyboardHeight = if (state.isFloatingMode) floatingCardContentHeight + 48 else effectiveKeyboardHeight
+                            currentEffectiveKeyboardHeight = if (state.isFloatingMode) floatingCardContentHeight + 48
+                                else if (state.isCompact) HARDWARE_CANDIDATE_BAR_HEIGHT
+                                else effectiveKeyboardHeight
                         }
-                        if (state.isCompact && cand.isComposing) {
-                            FloatingCandidateBar(
+                        val kbColors = KeysConfigHelper.getKeyboardColors()
+                        val longToColor: (Long) -> androidx.compose.ui.graphics.Color = { if (it == 0L)  { androidx.compose.ui.graphics.Color(0xE61E1E1E) } else { androidx.compose.ui.graphics.Color(0xFF000000 or it) } }
+                        val isDark = isDarkTheme
+                        val cardBg = if (isDark) longToColor(kbColors.keyboardBgColorDark) else longToColor(kbColors.keyboardBgColor)
+                        val candidateTextCol = if (isDark) longToColor(kbColors.candidateTextColorDark) else longToColor(kbColors.candidateTextColor)
+                        val accentCol = com.kingzcheung.xime.ui.theme.KeyboardThemes.getAccentColor(state.themeId, isDark)
+                        if (state.isCompact && (cand.candidates.isNotEmpty() || cand.isShowingRecentClipboard || cand.inputText.isNotEmpty())) {
+                            HardwareKeyboardCandidateBar(
                                 inputText = cand.inputText,
                                 preeditText = cand.preeditText,
                                 candidates = cand.candidates,
-                                candidateComments = cand.candidateComments,
-                                isComposing = cand.isComposing,
-                                onCandidateSelect = { index -> selectCandidate(index) },
-                                onDrag = { dx, dy -> moveFloatingWindow(dx, dy) }
+                                hasNextPage = cand.hasNextPage,
+                                hasPrevPage = cand.hasPrevPage,
+                                cursorX = state.cursorX,
+                                cursorY = state.cursorY,
+                                cursorVisible = state.cursorVisible,
+                                highlightIndex = highlightIndex.intValue,
+                                cardBackgroundColor = cardBg,
+                                candidateTextColor = candidateTextCol,
+                                activeColor = accentCol,
                             )
+                        } else if (state.isCompact) {
+                            Box(modifier = Modifier.fillMaxSize())
                         } else {
-                        val kbColors = KeysConfigHelper.getKeyboardColors()
-                        val longToColor: (Long) -> androidx.compose.ui.graphics.Color = { androidx.compose.ui.graphics.Color(0xFF000000 or it) }
-                        val keyboardBgColor = if (isDarkTheme) longToColor(kbColors.keyboardBgColorDark) else longToColor(kbColors.keyboardBgColor)
+                        val keyboardBgColor = cardBg
                         Column(
                             modifier = Modifier
                                 .align(androidx.compose.ui.Alignment.BottomCenter)
@@ -1000,6 +999,40 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         val e = event ?: return super.onKeyDown(keyCode, event)
         Log.d(TAG, "onKeyDown: keyCode=$keyCode")
+        if (hasHardwareKeyboard && candidateState.value.candidates.isNotEmpty()) {
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    if (candidateState.value.hasNextPage) { pageDown(); highlightIndex.intValue = 0; return true }
+                }
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    if (candidateState.value.hasPrevPage) { pageUp(); highlightIndex.intValue = 0; return true }
+                }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    val maxIdx = candidateState.value.candidates.size - 1
+                    highlightIndex.intValue = (highlightIndex.intValue + 1).coerceAtMost(maxIdx)
+                    return true
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    highlightIndex.intValue = (highlightIndex.intValue - 1).coerceAtLeast(0)
+                    return true
+                }
+                KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_ENTER -> {
+                    selectCandidate(highlightIndex.intValue)
+                    highlightIndex.intValue = 0
+                    return true
+                }
+                KeyEvent.KEYCODE_1 -> { selectCandidate(0); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_2 -> { selectCandidate(1); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_3 -> { selectCandidate(2); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_4 -> { selectCandidate(3); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_5 -> { selectCandidate(4); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_6 -> { selectCandidate(5); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_7 -> { selectCandidate(6); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_8 -> { selectCandidate(7); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_9 -> { selectCandidate(8); highlightIndex.intValue = 0; return true }
+                KeyEvent.KEYCODE_0 -> { selectCandidate(9); highlightIndex.intValue = 0; return true }
+            }
+        }
         val isShifted = e.isShiftPressed
         val key = keyCodeToKey(keyCode, isShifted)
         if (key != null) {
@@ -1171,11 +1204,57 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         attribute?.let { updateEnterKeyText(it) }
     }
     
+    private val highlightIndex = mutableIntStateOf(0)
+
     override fun onStartInputView(info: EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         info?.let { updateEnterKeyText(it) }
         hasHardwareKeyboard = resources.configuration.keyboard != android.content.res.Configuration.KEYBOARD_NOKEYS
         applyCompactMode()
+        if (hasHardwareKeyboard) {
+            currentInputConnection?.requestCursorUpdates(
+                InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE
+            )
+        }
+    }
+
+    private var anchorCoords = floatArrayOf(0f, 0f, 0f, 0f)
+
+    override fun onUpdateCursorAnchorInfo(info: CursorAnchorInfo) {
+        if (!hasHardwareKeyboard) return
+        try {
+            val bounds = info.getCharacterBounds(0)
+            if (bounds != null) {
+                anchorCoords[0] = bounds.left
+                anchorCoords[1] = bounds.bottom
+                anchorCoords[2] = bounds.left
+                anchorCoords[3] = bounds.top
+            } else {
+                anchorCoords[0] = info.insertionMarkerHorizontal
+                anchorCoords[1] = info.insertionMarkerBottom
+                anchorCoords[2] = info.insertionMarkerHorizontal
+                anchorCoords[3] = info.insertionMarkerTop
+            }
+            if (anchorCoords.any(Float::isNaN)) return
+            info.matrix.mapPoints(anchorCoords)
+            val contentView = window.window?.decorView?.findViewById<View>(android.R.id.content) ?: return
+            val contentLoc = IntArray(2)
+            contentView.getLocationOnScreen(contentLoc)
+            val contentX = (anchorCoords[0] - contentLoc[0]).toInt()
+            val contentY = (anchorCoords[1] - contentLoc[1]).toInt()
+            uiState.value = uiState.value.copy(
+                cursorX = contentX,
+                cursorY = contentY,
+                cursorVisible = true,
+            )
+        } catch (e: Exception) {
+            Log.e(TAG, "onUpdateCursorAnchorInfo failed", e)
+        }
+    }
+
+    override fun onConfigureWindow(win: android.view.Window, isFullscreen: Boolean, isCandidatesOnly: Boolean) {
+        super.onConfigureWindow(win, isFullscreen, isCandidatesOnly)
+        win.setLayout(android.view.ViewGroup.LayoutParams.MATCH_PARENT, android.view.ViewGroup.LayoutParams.MATCH_PARENT)
     }
 
     override fun onEvaluateFullscreenMode(): Boolean {
@@ -1196,18 +1275,30 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         applyCompactMode()
         loadDarkModePreference()
         applyFloatingWindowBackground()
+        if (hasHardwareKeyboard) {
+            currentInputConnection?.requestCursorUpdates(
+                InputConnection.CURSOR_UPDATE_MONITOR or InputConnection.CURSOR_UPDATE_IMMEDIATE
+            )
+        }
     }
 
     private fun applyFloatingWindowBackground() {
-        val enabled = uiState.value.isFloatingMode
+        val state = uiState.value
         try {
             window.window?.let { win ->
-                if (enabled) {
-                    win.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
-                    win.setDimAmount(0f)
-                } else {
-                    win.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.WHITE))
-                    win.setDimAmount(0.2f)
+                when {
+                    state.isFloatingMode -> {
+                        win.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+                        win.setDimAmount(0f)
+                    }
+                    state.isCompact -> {
+                        win.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT))
+                        win.setDimAmount(0f)
+                    }
+                    else -> {
+                        win.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(android.graphics.Color.WHITE))
+                        win.setDimAmount(0.2f)
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -1220,25 +1311,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         val isCompact = hasHardwareKeyboard
         if (current.isCompact != isCompact) {
             uiState.value = current.copy(isCompact = isCompact)
-        }
-        if (isCompact) {
-            initFloatingPosition()
-        }
-    }
-
-    private fun initFloatingPosition() {
-        window.window?.let { win ->
-            val lp = win.attributes
-            // 切换到左上重力，使 x/y 成为屏幕绝对坐标
-            if (lp.gravity != (android.view.Gravity.TOP or android.view.Gravity.START)) {
-                val decor = win.decorView
-                val loc = IntArray(2)
-                decor.getLocationOnScreen(loc)
-                lp.gravity = android.view.Gravity.TOP or android.view.Gravity.START
-                lp.x = loc[0]
-                lp.y = loc[1]
-                win.attributes = lp
-            }
+            applyFloatingWindowBackground()
         }
     }
 
@@ -1322,6 +1395,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     }
     
     private fun updateUI() {
+        highlightIndex.intValue = 0
         val inputText = rimeEngine.getInput()
         val candidatesWithComments = rimeEngine.getCandidatesWithComments()
         val isAsciiMode = rimeEngine.isAsciiMode()
@@ -2280,7 +2354,21 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
 
     override fun onComputeInsets(outInsets: Insets) {
         val state = uiState.value
-        if (state.isFloatingMode) {
+        if (state.isCompact) {
+            try {
+                val decor = window.window?.decorView
+                if (decor != null) {
+                    val navBarBg = decor.findViewById<View>(android.R.id.navigationBarBackground)
+                    val navBarH = navBarBg?.height ?: 0
+                    val h = (decor.height - navBarH).coerceAtLeast(0)
+                    outInsets.contentTopInsets = h
+                    outInsets.visibleTopInsets = h
+                    outInsets.touchableInsets = Insets.TOUCHABLE_INSETS_VISIBLE
+                    return
+                }
+            } catch (_: Exception) { }
+            super.onComputeInsets(outInsets)
+        } else if (state.isFloatingMode) {
             outInsets.apply {
                 contentTopInsets = resources.displayMetrics.heightPixels
                 visibleTopInsets = resources.displayMetrics.heightPixels
