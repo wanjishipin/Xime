@@ -115,7 +115,7 @@ object ModelIndexLoader {
             "prediction" -> ModelCategory.PREDICTION
             "asr" -> ModelCategory.ASR
             "punctuation" -> ModelCategory.PUNCTUATION
-            "stroke" -> ModelCategory.STROKE
+            "handwriting" -> ModelCategory.HANDWRITING
             else -> ModelCategory.OTHER
         }
     }

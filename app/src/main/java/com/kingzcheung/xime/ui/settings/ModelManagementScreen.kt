@@ -17,14 +17,15 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FormatQuote
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.outlined.Gesture
 
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -259,8 +260,8 @@ private fun categoryIcon(category: ModelCategory): ImageVector {
     return when (category) {
         ModelCategory.PREDICTION -> Icons.Default.AutoAwesome
         ModelCategory.ASR -> Icons.Default.GraphicEq
-        ModelCategory.PUNCTUATION -> Icons.Default.Info
-        ModelCategory.STROKE -> Icons.Default.Info
+        ModelCategory.PUNCTUATION -> Icons.Default.FormatQuote
+        ModelCategory.HANDWRITING -> Icons.Outlined.Gesture
         ModelCategory.OTHER -> Icons.Default.Info
     }
 }

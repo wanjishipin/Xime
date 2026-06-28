@@ -4,7 +4,7 @@ enum class ModelCategory {
     PREDICTION,
     ASR,
     PUNCTUATION,
-    STROKE,
+    HANDWRITING,
     OTHER
 }
 
