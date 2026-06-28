@@ -19,6 +19,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -69,7 +70,10 @@ fun KeyboardView(
     }
 
     LaunchedEffect(state.inputSessionId) {
-        viewModel.switchMain(MainType.FULL)
+        when {
+            page !is KeyboardPage.Main -> viewModel.switchMain(MainType.FULL)
+            (page as KeyboardPage.Main).type == MainType.FULL -> viewModel.setKeyboardState(KeyboardLayoutState.Chinese)
+        }
     }
 
     LaunchedEffect(state.isAsciiMode, state.currentSchemaId) {
@@ -137,22 +141,43 @@ fun KeyboardView(
             modifier = Modifier
                 .fillMaxWidth()
         ) {
+            var handwritingCandidates by remember { mutableStateOf<List<String>>(emptyList()) }
+            var handwritingComments by remember { mutableStateOf<List<String>>(emptyList()) }
+            var handwritingClearSignal by remember { mutableIntStateOf(0) }
+
+            val isHandwritingPage = page is KeyboardPage.Main && (page as KeyboardPage.Main).type == MainType.HANDWRITING
+            val showHandwritingCandidates = isHandwritingPage && handwritingCandidates.isNotEmpty()
+
             val candidateBarState = remember(
                 state.candidates, state.candidateComments, state.inputText, state.preeditText, state.isComposing,
                 state.associationCandidates, state.isShowingRecentClipboard, state.hasNextPage,
-                state.isCalculatorMode,
+                state.isCalculatorMode, handwritingCandidates, handwritingComments, showHandwritingCandidates,
             ) {
-                CandidateBarState.from(
-                    candidates = state.candidates,
-                    candidateComments = state.candidateComments,
-                    inputText = state.inputText,
-                    preeditText = state.preeditText,
-                    isComposing = state.isComposing,
-                    associationCandidates = state.associationCandidates,
-                    isShowingRecentClipboard = state.isShowingRecentClipboard,
-                    hasNextPage = state.hasNextPage,
-                    isCalculatorActive = state.isCalculatorMode,
-                )
+                if (showHandwritingCandidates) {
+                    CandidateBarState.from(
+                        candidates = handwritingCandidates,
+                        candidateComments = handwritingComments,
+                        inputText = "",
+                        preeditText = "",
+                        isComposing = false,
+                        associationCandidates = handwritingCandidates,
+                        isShowingRecentClipboard = false,
+                        hasNextPage = false,
+                        isCalculatorActive = false,
+                    )
+                } else {
+                    CandidateBarState.from(
+                        candidates = state.candidates,
+                        candidateComments = state.candidateComments,
+                        inputText = state.inputText,
+                        preeditText = state.preeditText,
+                        isComposing = state.isComposing,
+                        associationCandidates = state.associationCandidates,
+                        isShowingRecentClipboard = state.isShowingRecentClipboard,
+                        hasNextPage = state.hasNextPage,
+                        isCalculatorActive = state.isCalculatorMode,
+                    )
+                }
             }
 
             CandidateBar(
@@ -184,17 +209,42 @@ fun KeyboardView(
                     isDarkTheme = state.isDarkTheme
                 ),
                 callbacks = CandidateBarCallbacks(
-                    onCandidateSelect = callbacks.onCandidateSelect,
+                    onCandidateSelect = { index ->
+                        if (showHandwritingCandidates && index in handwritingCandidates.indices) {
+                            val ch = handwritingCandidates[index]
+                            callbacks.onCommitText?.invoke(ch)
+                            handwritingCandidates = emptyList()
+                            handwritingComments = emptyList()
+                            handwritingClearSignal++
+                        } else {
+                            callbacks.onCandidateSelect(index)
+                        }
+                    },
+                    onClearAssociation = {
+                        if (showHandwritingCandidates) {
+                            handwritingCandidates = emptyList()
+                            handwritingComments = emptyList()
+                            handwritingClearSignal++
+                        } else {
+                            callbacks.onClearAssociation?.invoke()
+                        }
+                    },
                     onLogoClick = { viewModel.showOverlay(OverlayRoute.Menu) },
                     onBack = {
-                        when (page) {
-                            is KeyboardPage.Overlay -> {
-                                if ((page as KeyboardPage.Overlay).backStack.isEmpty())
-                                    viewModel.closeOverlay()
-                                else viewModel.popOverlay()
+                        if (showHandwritingCandidates) {
+                            handwritingCandidates = emptyList()
+                            handwritingComments = emptyList()
+                            handwritingClearSignal++
+                        } else {
+                            when (page) {
+                                is KeyboardPage.Overlay -> {
+                                    if ((page as KeyboardPage.Overlay).backStack.isEmpty())
+                                        viewModel.closeOverlay()
+                                    else viewModel.popOverlay()
+                                }
+                                is KeyboardPage.Panel -> viewModel.exitPanel()
+                                is KeyboardPage.Main -> {}
                             }
-                            is KeyboardPage.Panel -> viewModel.exitPanel()
-                            is KeyboardPage.Main -> {}
                         }
                     },
                     onHideKeyboard = {
@@ -208,7 +258,6 @@ fun KeyboardView(
                         }
                     },
                     onAssociationSelect = callbacks.onAssociationSelect,
-                    onClearAssociation = callbacks.onClearAssociation
                 )
             )
 
@@ -410,19 +459,45 @@ fun KeyboardView(
                         HandwritingKeyboardLayout(
                             onKeyPress = { key ->
                                 when (key) {
-                                    "delete" -> callbacks.onKeyPress("delete", false)
-                                    "symbol" -> viewModel.showOverlay(OverlayRoute.Symbol)
+                                    "delete" -> {
+                                        if (handwritingCandidates.isNotEmpty()) {
+                                            handwritingCandidates = emptyList()
+                                            handwritingComments = emptyList()
+                                            handwritingClearSignal++
+                                        } else {
+                                            callbacks.onKeyPress("delete", false)
+                                        }
+                                    }
+                                    "symbol" -> viewModel.enterPanel(PanelType.COMMON_SYMBOL)
                                     "number" -> viewModel.enterPanel(PanelType.NUMBER)
                                     "ime_switch" -> {
                                         viewModel.switchMain(MainType.FULL)
                                         viewModel.setKeyboardState(KeyboardLayoutState.English)
                                         callbacks.onKeyPress("ime_switch", false)
                                     }
-                                    "space" -> callbacks.onKeyPress("space", false)
+                                    "space" -> {
+                                        if (handwritingCandidates.isNotEmpty()) {
+                                            val ch = handwritingCandidates[0]
+                                            callbacks.onCommitText?.invoke(ch)
+                                            handwritingCandidates = emptyList()
+                                            handwritingComments = emptyList()
+                                            handwritingClearSignal++
+                                        } else {
+                                            callbacks.onKeyPress("space", false)
+                                        }
+                                    }
                                     "enter" -> callbacks.onKeyPress("enter", false)
                                     else -> callbacks.onCommitText?.invoke(key)
                                 }
                             },
+                            onCandidates = { candidates ->
+                                handwritingCandidates = candidates.map { it.char }
+                                handwritingComments = emptyList()
+                            },
+                            onButtonFeedback = { key ->
+                                callbacks.onKeyPressDown?.invoke(key)
+                            },
+                            clearSignal = handwritingClearSignal,
                             keyBackgroundColor = keyBgColor,
                             keyTextColor = keyTextColor,
                             specialKeyBackgroundColor = specialKeyBgColor,

@@ -1,6 +1,7 @@
 package com.kingzcheung.xime.ui.settings
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -160,6 +161,14 @@ fun SettingsScreen(
             LicensesContent(
                 onBack = { navController.popBackStack() }
             )
+        }
+    }
+
+    if (initialRoute != null) {
+        LaunchedEffect(initialRoute) {
+            when (initialRoute) {
+                "model_management" -> navController.navigate(SettingsRoutes.ModelManagement)
+            }
         }
     }
 }

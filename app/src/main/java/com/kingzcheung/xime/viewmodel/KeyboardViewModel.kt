@@ -209,7 +209,9 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         _isShifted.value = false
         _shiftMode.value = ShiftMode.OFF
         _keyboardState.value = initialKeyboardLayoutState(isAsciiMode, schemaId)
-        _page.value = KeyboardPage.Main(MainType.FULL)
+        if (_page.value !is KeyboardPage.Main) {
+            _page.value = KeyboardPage.Main(MainType.FULL)
+        }
     }
 
     // Clipboard operations

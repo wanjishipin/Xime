@@ -1,6 +1,6 @@
 package com.kingzcheung.xime.keyboard
 
-const val HANDWRITING_SCHEMA_ID = "_handwriting"
+const val HANDWRITING_SCHEMA_ID = "handwriting"
 
 sealed interface KeyboardPage {
     data class Main(val type: MainType) : KeyboardPage

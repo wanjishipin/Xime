@@ -498,6 +498,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                     Log.d(TAG, "initRimeEngine: currentSchema=$currentSchema, savedSchema=$savedSchema, availableSchemas=${availableSchemas.joinToString()}")
                     
                     when {
+                        savedSchema == HANDWRITING_SCHEMA_ID -> {
+                            // 手写方案：不要调 rimeEngine.switchSchema（Rime 没有手写引擎），
+                            // 也不要覆盖 savedSchema（由 onStartInput 恢复 UI）
+                            Log.d(TAG, "initRimeEngine: savedSchema is handwriting, keeping current Rime schema")
+                        }
                         savedSchema in availableSchemas -> {
                             // 即使 savedSchema == currentSchema 也要调用 switchSchema，
                             // 因为 nativeCreateSession 后 schema 的 processor/translator 等
@@ -1130,19 +1135,28 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             val actualSchema: String
             when {
                 savedSchema == HANDWRITING_SCHEMA_ID -> {
-                    val restoreSchema = if (previousSchemaId.isNotEmpty() && previousSchemaId in availableSchemas) {
-                        previousSchemaId
-                    } else if (availableSchemas.isNotEmpty()) {
-                        availableSchemas.first()
+                    Log.d(TAG, "onStartInput: saved schema is handwriting, checking model files")
+                    val modelFile = java.io.File(filesDir, "ochwpro.onnx")
+                    val charIndexFile = java.io.File(filesDir, "char_index.json")
+                    if (!modelFile.exists() || !charIndexFile.exists()) {
+                        Log.w(TAG, "Handwriting model not found, falling back to first available schema")
+                        android.widget.Toast.makeText(
+                            this, "请先下载手写模型", android.widget.Toast.LENGTH_LONG
+                        ).show()
+                        val fallbackSchema = if (availableSchemas.isNotEmpty()) {
+                            availableSchemas.first()
+                        } else {
+                            savedSchema
+                        }
+                        applyPageSizeSetting(fallbackSchema)
+                        rimeEngine.switchSchema(fallbackSchema)
+                        SettingsPreferences.setCurrentSchema(this, fallbackSchema)
+                        actualSchema = fallbackSchema
                     } else {
-                        "pinyin_simp"
+                        Log.d(TAG, "onStartInput: saved schema is handwriting, keeping handwriting mode")
+                        keyboardViewModel.switchMain(com.kingzcheung.xime.keyboard.MainType.HANDWRITING)
+                        actualSchema = savedSchema
                     }
-                    Log.d(TAG, "onStartInput: saved=$savedSchema is handwriting, restoring to '$restoreSchema'")
-                    applyPageSizeSetting(restoreSchema)
-                    rimeEngine.switchSchema(restoreSchema)
-                    SettingsPreferences.setCurrentSchema(this, restoreSchema)
-                    previousSchemaId = ""
-                    actualSchema = restoreSchema
                 }
                 savedSchema in availableSchemas -> {
                     if (savedSchema != currentSchema) {
@@ -1176,12 +1190,6 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             updateSchemaName()
         }
 
-        // 每次打开键盘时刷新 STT 等偏好设置
-        val currentPage = keyboardViewModel.page.value
-        if (currentPage is com.kingzcheung.xime.keyboard.KeyboardPage.Main &&
-            currentPage.type == com.kingzcheung.xime.keyboard.MainType.HANDWRITING) {
-            keyboardViewModel.switchMain(com.kingzcheung.xime.keyboard.MainType.FULL)
-        }
         uiState.value = uiState.value.copy(
             inputSessionId = System.nanoTime(),
             isSttEnabled = SettingsPreferences.isSttEnabled(this@XimeInputMethodService),
@@ -1523,15 +1531,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                         description = meta.description,
                         isDownloaded = true
                     )
-                } + listOf(
-                    com.kingzcheung.xime.settings.SchemaInfo(
-                        schemaId = HANDWRITING_SCHEMA_ID,
-                        name = "手写输入",
-                        version = "",
-                        author = "Xime",
-                        description = "手写汉字识别输入"
-                    )
-                )
+                }
 
             withContext(Dispatchers.Main) {
                 uiState.value = uiState.value.copy(
@@ -2238,6 +2238,23 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private fun switchSchema(schemaId: String) {
         Log.d(TAG, "Switching schema to: $schemaId")
         if (schemaId == HANDWRITING_SCHEMA_ID) {
+            // 检查手写模型文件是否已下载
+            val modelFile = java.io.File(filesDir, "ochwpro.onnx")
+            val charIndexFile = java.io.File(filesDir, "char_index.json")
+            if (!modelFile.exists() || !charIndexFile.exists()) {
+                Log.w(TAG, "Handwriting model not found, redirecting to download")
+                android.widget.Toast.makeText(
+                    this, "请先下载手写模型", android.widget.Toast.LENGTH_LONG
+                ).show()
+                val intent = android.content.Intent(
+                    this, com.kingzcheung.xime.MainActivity::class.java
+                ).apply {
+                    flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    putExtra("open_fragment", "model_management")
+                }
+                startActivity(intent)
+                return
+            }
             previousSchemaId = rimeEngine.getCurrentSchema()
             Log.d(TAG, "Entering handwriting mode, previous schema: $previousSchemaId")
             SettingsPreferences.setCurrentSchema(this, schemaId)
@@ -2245,6 +2262,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             updateSchemaName()
             return
         }
+        keyboardViewModel.switchMain(com.kingzcheung.xime.keyboard.MainType.FULL)
         try {
             SettingsPreferences.setCurrentSchema(this, schemaId)
             // 用户自定义候选词数：先写 custom.yaml 再切方案，Rime 会自动加载
