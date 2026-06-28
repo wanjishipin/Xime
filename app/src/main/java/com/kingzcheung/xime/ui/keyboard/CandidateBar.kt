@@ -108,6 +108,7 @@ fun CandidateBar(
 
     val displayCandidates: List<String>
     val displayAssociation: List<String>
+    val displayComments: List<String>
     val hasAnyMore: Boolean
     val showInputTextRow: Boolean
     val showLeftIcon: Boolean
@@ -116,12 +117,14 @@ fun CandidateBar(
         is CandidateBarState.Idle -> {
             displayCandidates = emptyList()
             displayAssociation = emptyList()
+            displayComments = emptyList()
             hasAnyMore = false
             showLeftIcon = true
         }
         is CandidateBarState.ChineseCandidates -> {
             val taken = s.candidates.take(20)
             displayCandidates = taken
+            displayComments = s.comments
             hasAnyMore = s.hasMore
             showLeftIcon = false
             displayAssociation = remember(s.associationCandidates, taken, s.inputText, textMeasurer) {
@@ -161,21 +164,25 @@ fun CandidateBar(
             displayAssociation = s.candidates.take(PredictionManager.MAX_ASSOCIATION_COUNT)
             hasAnyMore = s.hasMore
             showLeftIcon = false
+            displayComments = s.comments
         }
         is CandidateBarState.EnglishCandidates -> {
             displayCandidates = s.candidates.take(20)
+            displayComments = s.comments
             displayAssociation = emptyList()
             hasAnyMore = false
             showLeftIcon = false
         }
         is CandidateBarState.ClipboardDisplay -> {
             displayCandidates = s.candidates.take(20)
+            displayComments = emptyList()
             displayAssociation = emptyList()
             hasAnyMore = false
             showLeftIcon = true
         }
         is CandidateBarState.Calculator -> {
             displayCandidates = s.candidates.take(20)
+            displayComments = s.comments
             displayAssociation = emptyList()
             hasAnyMore = false
             showLeftIcon = false
@@ -337,7 +344,7 @@ fun CandidateBar(
                             index = -1,
                             onClick = { callbacks.onAssociationSelect?.invoke(index) },
                             textColor = visuals.textColor,
-                            comment = "",
+                            comment = displayComments.getOrElse(index) { "" },
                             isSelected = false,
                             accentColor = visuals.accentColor
                         )

@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import com.kingzcheung.xime.keyboard.GestureAction
 import com.kingzcheung.xime.keyboard.OverlayRoute
+import com.kingzcheung.xime.handwriting.HandwritingCandidate
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.ui.theme.KeyboardThemes
 import com.kingzcheung.xime.viewmodel.KeyboardUiState
@@ -19,6 +20,11 @@ fun KeyboardLayoutScreen(
     callbacks: KeyboardCallbacks,
     onKeyPress: (String) -> Unit,
     modifier: Modifier = Modifier,
+    isHandwritingLookup: Boolean = false,
+    onHandwritingCandidates: ((List<HandwritingCandidate>) -> Unit)? = null,
+    onHandwritingButtonFeedback: ((String) -> Unit)? = null,
+    handwritingClearSignal: Int = 0,
+    onHandwritingLookupExit: (() -> Unit)? = null,
 ) {
     val kbColors = KeysConfigHelper.getKeyboardColors()
     val longToColor: (Long) -> Color = { Color(0xFF000000 or it) }
@@ -50,6 +56,23 @@ fun KeyboardLayoutScreen(
 
     when (keyboardState) {
         is KeyboardLayoutState.Chinese -> {
+            if (isHandwritingLookup) {
+                HandwritingLookupKeyboard(
+                    keyTextColor = keyTextColor,
+                    specialKeyBgColor = specialKeyBgColor,
+                    keyboardBgColor = keyboardBgColor,
+                    shadowEnabled = kbShadow.enabled,
+                    shadowElevation = kbShadow.elevation.dp,
+                    shadowShapeRadius = kbShadow.shapeRadius.dp,
+                    onKeyPress = onKeyPress,
+                    onButtonFeedback = onHandwritingButtonFeedback,
+                    onCandidates = onHandwritingCandidates,
+                    onExit = { onHandwritingLookupExit?.invoke() },
+                    clearSignal = handwritingClearSignal,
+                    uiState = uiState,
+                    modifier = modifier,
+                )
+            } else {
             KeyboardLayout(
                 onKeyPress = onKeyPress,
                 viewModel = viewModel,
@@ -58,9 +81,27 @@ fun KeyboardLayoutScreen(
                 isAsciiMode = false,
                 modifier = modifier,
             )
+            }
         }
 
         is KeyboardLayoutState.English -> {
+            if (isHandwritingLookup) {
+                HandwritingLookupKeyboard(
+                    keyTextColor = keyTextColor,
+                    specialKeyBgColor = specialKeyBgColor,
+                    keyboardBgColor = keyboardBgColor,
+                    shadowEnabled = kbShadow.enabled,
+                    shadowElevation = kbShadow.elevation.dp,
+                    shadowShapeRadius = kbShadow.shapeRadius.dp,
+                    onKeyPress = onKeyPress,
+                    onButtonFeedback = onHandwritingButtonFeedback,
+                    onCandidates = onHandwritingCandidates,
+                    onExit = { onHandwritingLookupExit?.invoke() },
+                    clearSignal = handwritingClearSignal,
+                    uiState = uiState,
+                    modifier = modifier,
+                )
+            } else {
             KeyboardLayout(
                 onKeyPress = onKeyPress,
                 viewModel = viewModel,
@@ -69,6 +110,7 @@ fun KeyboardLayoutScreen(
                 isAsciiMode = true,
                 modifier = modifier,
             )
+            }
         }
 
         is KeyboardLayoutState.Number -> {

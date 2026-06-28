@@ -32,7 +32,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kingzcheung.xime.handwriting.HandwritingCandidate
 import com.kingzcheung.xime.keyboard.KeyboardPage
+import com.kingzcheung.xime.rime.RimeEngine
 import com.kingzcheung.xime.keyboard.MainType
 import com.kingzcheung.xime.keyboard.OverlayRoute
 import com.kingzcheung.xime.keyboard.PanelType
@@ -144,9 +146,10 @@ fun KeyboardView(
             var handwritingCandidates by remember { mutableStateOf<List<String>>(emptyList()) }
             var handwritingComments by remember { mutableStateOf<List<String>>(emptyList()) }
             var handwritingClearSignal by remember { mutableIntStateOf(0) }
+            var isHandwritingLookup by remember { mutableStateOf(false) }
 
             val isHandwritingPage = page is KeyboardPage.Main && (page as KeyboardPage.Main).type == MainType.HANDWRITING
-            val showHandwritingCandidates = isHandwritingPage && handwritingCandidates.isNotEmpty()
+            val showHandwritingCandidates = (isHandwritingPage || isHandwritingLookup) && handwritingCandidates.isNotEmpty()
 
             val candidateBarState = remember(
                 state.candidates, state.candidateComments, state.inputText, state.preeditText, state.isComposing,
@@ -154,16 +157,9 @@ fun KeyboardView(
                 state.isCalculatorMode, handwritingCandidates, handwritingComments, showHandwritingCandidates,
             ) {
                 if (showHandwritingCandidates) {
-                    CandidateBarState.from(
+                    CandidateBarState.AssociationOnly(
                         candidates = handwritingCandidates,
-                        candidateComments = handwritingComments,
-                        inputText = "",
-                        preeditText = "",
-                        isComposing = false,
-                        associationCandidates = handwritingCandidates,
-                        isShowingRecentClipboard = false,
-                        hasNextPage = false,
-                        isCalculatorActive = false,
+                        comments = handwritingComments,
                     )
                 } else {
                     CandidateBarState.from(
@@ -198,6 +194,7 @@ fun KeyboardView(
                         ToolbarButton.HOME -> ({ callbacks.onToolbarEditingAction?.invoke("home") })
                         ToolbarButton.END -> ({ callbacks.onToolbarEditingAction?.invoke("end") })
                         ToolbarButton.FLOAT -> ({ callbacks.onFloatingModeChange?.invoke(!state.isFloatingMode) })
+                        ToolbarButton.HANDWRITING_LOOKUP -> ({ isHandwritingLookup = !isHandwritingLookup })
                     }
                     ToolbarAction(button, onClick)
                 },
@@ -257,7 +254,17 @@ fun KeyboardView(
                             callbacks.onClipboardSelect?.invoke(state.inputText)
                         }
                     },
-                    onAssociationSelect = callbacks.onAssociationSelect,
+                    onAssociationSelect = { index ->
+                        if (showHandwritingCandidates && index in handwritingCandidates.indices) {
+                            val ch = handwritingCandidates[index]
+                            callbacks.onCommitText?.invoke(ch)
+                            handwritingCandidates = emptyList()
+                            handwritingComments = emptyList()
+                            handwritingClearSignal++
+                        } else {
+                            callbacks.onAssociationSelect?.invoke(index)
+                        }
+                    },
                 )
             )
 
@@ -448,6 +455,15 @@ fun KeyboardView(
                                 callbacks = callbacks,
                                 onKeyPress = currentOnKeyPress,
                                 modifier = Modifier.weight(1f).then(cursorMod),
+                                isHandwritingLookup = isHandwritingLookup,
+                                onHandwritingCandidates = { candidates ->
+                                    val chars = candidates.map { it.char }
+                                    handwritingCandidates = chars
+                                    handwritingComments = chars.map { RimeEngine.getInstance().lookupText(it) }
+                                },
+                                onHandwritingButtonFeedback = { key -> callbacks.onKeyPressDown?.invoke(key) },
+                                handwritingClearSignal = handwritingClearSignal,
+                                onHandwritingLookupExit = { isHandwritingLookup = false },
                             )
                             if (state.keyboardBottomPaddingDp > 0) {
                                 Spacer(modifier = Modifier.height(state.keyboardBottomPaddingDp.dp))

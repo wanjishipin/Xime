@@ -3,6 +3,7 @@
 
 #include <rime_api.h>
 #include <rime/setup.h>
+#include <rime/dict/reverse_lookup_dictionary.h>
 #include <jni.h>
 #include <android/log.h>
 #include <memory>
@@ -408,67 +409,58 @@ public:
     }
     
     // 查找词汇的编码
-    // 通过模拟输入文本来获取候选词和编码
+    // 使用 reverse_lookup_dictionary API 反查字符编码
     bool lookupText(const char* text, std::string& outCode) {
-        if (!rime || !session_id_ || !text) return false;
+        if (!rime || !text) return false;
+        LOGD("lookupText: word='%s'", text);
         
-        // 保存当前输入状态
-        std::string saved_input = getInput();
-        rime->clear_composition(session_id_);
+        auto* component = rime::ReverseLookupDictionary::Require("reverse_lookup_dictionary");
+        if (!component) { LOGD("lookupText: component not available"); return false; }
+        auto* rldc = dynamic_cast<rime::ReverseLookupDictionaryComponent*>(component);
+        if (!rldc) { LOGD("lookupText: not ReverseLookupDictionaryComponent"); return false; }
         
-        // 逐字符输入文本
-        const char* p = text;
-        while (*p) {
-            // 将字符转换为按键码（对于汉字，需要用特殊的处理）
-            // 这里假设 text 是已经commit的文本，我们直接查询
-            // 使用 rime_predict 或者其他方式
-            
-            // 尝试直接通过 session 查找
-            RIME_STRUCT(RimeContext, context);
-            
-            // 获取当前候选词
-            if (rime->get_context(session_id_, &context)) {
-                if (context.menu.num_candidates > 0) {
-                    // 遍历候选词查找匹配的文本
-                    for (int i = 0; i < context.menu.num_candidates; i++) {
-                        const char* candidate_text = context.menu.candidates[i].text;
-                        if (candidate_text && strcmp(candidate_text, text) == 0) {
-                            // 找到匹配的候选词，获取编码（从 comment 中）
-                            const char* comment = context.menu.candidates[i].comment;
-                            if (comment && strlen(comment) > 0) {
-                                outCode = comment;
-                                LOGD("lookupText: found code '%s' for '%s'", comment, text);
-                            }
-                            rime->free_context(&context);
-                            
-                            // 恢复之前的状态
-                            if (!saved_input.empty()) {
-                                for (char c : saved_input) {
-                                    rime->process_key(session_id_, c, 0);
-                                }
-                            }
-                            return true;
+        // 先查当前 schema 使用的字典
+        if (session_id_) {
+            char schema_id[256] = {0};
+            if (rime->get_current_schema(session_id_, schema_id, sizeof(schema_id))) {
+                RimeConfig config = {0};
+                if (rime->schema_open(schema_id, &config)) {
+                    const char* dict = rime->config_get_cstring(&config, "translator/dictionary");
+                    if (dict) {
+                        LOGD("lookupText: schema '%s' uses dict '%s'", schema_id, dict);
+                        auto d = rldc->Create(dict);
+                        if (d && d->Load()) {
+                            std::string r;
+                            if (d->ReverseLookup(text, &r)) { outCode = r; delete d; rime->config_close(&config); return true; }
                         }
+                        delete d;
                     }
+                    // 也查 reverse_lookup 字典
+                    const char* rev = rime->config_get_cstring(&config, "reverse_lookup/dictionary");
+                    if (rev) {
+                        LOGD("lookupText: schema '%s' reverse_lookup dict '%s'", schema_id, rev);
+                        auto d = rldc->Create(rev);
+                        if (d && d->Load()) {
+                            std::string r;
+                            if (d->ReverseLookup(text, &r)) { outCode = r; delete d; rime->config_close(&config); return true; }
+                        }
+                        delete d;
+                    }
+                    rime->config_close(&config);
                 }
-                rime->free_context(&context);
             }
-            
-            // 输入下一个字符
-            rime->process_key(session_id_, *p, 0);
-            p++;
         }
         
-        // 如果上面的方法不行，尝试另一种方式：
-        // 从候选词列表末尾开始查找（通常是用户词库）
-        // 这种情况可能是词库中没有的词
-        
-        // 恢复之前的状态
-        rime->clear_composition(session_id_);
-        if (!saved_input.empty()) {
-            for (char c : saved_input) {
-                rime->process_key(session_id_, c, 0);
+        // fallback: 依次尝试已知编码字典
+        const char* fallbacks[] = {"wubi86", "pinyin_simp", nullptr};
+        for (int i = 0; fallbacks[i]; i++) {
+            auto d = rldc->Create(fallbacks[i]);
+            if (!d) continue;
+            if (d->Load()) {
+                std::string r;
+                if (d->ReverseLookup(text, &r)) { outCode = r; delete d; return true; }
             }
+            delete d;
         }
         
         return false;

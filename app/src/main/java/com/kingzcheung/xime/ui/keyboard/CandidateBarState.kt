@@ -15,6 +15,7 @@ sealed interface CandidateBarState {
 
     data class AssociationOnly(
         val candidates: List<String> = emptyList(),
+        val comments: List<String> = emptyList(),
         val hasMore: Boolean = false,
     ) : CandidateBarState
 
