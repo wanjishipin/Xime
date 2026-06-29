@@ -772,9 +772,6 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                     },
                                     onKeyPressDown = { key ->
                                         feedbackManager.performKeyPressDownEffect(key)
-                                        if (key == "space" && uiState.value.isSttEnabled) {
-                                            voiceRecognitionHandler.startDelayedPreStart()
-                                        }
                                     },
                                     onCandidateSelect = { index ->
                                         selectCandidate(index)
