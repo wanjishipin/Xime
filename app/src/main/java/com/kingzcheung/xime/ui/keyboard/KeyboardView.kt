@@ -476,11 +476,18 @@ fun KeyboardView(
                                 "abc" -> viewModel.setKeyboardState(
                                     initialKeyboardLayoutState(state.isAsciiMode, state.currentSchemaId)
                                 )
-                                "number" -> viewModel.setKeyboardState(keyboardState.transition(
-                                    KeyboardLayoutAction.SwitchToNumber, state.isAsciiMode
-                                ))
+                                "number" -> {
+                                    callbacks.onT9SwitchAway?.invoke()
+                                    viewModel.setKeyboardState(keyboardState.transition(
+                                        KeyboardLayoutAction.SwitchToNumber, state.isAsciiMode
+                                    ))
+                                }
                                 "symbol" -> viewModel.showOverlay(OverlayRoute.Symbol)
                                 "emoji" -> viewModel.showOverlay(OverlayRoute.Emoji)
+                                "ime_switch" -> {
+                                    callbacks.onT9SwitchAway?.invoke()
+                                    callbacks.onKeyPress(key, false)
+                                }
                                 else -> callbacks.onKeyPress(key, false)
                             }
                         }

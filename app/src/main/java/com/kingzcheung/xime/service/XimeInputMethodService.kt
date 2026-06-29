@@ -71,6 +71,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.kingzcheung.xime.MainActivity
 import com.kingzcheung.xime.association.AssociationManager
 import com.kingzcheung.xime.ui.keyboard.KeyboardCallbacks
+import com.kingzcheung.xime.ui.keyboard.KeyboardLayoutState
 import com.kingzcheung.xime.viewmodel.KeyboardUiState
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
 import com.kingzcheung.xime.association.AssociationService
@@ -959,6 +960,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                         currentInputConnection?.deleteSurroundingText(count, 0)
                                         t9PartialCommitTexts.removeLastOrNull()
                                     },
+                                    onT9SwitchAway = {
+                                        postRimeJob {
+                                            commitFirstCandidateAndClearT9()
+                                        }
+                                    },
                                 )
                             }
                             keyboardCallbacks = callbacks
@@ -1610,6 +1616,51 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         }
     }
 
+    /**
+     * T9 键盘切换离开时：提交右侧候选词列表首位候选词并清理 T9 和 Rime 状态。
+     * 运行在 keyProcessingDispatcher 线程。
+     */
+    private suspend fun commitFirstCandidateAndClearT9() {
+        val isT9 = isT9Schema(uiState.value.currentSchemaId)
+        if (!isT9) return
+
+        val candState = candidateState.value
+        val candidates = candState.candidates
+
+        if (candidates.isNotEmpty()) {
+            if (rimeEngine.selectCandidate(0)) {
+                val committedText = rimeEngine.commit()
+                if (committedText.isNotEmpty()) {
+                    withContext(Dispatchers.Main) {
+                        commitText(committedText)
+                    }
+                }
+            }
+        }
+
+        rimeEngine.clearComposition()
+
+        withContext(Dispatchers.Main) {
+            keyboardCallbacks?.onT9ReplaceFullPinyin?.invoke(T9InputController.CLEAR_ALL)
+            uiState.value = uiState.value.copy(
+                t9ResetSignal = uiState.value.t9ResetSignal + 1,
+                t9RightCandidateSelectedCount = 0,
+                t9SelectedCandidatePinyin = ""
+            )
+            t9PartialCommitTexts.clear()
+            candidateState.value = candidateState.value.copy(
+                inputText = "",
+                preeditText = "",
+                candidates = emptyList(),
+                candidateComments = emptyList(),
+                isComposing = false,
+                associationCandidates = emptyList(),
+                hasNextPage = false,
+                hasPrevPage = false
+            )
+        }
+    }
+
     private fun handleKeyPress(key: String, isShifted: Boolean) {
         val job = serviceScope.launch(keyProcessingDispatcher, start = CoroutineStart.LAZY) {
             val state = uiState.value
@@ -1624,7 +1675,14 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                     calculatorEngine.handleDelete()
                     updateCalculatorCandidates()
                     
-                    when {
+                    // 数字/符号键盘：直接发送系统退格，不经过 Rime
+                    // 防止 T9 残留状态被 Rime 退格修改导致 UI 不一致
+                    val layoutState = keyboardViewModel.keyboardState.value
+                    if (layoutState is KeyboardLayoutState.Number || layoutState is KeyboardLayoutState.Symbol) {
+                        withContext(Dispatchers.Main) {
+                            sendDownUpKeyEvents(KeyEvent.KEYCODE_DEL)
+                        }
+                    } else when {
                         // 1. 英文待处理文本：逐个删除字符，重新加载联想
                         candState.pendingEnglishText.isNotEmpty() -> {
                             val pendingLen = candState.pendingEnglishText.length
