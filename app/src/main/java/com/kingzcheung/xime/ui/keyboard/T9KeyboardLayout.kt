@@ -149,22 +149,33 @@ fun T9KeyboardLayout(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(vertical = 8.dp, horizontal = 4.dp),
-            verticalArrangement = Arrangement.spacedBy(KeyboardDimensions.RowSpacing)
+                .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
         ) {
+            // 内层包装：与 NumberKeyboardLayout 的 NumberRows 对齐
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight()
+                    .padding(horizontal = 2.dp),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                ) {
             // 上部：左侧候选区 + 右侧 1-3 行
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(3f),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // 左侧候选区：外层统一圆角/阴影，内部候选项无缝排列
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .weight(0.90f)
-                        .padding(horizontal = 2.dp)
+                        .weight(1f)
+                        .padding(vertical = 2.dp)
                         .then(
                             if (shadowEnabled) {
                                 Modifier.shadow(
@@ -197,6 +208,7 @@ fun T9KeyboardLayout(
                                         onClick = { controller.onChoiceSelected(option) },
                                         onPress = { onKeyPressDown?.invoke(option.pinyin) },
                                         textColor = keyTextColor,
+                                        backgroundColor = keyBackgroundColor,
                                         modifier = Modifier.fillMaxWidth().weight(1f)
                                     )
                                 } else {
@@ -205,6 +217,7 @@ fun T9KeyboardLayout(
                                         onClick = { onKeyPress(item) },
                                         onPress = { onKeyPressDown?.invoke(item) },
                                         textColor = keyTextColor,
+                                        backgroundColor = keyBackgroundColor,
                                         modifier = Modifier.fillMaxWidth().weight(1f)
                                     )
                                 }
@@ -223,6 +236,7 @@ fun T9KeyboardLayout(
                                         onClick = { controller.onChoiceSelected(option) },
                                         onPress = { onKeyPressDown?.invoke(option.pinyin) },
                                         textColor = keyTextColor,
+                                        backgroundColor = keyBackgroundColor,
                                         modifier = Modifier.fillMaxWidth().height(32.dp)
                                     )
                                 } else {
@@ -232,6 +246,7 @@ fun T9KeyboardLayout(
                                         onClick = { onKeyPress(item) },
                                         onPress = { onKeyPressDown?.invoke(item) },
                                         textColor = keyTextColor,
+                                        backgroundColor = keyBackgroundColor,
                                         modifier = Modifier.fillMaxWidth().height(32.dp)
                                     )
                                 }
@@ -244,15 +259,13 @@ fun T9KeyboardLayout(
                 Column(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .weight(4.25f),
-                    verticalArrangement = Arrangement.spacedBy(KeyboardDimensions.RowSpacing)
+                        .weight(4f),
                 ) {
                     // 第1行
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         NineKeyButton(
                             digit = "1",
@@ -340,7 +353,6 @@ fun T9KeyboardLayout(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         T9DigitKey(
                             digit = "4",
@@ -431,7 +443,6 @@ fun T9KeyboardLayout(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         T9DigitKey(
                             digit = "7",
@@ -525,14 +536,13 @@ fun T9KeyboardLayout(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 KeyButton(
-                    text = "符",
+                    text = "符号",
                     onClick = { onKeyPress("symbol") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.weight(1.2f),
+                    modifier = Modifier.weight(1f),
                     onPress = { onKeyPressDown?.invoke("symbol") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -543,7 +553,7 @@ fun T9KeyboardLayout(
                     onClick = { onKeyPress("number") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.weight(0.8f),
+                    modifier = Modifier.weight(1f),
                     onPress = { onKeyPressDown?.invoke("mode_change") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -585,6 +595,7 @@ fun T9KeyboardLayout(
                     shadowShapeRadius = shadowShapeRadius,
                 )
             }
+            }
         }
     }
 }
@@ -624,7 +635,7 @@ private fun T9DigitKey(
             onClick = { currentOnClick() },
             backgroundColor = backgroundColor,
             textColor = textColor,
-            fontSize = 15.sp,
+            fontSize = 16.sp,
             modifier = Modifier.fillMaxSize(),
             onPress = { currentOnPress?.invoke() },
             longPressItems = longPressItems,
@@ -656,6 +667,7 @@ private fun CandidateItem(
     onClick: () -> Unit,
     onPress: (() -> Unit)?,
     textColor: Color,
+    backgroundColor: Color = Color.Transparent,
     modifier: Modifier = Modifier,
 ) {
     var isPressed by remember { mutableStateOf(false) }
@@ -664,7 +676,10 @@ private fun CandidateItem(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(if (isPressed) textColor.copy(alpha = 0.1f) else Color.Transparent)
+            .background(
+                if (isPressed) backgroundColor.copy(alpha = 0.7f)
+                else Color.Transparent
+            )
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
@@ -711,7 +726,6 @@ private fun NineKeyButton(
             onClick = onClick,
             backgroundColor = backgroundColor,
             textColor = textColor,
-            fontSize = 15.sp,
             modifier = Modifier.fillMaxSize(),
             onPress = onPress,
             shadowEnabled = shadowEnabled,
