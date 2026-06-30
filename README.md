@@ -19,40 +19,56 @@
 
 <table align="center">
   <tr>
-    <td><img src="docs/Screenshot/keyboard_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/keyboard_dark.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/全键盘_下滑_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/全键盘_下滑_dark.jpg" width="180"></td>
+    <td><img src="docs/Screenshot/full_keyboard_light.jpg" width="180"><br><p align="center">全键盘（亮色）</p></td>
+    <td><img src="docs/Screenshot/full_keyboard_dark.jpg" width="180"><br><p align="center">全键盘（暗色）</p></td>
+    <td><img src="docs/Screenshot/全键盘_下滑_light.jpg" width="180"><br><p align="center">字根下滑</p></td>
+    <td><img src="docs/Screenshot/shotcut_light.jpg" width="180"><br><p align="center">快捷操作</p></td>
   </tr>
   <tr>
-    <td><img src="docs/Screenshot/数字键盘_dark.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/符号键盘_light.jpg" width="180"></td>
-        <td><img src="docs/Screenshot/emoji_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/shotcut_light.jpg" width="180"></td>
+    <td><img src="docs/Screenshot/floating.jpg" width="180"><br><p align="center">悬浮键盘</p></td>
+    <td><img src="docs/Screenshot/t9_pinyin.jpg" width="180"><br><p align="center">T9 九宫格拼音</p></td>
+    <td><img src="docs/Screenshot/number.jpg" width="180"><br><p align="center">数字键盘</p></td>
+    <td><img src="docs/Screenshot/symbol.jpg" width="180"><br><p align="center">符号键盘</p></td>
   </tr>
+  <tr>
+    <td><img src="docs/Screenshot/hw.png" width="180"><br><p align="center">手写输入</p></td>
+    <td><img src="docs/Screenshot/hw2.png" width="180"><br><p align="center">手写找字（候选）</p></td>
+    <td><img src="docs/Screenshot/voice.jpg" width="180"><br><p align="center">语音输入</p></td>
+    <td><img src="docs/Screenshot/emoji.jpg" width="180"><br><p align="center">Emoji 键盘</p></td>
+  </tr>
+  <tr>
+    <td><img src="docs/Screenshot/theme_light.jpg" width="180"><br><p align="center">主题设置（亮色）</p></td>
+    <td><img src="docs/Screenshot/theme_dark.jpg" width="180"><br><p align="center">主题设置（暗色）</p></td>
+    <td><img src="docs/Screenshot/plugin_light.jpg" width="180"><br><p align="center">插件管理</p></td>
+    <td><img src="docs/Screenshot/方案市场.jpg" width="180"><br><p align="center">方案市场</p></td>
+  </tr>
+  <tr>
 
-  <tr>
-    <td><img src="docs/Screenshot/theme_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/theme_dark.jpg" width="180"></td>
-        <td><img src="docs/Screenshot/plugin_light.jpg" width="180"></td>
-    <td><img src="docs/Screenshot/plugin_dark.jpg" width="180"></td>
+    <td></td>
+    <td></td>
+    <td></td>
   </tr>
 </table>
 
 ## 功能特点
 
-- **多种输入方案** - 默认内置五笔86、五笔98、拼音、及五笔拼音混输方案,支持自定义方案(五笔98、双拼等)
-- **Rime 引擎** - 使用成熟稳定的 Rime 输入法引擎
-- **语音转文本** - 内置语音识别功能（支持阿里百炼 FunAsr 和本地模型）
-- **表情插件** - 支持扩展表情插件（颜文字、表情包等）
-- **简洁界面** - Material Design 3 风格，支持浅色/深色主题
-- **主题定制** - 多种键盘配色方案可选
+- **多种输入方案** - 内置五笔86/98、拼音、混输方案，支持自定义（双拼、笔画等），可通过方案市场下载或无线导入
+- **Rime 引擎** - 使用成熟稳定的 Rime 输入法引擎，精准可靠的中文输入体验
+- **丰富键盘布局** - QWERTY 全键盘、T9 九宫格拼音、九宫格笔画、手写、数字（含计算器）
+- **悬浮键盘** - 悬浮卡片样式，支持拖拽移动、半透明圆角设计
+- **语音转文本** - 支持阿里百炼 FunAsr（在线）和 sherpa-onnx（本地离线）双引擎
+- **AI 智能增强** - 基于 Transformer 的联想词预测和标点预测，输入更高效
+- **简洁界面** - Material Design 3 风格，支持浅色/深色主题及多种配色方案
 - **键盘调节** - 支持键盘高度调整和位置移动
+- **工具栏定制** - 可自定义工具栏按钮布局和功能
 - **按键反馈** - 可调节音效和振动强度
-- **剪贴板管理** - 剪贴板历史记录，支持快捷发送
-- **词库管理** - 查看和管理当前输入方案词库
-- **候选词编码提示** - 候选词显示五笔编码，方便学习
-- **显示字根** - 下滑按钮显示五笔字根，方便健忘者用户
+- **滑动手势** - 光标移动、删除、符号输入等滑动手势操作
+- **剪贴板管理** - 剪贴板历史记录，支持快捷发送和置顶
+- **候选词编码提示** - 候选词显示五笔编码，辅助学习
+- **字根显示** - 下滑按钮显示五笔字根，方便健忘用户
+- **实体键盘支持** - 连接物理/蓝牙键盘时显示浮动候选栏
+- **WebDAV 同步** - 通过 WebDAV 备份和恢复方案与配置
+- **表情插件** - 支持扩展表情插件（颜文字、表情包等）
 
 ## 系统要求
 
