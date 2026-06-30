@@ -51,6 +51,12 @@ object SchemaManager {
     private const val CUSTOM_YAML = "default.custom.yaml"
     internal val yaml = Yaml(configuration = YamlConfiguration(strictMode = false))
 
+    private val downloadClient = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(120, TimeUnit.SECONDS)
+        .followRedirects(true)
+        .build()
+
     fun getRimeDir(context: Context): File =
         File(context.filesDir, "rime")
 
@@ -222,6 +228,10 @@ object SchemaManager {
         val base = name.substringAfterLast('/')
         return base == "default.yaml"
     }
+
+    /** macOS Apple Double 资源分支文件（__MACOSX/ 或 ._ 前缀），应当在解压时跳过。 */
+    private fun isAppleDouble(name: String): Boolean =
+        name.startsWith("__MACOSX/") || name.contains("/._") || name.startsWith("._")
 
     /** 把归档条目解析到 targetDir 下，越界（zip-slip，如 ../../x）返回 null。 */
     private fun safeChild(targetDir: File, name: String): File? {
@@ -492,7 +502,7 @@ object SchemaManager {
                 ZipInputStream(input.buffered()).use { zis ->
                     var entry = zis.nextEntry
                     while (entry != null) {
-                        if (!entry.isDirectory) entryNames.add(entry.name)
+                        if (!entry.isDirectory && !isAppleDouble(entry.name)) entryNames.add(entry.name)
                         zis.closeEntry()
                         entry = zis.nextEntry
                     }
@@ -513,7 +523,7 @@ object SchemaManager {
                     while (entry != null) {
                         val originalName = entry.name
                         val name = originalName.removePrefix(baseDir)
-                        if (!entry.isDirectory && !isProtectedImportName(name)) {
+                        if (!entry.isDirectory && !isAppleDouble(originalName) && !isProtectedImportName(name)) {
                             val file = safeChild(targetDir, name)
                             if (file == null) {
                                 Log.w(TAG, "Skip unsafe path: $name")
@@ -532,13 +542,6 @@ object SchemaManager {
                                 }
 
                                 Log.d(TAG, "Extracted: $name")
-
-                                when {
-                                    name.endsWith(".schema.yaml") ->
-                                        importedSchemas.add(name.removeSuffix(".schema.yaml").substringAfterLast('/'))
-                                    name.endsWith(".dict.yaml") ->
-                                        importedSchemas.add(name.removeSuffix(".dict.yaml").substringAfterLast('/'))
-                                }
                             }
                         }
                         zis.closeEntry()
@@ -575,12 +578,7 @@ object SchemaManager {
             if (!schemeDir.exists()) schemeDir.mkdirs()
             val targetFile = File(schemeDir, fileName)
 
-            val client = OkHttpClient.Builder()
-                .connectTimeout(30, TimeUnit.SECONDS)
-                .readTimeout(120, TimeUnit.SECONDS)
-                .followRedirects(true)
-                .build()
-            client.newCall(Request.Builder().url(url).build()).execute().use { response ->
+            downloadClient.newCall(Request.Builder().url(url).build()).execute().use { response ->
                 if (!response.isSuccessful) {
                     Log.e(TAG, "Download failed: ${response.code} $url")
                     return@withContext DownloadResult(false)
@@ -625,10 +623,13 @@ object SchemaManager {
             }
         } catch (e: Exception) {
             Log.e(TAG, "downloadToMarket failed: $url", e)
-            // 删除可能残留的损坏文件
+            // 删除可能残留的损坏文件及空目录，防止 isSchemeDownloaded 误判
             val schemeDir = getMarketDir(context, schemeId)
             val targetFile = File(schemeDir, fileName)
             if (targetFile.exists()) targetFile.delete()
+            if (schemeDir.exists() && schemeDir.listFiles().isNullOrEmpty()) {
+                schemeDir.delete()
+            }
             DownloadResult(false)
         }
     }
@@ -761,11 +762,13 @@ object SchemaManager {
 
     private fun importZipFromFile(zipFile: File, targetDir: File): Boolean {
         return try {
-            // 第一趟：收集文件名以检测共同根目录
+            // 第一趟：收集文件名以检测共同根目录（排除 Apple Double）
             val entryNames = mutableListOf<String>()
             ZipFile(zipFile).use { zip ->
                 zip.entries().asSequence().forEach { entry ->
-                    if (!entry.isDirectory) entryNames.add(entry.name)
+                    if (!entry.isDirectory && !isAppleDouble(entry.name)) {
+                        entryNames.add(entry.name)
+                    }
                 }
             }
 
@@ -779,19 +782,18 @@ object SchemaManager {
             ZipFile(zipFile).use { zip ->
                 zip.entries().asSequence().forEach { entry ->
                     val originalName = entry.name
+                    if (entry.isDirectory || isAppleDouble(originalName)) return@forEach
                     val name = originalName.removePrefix(baseDir)
-                    if (!entry.isDirectory) {
-                        val file = if (isProtectedImportName(name)) null else safeChild(targetDir, name)
-                        if (file == null) {
-                            Log.d(TAG, "Skip protected/unsafe entry: $name")
-                        } else {
-                            file.parentFile?.mkdirs()
-                            zip.getInputStream(entry).use { input ->
-                                FileOutputStream(file).use { output -> input.copyTo(output) }
-                            }
-                            count++
-                            Log.d(TAG, "Extracted zip entry: $name")
+                    val file = if (isProtectedImportName(name)) null else safeChild(targetDir, name)
+                    if (file == null) {
+                        Log.d(TAG, "Skip protected/unsafe entry: $name")
+                    } else {
+                        file.parentFile?.mkdirs()
+                        zip.getInputStream(entry).use { input ->
+                            FileOutputStream(file).use { output -> input.copyTo(output) }
                         }
+                        count++
+                        Log.d(TAG, "Extracted zip entry: $name")
                     }
                 }
             }
@@ -821,12 +823,14 @@ object SchemaManager {
 
     private fun importTarGzFromFile(tarGzFile: File, targetDir: File): Boolean {
         return try {
-            // 第一趟：收集文件名以检测共同根目录（注意 .tar.gz 需先 gunzip 再解 tar）
+            // 第一趟：收集文件名以检测共同根目录（排除 Apple Double）
             val entryNames = mutableListOf<String>()
             TarArchiveInputStream(GzipCompressorInputStream(tarGzFile.inputStream().buffered())).use { tarIn ->
                 var entry = tarIn.nextEntry
                 while (entry != null) {
-                    if (!entry.isDirectory) entryNames.add(entry.name)
+                    if (!entry.isDirectory && !isAppleDouble(entry.name)) {
+                        entryNames.add(entry.name)
+                    }
                     entry = tarIn.nextEntry
                 }
             }
@@ -841,17 +845,20 @@ object SchemaManager {
             TarArchiveInputStream(GzipCompressorInputStream(tarGzFile.inputStream().buffered())).use { tarIn ->
                 var entry = tarIn.nextEntry
                 while (entry != null) {
-                    val name = entry.name.removePrefix(baseDir)
-                    if (!entry.isDirectory) {
-                        val file = if (isProtectedImportName(name)) null else safeChild(targetDir, name)
-                        if (file == null) {
-                            Log.d(TAG, "Skip protected/unsafe entry: $name")
-                        } else {
-                            file.parentFile?.mkdirs()
-                            FileOutputStream(file).use { output -> tarIn.copyTo(output) }
-                            count++
-                            Log.d(TAG, "Extracted tar.gz entry: $name")
-                        }
+                    val originalName = entry.name
+                    if (entry.isDirectory || isAppleDouble(originalName)) {
+                        entry = tarIn.nextEntry
+                        continue
+                    }
+                    val name = originalName.removePrefix(baseDir)
+                    val file = if (isProtectedImportName(name)) null else safeChild(targetDir, name)
+                    if (file == null) {
+                        Log.d(TAG, "Skip protected/unsafe entry: $name")
+                    } else {
+                        file.parentFile?.mkdirs()
+                        FileOutputStream(file).use { output -> tarIn.copyTo(output) }
+                        count++
+                        Log.d(TAG, "Extracted tar.gz entry: $name")
                     }
                     entry = tarIn.nextEntry
                 }
