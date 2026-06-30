@@ -37,6 +37,8 @@ data class SchemaMarketUiState(
     val searchQuery: String = "",
     // 本次方案列表实际命中的来源端点主机名（如 index.ximei.me），用于在界面上显示「从哪个端点拉的」
     val source: String = "",
+    /** 用户选择的版本：schemeId → version 字符串 */
+    val selectedVersions: Map<String, String> = emptyMap(),
 ) {
     val filteredSchemes: List<MarketSchemeItem>
         get() = if (searchQuery.isBlank()) schemes else schemes.filter {
@@ -86,6 +88,17 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
                         )
                     }
                 } else {
+                    val existingSel = _uiState.value.selectedVersions
+                    val mergedSel = fetch.schemes.associate { item ->
+                        val id = item.scheme.id
+                        val keep = existingSel[id]
+                        if (keep != null && item.scheme.versions.any { it.version == keep }) {
+                            id to keep
+                        } else {
+                            val v = item.scheme.resolvedVersion()
+                            id to (v?.version ?: item.scheme.currentVersion)
+                        }
+                    }
                     _uiState.update {
                         it.copy(
                             schemes = fetch.schemes,
@@ -93,6 +106,7 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
                             source = fetch.source,
                             errorMessage = null,
                             downloadedIds = downloadedIds,
+                            selectedVersions = mergedSel,
                             toastMessage = if (manual) "已刷新 · 来源：${fetch.source}" else it.toastMessage,
                         )
                     }
@@ -113,6 +127,11 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
 
     fun setSearchQuery(q: String) = _uiState.update { it.copy(searchQuery = q) }
 
+    /** 选择指定方案的版本。 */
+    fun selectVersion(schemeId: String, version: String) {
+        _uiState.update { it.copy(selectedVersions = it.selectedVersions + (schemeId to version)) }
+    }
+
     /** 下载方案到 market 目录（仅下载，不解压）。 */
     fun downloadScheme(item: MarketSchemeItem) {
         if (_uiState.value.downloadingId != null) {
@@ -125,9 +144,11 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
         }
         viewModelScope.launch {
             _uiState.update { it.copy(downloadingId = item.scheme.id, downloadProgress = 0f) }
+            val selectedVersion = _uiState.value.selectedVersions[item.scheme.id]
             val result = withContext(Dispatchers.IO) {
                 XimeIndexSource.downloadScheme(
                     context, item.scheme,
+                    version = selectedVersion,
                     onDownloadProgress = { downloaded, total ->
                         val progress = if (total > 0) (downloaded.toFloat() / total) else 0f
                         _uiState.update { it.copy(downloadProgress = progress) }
@@ -171,8 +192,12 @@ class SchemaMarketViewModel(application: Application) : AndroidViewModel(applica
         }
         viewModelScope.launch {
             _uiState.update { it.copy(extractingId = item.scheme.id) }
+            val selVer = _uiState.value.selectedVersions
             val urlById = _uiState.value.schemes.associate { si ->
-                si.scheme.id to si.scheme.resolvedVersion()?.downloadUrls?.firstOrNull()?.url
+                val v = selVer[si.scheme.id]?.let { ver ->
+                    si.scheme.versions.firstOrNull { it.version == ver }
+                } ?: si.scheme.resolvedVersion()
+                si.scheme.id to v?.downloadUrls?.firstOrNull()?.url
             }
             val result = withContext(Dispatchers.IO) {
                 XimeIndexSource.installFromMarket(

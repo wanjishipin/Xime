@@ -136,10 +136,14 @@ object XimeIndexSource {
     suspend fun downloadScheme(
         context: Context,
         scheme: MarketScheme,
+        version: String? = null,
         onDownloadProgress: (Long, Long) -> Unit = { _, _ -> },
     ): InstallResult = withContext(Dispatchers.IO) {
-        val v = scheme.resolvedVersion()
-            ?: return@withContext InstallResult(false, failureReason = "无可用版本")
+        val v = if (version != null) {
+            scheme.versions.firstOrNull { it.version == version }
+        } else {
+            scheme.resolvedVersion()
+        } ?: return@withContext InstallResult(false, failureReason = "无可用版本")
         if (v.downloadUrls.isEmpty() || v.downloadUrls.all { it.url.isBlank() }) {
             return@withContext InstallResult(false, failureReason = "缺少下载地址")
         }

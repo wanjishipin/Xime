@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Refresh
@@ -29,6 +32,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
@@ -59,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.kingzcheung.xime.settings.MarketSchemeItem
+import com.kingzcheung.xime.settings.SchemeVersion
 import com.kingzcheung.xime.viewmodel.SchemaMarketViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -198,6 +204,9 @@ fun SchemaMarketContent(
                             installed = item.scheme.id in uiState.installedIds,
                             sha256Status = uiState.sha256Status[item.scheme.id],
                             deploying = uiState.isDeploying,
+                            selectedVersion = uiState.selectedVersions[item.scheme.id]
+                                ?: item.scheme.currentVersion,
+                            onSelectVersion = { viewModel.selectVersion(item.scheme.id, it) },
                             onDownload = { viewModel.downloadScheme(item) },
                             onInstall = { viewModel.installFromMarket(item) },
                             onDeploy = { viewModel.deploy() },
@@ -236,6 +245,8 @@ private fun SchemeCard(
     installed: Boolean,
     sha256Status: Boolean?,
     deploying: Boolean,
+    selectedVersion: String,
+    onSelectVersion: (String) -> Unit,
     onDownload: () -> Unit,
     onInstall: () -> Unit,
     onDeploy: () -> Unit,
@@ -257,10 +268,16 @@ private fun SchemeCard(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                if (scheme.currentVersion.isNotEmpty()) {
+                if (scheme.versions.size > 1) {
+                    VersionSelector(
+                        versions = scheme.versions,
+                        selectedVersion = selectedVersion,
+                        onSelectVersion = onSelectVersion,
+                    )
+                } else if (selectedVersion.isNotEmpty()) {
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        scheme.currentVersion,
+                        selectedVersion,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline,
                     )
@@ -433,6 +450,54 @@ private fun SchemeCard(
                         Text("下载")
                     }
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VersionSelector(
+    versions: List<SchemeVersion>,
+    selectedVersion: String,
+    onSelectVersion: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        TextButton(
+            onClick = { expanded = true },
+            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp),
+            modifier = Modifier.height(IntrinsicSize.Min),
+        ) {
+            Text(
+                selectedVersion,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Icon(
+                Icons.Default.ArrowDropDown,
+                contentDescription = "选择版本",
+                modifier = Modifier.size(16.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+        ) {
+            versions.forEach { v ->
+                val label = buildString {
+                    append(v.version)
+                    if (v.date.isNotBlank()) append("  ·  ${v.date}")
+                    if (v.size.isNotBlank()) append("  ·  ${v.size}")
+                }
+                DropdownMenuItem(
+                    text = { Text(label, style = MaterialTheme.typography.bodySmall) },
+                    onClick = {
+                        onSelectVersion(v.version)
+                        expanded = false
+                    },
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                )
             }
         }
     }
