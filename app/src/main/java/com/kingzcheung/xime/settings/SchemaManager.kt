@@ -2,6 +2,7 @@ package com.kingzcheung.xime.settings
 
 import android.content.Context
 import android.net.Uri
+import android.os.PowerManager
 import android.util.Log
 import com.charleskorn.kaml.Yaml
 import com.charleskorn.kaml.YamlConfiguration
@@ -573,6 +574,10 @@ object SchemaManager {
         expectedSha256: String? = null,
         onProgress: (Long, Long) -> Unit = { _, _ -> },
     ): DownloadResult = withContext(Dispatchers.IO) {
+        val wakeLock = (context.getSystemService(Context.POWER_SERVICE) as PowerManager)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "Xime:SchemaDownload")
+        wakeLock.setReferenceCounted(false)
+        wakeLock.acquire(5 * 60 * 1000L)
         try {
             val schemeDir = getMarketDir(context, schemeId)
             if (!schemeDir.exists()) schemeDir.mkdirs()
@@ -610,7 +615,6 @@ object SchemaManager {
                     Log.i(TAG, "Downloaded (sha256 verified): ${targetFile.absolutePath}")
                     DownloadResult(true, sha256Verified = true)
                 } else {
-                    // 无 sha256：校验压缩包完整性（zip/tar.gz），防止下载不完整
                     val valid = validateArchive(targetFile)
                     if (!valid) {
                         Log.e(TAG, "Archive validation failed for $url, file is corrupted")
@@ -623,7 +627,6 @@ object SchemaManager {
             }
         } catch (e: Exception) {
             Log.e(TAG, "downloadToMarket failed: $url", e)
-            // 删除可能残留的损坏文件及空目录，防止 isSchemeDownloaded 误判
             val schemeDir = getMarketDir(context, schemeId)
             val targetFile = File(schemeDir, fileName)
             if (targetFile.exists()) targetFile.delete()
@@ -631,6 +634,8 @@ object SchemaManager {
                 schemeDir.delete()
             }
             DownloadResult(false)
+        } finally {
+            if (wakeLock.isHeld) wakeLock.release()
         }
     }
 
