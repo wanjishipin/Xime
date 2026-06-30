@@ -37,15 +37,27 @@ data class SchemesFetch(
  */
 object XimeIndexSource {
     private const val TAG = "XimeIndexSource"
-    // 默认端点，会被 xime.yaml 中的值覆盖
     private val defaultBaseUrls = listOf("https://index.ximei.me/")
 
     private var baseUrls: List<String> = defaultBaseUrls
+    private var mirrors: List<String> = buildMirrors(defaultBaseUrls)
 
-    /** 构建完整镜像列表：直接使用用户配置的 base_urls。 */
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .followRedirects(true)
+        .build()
+
+    private val DownloadItem.fileName: String
+        get() = url.substringAfterLast('/').takeIf { it.isNotBlank() }
+            ?: "file.${url.substringAfterLast('.').takeIf { it.length in 1..6 } ?: "bin"}"
+
+    private val DownloadItem.sizeBytes: Long
+        get() = size.removeSuffix(" MB").trim().toDoubleOrNull()
+            ?.let { (it * 1024.0 * 1024.0).toLong() } ?: 0L
+
     private fun buildMirrors(userUrls: List<String>): List<String> = userUrls
 
-    /** 从 xime.yaml 加载 xime-index 配置。每次网络请求前调用以确保使用最新配置。 */
     private fun ensureConfigured(context: Context) {
         val cfg = KeysConfigHelper.loadXimeIndexConfig(context)
         if (cfg.baseUrls != baseUrls) {
@@ -54,14 +66,6 @@ object XimeIndexSource {
             Log.d(TAG, "XimeIndex configured: baseUrls=$baseUrls")
         }
     }
-
-    private var mirrors: List<String> = buildMirrors(defaultBaseUrls)
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(15, TimeUnit.SECONDS)
-        .readTimeout(20, TimeUnit.SECONDS)
-        .followRedirects(true)
-        .build()
 
     /** 镜像 base → 展示用主机名（如 index.ximei.me / fastly.jsdelivr.net）。 */
     private fun hostOf(base: String): String =
@@ -140,46 +144,31 @@ object XimeIndexSource {
             return@withContext InstallResult(false, failureReason = "缺少下载地址")
         }
 
-        // 汇总所有文件的校验状态
-        var anyFailed = false
-        var anyMismatch = false
-        var anyVerified = false
-
-        data class DlItem(val item: DownloadItem, val fileName: String, val sizeBytes: Long)
-        val items = v.downloadUrls.filter { it.url.isNotBlank() }.map { dl ->
-            val fn = dl.url.substringAfterLast('/').takeIf { it.isNotBlank() }
-                ?: "file.${dl.url.substringAfterLast('.').takeIf { it.length in 1..6 } ?: "bin"}"
-            val bytes = dl.size.removeSuffix(" MB").trim().toDoubleOrNull()
-                ?.let { (it * 1024.0 * 1024.0).toLong() } ?: 0L
-            DlItem(dl, fn, bytes)
-        }
+        val items = v.downloadUrls.filter { it.url.isNotBlank() }
         val totalBytesAll = items.sumOf { it.sizeBytes }
         var accumulatedBytes = 0L
+        var anyVerified = false
 
-        for ((dl, fn, sz) in items) {
+        for (dl in items) {
             val result = SchemaManager.downloadToMarket(
-                context, dl.url, scheme.id, fn, dl.sha256.takeIf { it.isNotBlank() },
+                context, dl.url, scheme.id, dl.fileName, dl.sha256.takeIf { it.isNotBlank() },
                 onProgress = { read, _ ->
-                    // 跨文件合并进度：前序文件已下载完 + 当前文件进度
                     val overall = accumulatedBytes + read
                     if (totalBytesAll > 0) onDownloadProgress(overall, totalBytesAll)
                 },
             )
-            accumulatedBytes += sz
+            accumulatedBytes += dl.sizeBytes
             if (!result.success) {
-                anyFailed = true
-                if (result.sha256Verified == false) anyMismatch = true
+                val schemeDir = SchemaManager.getMarketDir(context, scheme.id)
+                if (schemeDir.exists()) schemeDir.deleteRecursively()
+                val reason = if (result.sha256Verified == false)
+                    "文件校验失败（sha256 不匹配），文件可能不完整" else "下载失败"
+                return@withContext InstallResult(
+                    false, failureReason = reason, sha256Status = result.sha256Verified
+                )
             } else if (result.sha256Verified == true) {
                 anyVerified = true
             }
-        }
-
-        if (anyFailed) {
-            val reason = when {
-                anyMismatch -> "文件校验失败（sha256 不匹配），部分文件可能不完整"
-                else -> "下载失败"
-            }
-            return@withContext InstallResult(false, failureReason = reason, sha256Status = if (anyMismatch) false else null)
         }
         InstallResult(success = true, sha256Status = if (anyVerified) true else null)
     }
@@ -200,14 +189,24 @@ object XimeIndexSource {
         val ok = SchemaManager.installFromMarketToRime(context, scheme.id)
         if (!ok) return@withContext InstallResult(false, failureReason = "安装失败")
 
-        // 找到新落盘的真实 rime schema id
         val after = SchemaManager.discoverSchemas(context).map { it.schemaId }.toSet()
-        val newSchemaId = (after - before).firstOrNull() ?: scheme.id
+        val newIds = after - before
+        val installedSchemaId = when {
+            scheme.id in newIds -> scheme.id
+            newIds.size == 1 -> newIds.first()
+            newIds.isNotEmpty() -> {
+                Log.w(TAG, "installFromMarket ${scheme.id}: multiple new schemas detected: $newIds, using ${newIds.first()}")
+                newIds.first()
+            }
+            else -> {
+                Log.w(TAG, "installFromMarket ${scheme.id}: no new schema detected, falling back to market id")
+                scheme.id
+            }
+        }
 
-        // 依赖补齐
         val completion = RimeDependencyResolver.complete(
             context = context,
-            schemaId = newSchemaId,
+            schemaId = installedSchemaId,
             dependencies = scheme.dependencies,
             resolveUrl = resolveDepUrl,
         )
