@@ -17,6 +17,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 
@@ -32,6 +34,7 @@ fun FloatingKeyboardContainer(
     backgroundColor: Color = Color.Transparent,
     onDrag: (dx: Float, dy: Float) -> Unit,
     onDragEnd: () -> Unit,
+    onCardPositioned: ((left: Int, top: Int, right: Int, bottom: Int) -> Unit)? = null,
     keyboardContent: @Composable () -> Unit,
 ) {
     if (!isFloatingMode) {
@@ -52,7 +55,19 @@ fun FloatingKeyboardContainer(
                 .offset(x = offsetX.dp, y = (-safeOffsetY).dp)
                 .shadow(12.dp, RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
-
+                .then(
+                    if (onCardPositioned != null) {
+                        Modifier.onGloballyPositioned { coordinates ->
+                            val bounds = coordinates.boundsInRoot()
+                            onCardPositioned(
+                                bounds.left.toInt(),
+                                bounds.top.toInt(),
+                                bounds.right.toInt(),
+                                bounds.bottom.toInt()
+                            )
+                        }
+                    } else Modifier
+                )
         ) {
             Column {
                 DragBar(

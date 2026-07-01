@@ -137,6 +137,9 @@ fun KeyboardView(
         backgroundColor = keyboardBgColor,
         onDrag = { dx, dy -> callbacks.onFloatingKeyboardDrag?.invoke(dx, dy) },
         onDragEnd = { callbacks.onFloatingKeyboardDragEnd?.invoke() },
+        onCardPositioned = { left, top, right, bottom ->
+            callbacks.onFloatingCardPositioned?.invoke(left, top, right, bottom)
+        },
     ) {
     Box(modifier = contentModifier) {
         Column(

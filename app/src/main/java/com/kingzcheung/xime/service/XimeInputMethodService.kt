@@ -168,6 +168,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private var isChineseMode = true
     private var currentEffectiveKeyboardHeight: Int = 0
     private var previousSchemaId: String = ""
+    private val floatingCardBounds = IntArray(4) { -1 }
     
     private val calculatorEngine = com.kingzcheung.xime.calculator.CalculatorEngine()
 
@@ -678,7 +679,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                         Log.d(TAG, "HeightSync: mode=${if (state.showKeyboardResize) "resize" else "normal"} height=$contentHeight navBarDp=${navBarDp.value} padding=${state.keyboardBottomPaddingDp} hasNavBar=$hasNavBar totalDp=$totalDp")
                         SideEffect {
                             keyboardContainer.updateHeight(totalDp)
-                            currentEffectiveKeyboardHeight = if (state.isFloatingMode) floatingCardContentHeight + 48
+                            currentEffectiveKeyboardHeight = if (state.isFloatingMode) floatingCardContentHeight + 50 + state.keyboardBottomPaddingDp
                                 else if (state.isCompact) HARDWARE_CANDIDATE_BAR_HEIGHT
                                 else effectiveKeyboardHeight
                         }
@@ -920,6 +921,12 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                         val isLandscape = resources.configuration.screenWidthDp > resources.configuration.screenHeightDp
                                         SettingsPreferences.setFloatingOffsetX(this@XimeInputMethodService, s.floatingOffsetX, isLandscape)
                                         SettingsPreferences.setFloatingOffsetY(this@XimeInputMethodService, s.floatingOffsetY, isLandscape)
+                                    },
+                                    onFloatingCardPositioned = { left, top, right, bottom ->
+                                        floatingCardBounds[0] = left
+                                        floatingCardBounds[1] = top
+                                        floatingCardBounds[2] = right
+                                        floatingCardBounds[3] = bottom
                                     },
                                 )
                             }
@@ -2332,6 +2339,9 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private fun toggleFloatingMode(enabled: Boolean, navBarDp: Int = 0) {
         val effectiveNavBarDp = navBarDp.coerceAtLeast(tryGetNavBarHeightDp())
         Log.d(TAG, "toggleFloatingMode: $enabled navBarDp=$navBarDp effective=$effectiveNavBarDp")
+        if (!enabled) {
+            floatingCardBounds.fill(-1)
+        }
         val isLandscape = resources.configuration.screenWidthDp > resources.configuration.screenHeightDp
         SettingsPreferences.setFloatingMode(this, enabled, isLandscape)
         SettingsPreferences.setFloatingMode(this, enabled, !isLandscape)
@@ -2389,17 +2399,28 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 val loc = IntArray(2)
                 decor.getLocationOnScreen(loc)
                 val density = resources.displayMetrics.density
-                val cardWidthPx = (decor.width * 0.85f).toInt()
-                val leftPaddingPx = ((decor.width - cardWidthPx) / 2f).toInt()
-                val offsetXPx = (state.floatingOffsetX * density).toInt()
-                val cardHeightPx = (currentEffectiveKeyboardHeight * density).toInt()
-                val offsetYPx = (state.floatingOffsetY * density).toInt()
-                touchableRegion.set(
-                    loc[0] + leftPaddingPx + offsetXPx,
-                    loc[1] + decor.height - cardHeightPx - offsetYPx,
-                    loc[0] + leftPaddingPx + offsetXPx + cardWidthPx,
-                    loc[1] + decor.height - offsetYPx
-                )
+
+                val fb = floatingCardBounds
+                if (fb[0] >= 0 && fb[1] >= 0 && fb[2] > fb[0] && fb[3] > fb[1]) {
+                    touchableRegion.set(
+                        loc[0] + fb[0],
+                        loc[1] + fb[1],
+                        loc[0] + fb[2],
+                        loc[1] + fb[3],
+                    )
+                } else {
+                    val cardWidthPx = (decor.width * 0.85f).toInt()
+                    val leftPaddingPx = ((decor.width - cardWidthPx) / 2f).toInt()
+                    val offsetXPx = (state.floatingOffsetX * density).toInt()
+                    val cardHeightPx = (currentEffectiveKeyboardHeight * density).toInt()
+                    val offsetYPx = (state.floatingOffsetY * density).toInt()
+                    touchableRegion.set(
+                        loc[0] + leftPaddingPx + offsetXPx,
+                        loc[1] + decor.height - cardHeightPx - offsetYPx,
+                        loc[0] + leftPaddingPx + offsetXPx + cardWidthPx,
+                        loc[1] + decor.height - offsetYPx
+                    )
+                }
             }
         } else {
             super.onComputeInsets(outInsets)
