@@ -177,7 +177,6 @@ fun CandidatePage(
                 Column(
                     modifier = Modifier
                         .verticalScroll(rememberScrollState())
-                        .padding(bottom = 40.dp)
                 ) {
                     if (state.candidates.isNotEmpty()) {
                         FlowRow(
