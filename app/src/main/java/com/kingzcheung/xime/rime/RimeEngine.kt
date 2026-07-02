@@ -154,26 +154,25 @@ class RimeEngine {
 
     fun ensureSession(timeoutMs: Long = 60000L): Boolean {
         if (!isInitialized) return false
-        synchronized(rimeLock) {
-            if (nativeHasSession() && getAvailableSchemas().isNotEmpty()) return true
 
-            // 先等编译完成再创建 session（编译可能在后台进行）
-            var waited = 0L
-            while (nativeIsMaintaining() && waited < timeoutMs) {
-                try {
-                    Thread.sleep(100)
-                } catch (_: InterruptedException) {
-                    return false
-                }
-                waited += 100
-                if (waited % 5000 == 0L) {
-                    Log.d(TAG, "ensureSession: waiting for maintenance... (${waited / 1000}s)")
-                }
+        // Quick check without lock — native calls are thread-safe reads
+        if (nativeHasSession() && getAvailableSchemas().isNotEmpty()) return true
+
+        // 等待编译完成（不持有 rimeLock，避免阻塞主线程 UI 操作）
+        var waited = 0L
+        while (nativeIsMaintaining() && waited < timeoutMs) {
+            try {
+                Thread.sleep(1000)
+            } catch (_: InterruptedException) {
+                return false
             }
-            // 编译完成后尝试创建 session
+            waited += 1000
+            Log.d(TAG, "ensureSession: waiting for maintenance... (${waited / 1000}s)")
+        }
+
+        synchronized(rimeLock) {
             waited = 0L
             while (waited < timeoutMs) {
-                // 先创建 session（get_schema_list 需要 session 才能读取方案列表）
                 if (!nativeHasSession()) {
                     nativeCreateSession()
                 }
@@ -182,14 +181,12 @@ class RimeEngine {
                     return true
                 }
                 try {
-                    Thread.sleep(100)
+                    Thread.sleep(1000)
                 } catch (_: InterruptedException) {
                     return false
                 }
-                waited += 100
-                if (waited % 5000 == 0L) {
-                    Log.d(TAG, "ensureSession: waiting for schemas... (${waited / 1000}s)")
-                }
+                waited += 1000
+                Log.d(TAG, "ensureSession: waiting for schemas... (${waited / 1000}s)")
             }
             Log.w(TAG, "ensureSession: schemas not available after ${timeoutMs}ms, deployment may still be running")
             return false
@@ -197,14 +194,12 @@ class RimeEngine {
     }
 
     fun isMaintaining(): Boolean {
-        synchronized(rimeLock) {
-            return nativeIsMaintaining()
-        }
+        return nativeIsMaintaining()
     }
 
     fun getCurrentSchema(): String {
+        if (!nativeHasSession()) return ""
         synchronized(rimeLock) {
-            if (!nativeHasSession()) return ""
             return nativeGetCurrentSchema() ?: ""
         }
     }
@@ -312,6 +307,7 @@ class RimeEngine {
     }
 
     fun clearComposition() {
+        if (!nativeHasSession()) return
         synchronized(rimeLock) {
             nativeClearComposition()
         }

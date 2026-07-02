@@ -2461,6 +2461,9 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             // 用户自定义候选词数：先写 custom.yaml 再切方案，Rime 会自动加载
             applyPageSizeSetting(schemaId)
             rimeEngine.switchSchema(schemaId)
+            if (!rimeEngine.isAsciiMode()) {
+                rimeEngine.setOption("ascii_punct", false)
+            }
             updateSchemaName()
             updateUI()
             Toast.makeText(this, "已切换输入方案", Toast.LENGTH_SHORT).show()

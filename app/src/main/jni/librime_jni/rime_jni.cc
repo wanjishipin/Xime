@@ -552,6 +552,16 @@ public:
             session_id_ = 0;
         }
         
+        // 删除 installation.yaml 以强制触发完整编译
+        // librime 的 RimeStartMaintenance 中 installation_update 任务在
+        // 检测到 installation.yaml 已存在且版本匹配时会返回 false，
+        // 导致不调度任何编译任务直接返回
+        std::string install_yaml(user_data_dir_ + "/installation.yaml");
+        if (access(install_yaml.c_str(), F_OK) == 0) {
+            LOGI("Removing existing installation.yaml to force full deployment");
+            remove(install_yaml.c_str());
+        }
+        
         rime->start_maintenance(true);
         
         // 等待部署完成（不设超时，大词库编译可能很久）

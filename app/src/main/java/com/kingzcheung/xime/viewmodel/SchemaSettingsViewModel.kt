@@ -4,6 +4,7 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import android.util.Log
 import com.kingzcheung.xime.rime.RimeConfigHelper
 import com.kingzcheung.xime.rime.RimeEngine
 import com.kingzcheung.xime.settings.KeysConfigHelper
@@ -30,6 +31,7 @@ data class SchemaUiState(
 
 class SchemaSettingsViewModel(application: Application) : AndroidViewModel(application) {
     private val context = application.applicationContext
+    private val TAG = "SchemaSettingsViewModel"
 
     private val _uiState = MutableStateFlow(SchemaUiState())
     val uiState: StateFlow<SchemaUiState> = _uiState.asStateFlow()
@@ -144,7 +146,6 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
         viewModelScope.launch {
             _uiState.update { it.copy(isDeploying = true) }
             val success = withContext(Dispatchers.IO) {
-                // 部署前重新加载 xime 手势配置和配色方案（用户可能更新了 xime.custom.yaml）
                 KeysConfigHelper.loadConfig(context)
                 KeyboardThemes.reload(context)
                 val engine = RimeEngine.getInstance()
