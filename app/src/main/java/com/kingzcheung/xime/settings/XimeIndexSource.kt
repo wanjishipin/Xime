@@ -53,7 +53,7 @@ object XimeIndexSource {
             ?: "file.${url.substringAfterLast('.').takeIf { it.length in 1..6 } ?: "bin"}"
 
     private val DownloadItem.sizeBytes: Long
-        get() = size.removeSuffix(" MB").trim().toDoubleOrNull()
+        get() = size?.removeSuffix(" MB")?.trim()?.toDoubleOrNull()
             ?.let { (it * 1024.0 * 1024.0).toLong() } ?: 0L
 
     private fun buildMirrors(userUrls: List<String>): List<String> = userUrls
@@ -155,7 +155,7 @@ object XimeIndexSource {
 
         for (dl in items) {
             val result = SchemaManager.downloadToMarket(
-                context, dl.url, scheme.id, dl.fileName, dl.sha256.takeIf { it.isNotBlank() },
+                context, dl.url, scheme.id, dl.fileName, dl.sha256?.takeIf { it.isNotBlank() },
                 onProgress = { read, _ ->
                     val overall = accumulatedBytes + read
                     if (totalBytesAll > 0) onDownloadProgress(overall, totalBytesAll)

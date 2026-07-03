@@ -74,8 +74,8 @@ data class MarketScheme(
 @Serializable
 data class DownloadItem(
     val url: String = "",
-    val sha256: String = "",
-    val size: String = "",
+    val sha256: String? = null,
+    val size: String? = null,
 )
 
 @Serializable

@@ -369,9 +369,13 @@ private fun SchemeCard(
             }
             Spacer(Modifier.height(10.dp))
             val versionForSize = scheme.versions.firstOrNull { it.version == selectedVersion }
-            val sizeLabel = versionForSize?.size?.ifBlank {
-                versionForSize.downloadUrls.firstOrNull { it.size.isNotBlank() }?.size
-            }
+            val totalBytes = versionForSize?.downloadUrls?.sumOf { dl ->
+                dl.size?.removeSuffix(" MB")?.trim()?.toDoubleOrNull()
+                    ?.let { (it * 1024.0 * 1024.0).toLong() } ?: 0L
+            } ?: 0L
+            val sizeLabel = if (totalBytes > 0) {
+                "%.1f MB".format(totalBytes / (1024.0 * 1024.0))
+            } else null
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
