@@ -2519,6 +2519,12 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             }
             updateSchemaName()
             updateUI()
+            // 确保键盘布局与方案匹配（如 T9 九键不应被 switchMain 重置为全键盘）
+            keyboardViewModel.dispatch(
+                com.kingzcheung.xime.ui.keyboard.KeyboardDispatchAction.AsciiModeChanged(
+                    rimeEngine.isAsciiMode(), schemaId
+                )
+            )
             Toast.makeText(this, "已切换输入方案", Toast.LENGTH_SHORT).show()
             Log.d(TAG, "Switched to schema: $schemaId")
         } catch (e: Exception) {
