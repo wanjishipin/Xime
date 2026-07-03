@@ -16,7 +16,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -141,6 +143,9 @@ fun NumberKeyboardLayout(
                         .weight(1f)
                         .fillMaxHeight()
                 ) {
+                    CompositionLocalProvider(
+                        LocalKeyVisualPadding provides PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    ) {
                     NumberRows(
                         onKeyPress = onKeyPress,
                         keyBackgroundColor = keyBackgroundColor,
@@ -163,17 +168,20 @@ fun NumberKeyboardLayout(
                             )
                         }
                     )
+                    }
                 }
             }
         } else {
             // 竖屏：原有布局
+            CompositionLocalProvider(
+                LocalKeyVisualPadding provides PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+            ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight()
                     .background(keyboardBackgroundColor)
                     .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 NumberRows(
                     onKeyPress = onKeyPress,
@@ -196,6 +204,7 @@ fun NumberKeyboardLayout(
                             bottom = bounds.bottom - keyboardBounds.top
                         )
                     })
+            }
             }
         }
 
@@ -282,13 +291,11 @@ private fun NumberRows(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(3f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf("1", "2", "3").forEach { key ->
                             KeyButton(
@@ -310,7 +317,6 @@ private fun NumberRows(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
 
                         listOf("4", "5", "6").forEach { key ->
@@ -333,7 +339,6 @@ private fun NumberRows(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf("7", "8", "9").forEach { key ->
                             KeyButton(
@@ -356,7 +361,6 @@ private fun NumberRows(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
 
                         KeyButton(
@@ -400,7 +404,6 @@ private fun NumberRows(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     SwipeableIconKeyButton(
                         icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),

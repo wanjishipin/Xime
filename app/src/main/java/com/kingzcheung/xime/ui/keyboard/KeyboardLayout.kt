@@ -265,7 +265,7 @@ fun KeyboardLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.Top,
                 ) {
                     // 第一行
                     if (isVoiceMode) {
@@ -378,7 +378,7 @@ fun KeyboardLayout(
                                 backgroundColor = specialKeyBackgroundColor,
                                 iconColor = keyTextColor,
                                 modifier = Modifier
-                                    .padding(2.dp,0.dp)
+                                    .padding(2.dp,4.dp)
                                     .weight(1.4f)
                                     .fillMaxHeight(),
                                 shadowEnabled = shadowEnabled,
@@ -391,7 +391,6 @@ fun KeyboardLayout(
                                         .weight(7f)
                                         .fillMaxHeight()
                                         .background(keyboardBackgroundColor),
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                 val bottomKeys = listOf("z", "x", "c", "v", "b", "n", "m")
                                 bottomKeys.forEach { key ->
@@ -523,7 +522,6 @@ fun KeyboardLayout(
                             .fillMaxWidth()
                             .weight(1f)
                             .background(keyboardBackgroundColor),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         if (isVoiceMode) {
                             DummyKeyButton(
@@ -658,99 +656,22 @@ fun KeyboardLayout(
                             }
                         }
 
-                        // 空格键 - 支持长按语音（硬编码）
-                        val currentOnKeyPress by rememberUpdatedState(onKeyPress)
-                        val currentOnKeyPressDown by rememberUpdatedState(onKeyPressDown)
-                        val currentOnKeyRelease by rememberUpdatedState(onKeyRelease)
-                        val currentOnVoiceModeChange by rememberUpdatedState(onVoiceModeChange)
-                        val scope = rememberCoroutineScope()
-                        val spaceShadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-                            if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
-                            else Modifier
-                        }
-                        Box(
-                            modifier = Modifier
-                                .weight(3f)
-                                .fillMaxHeight()
-                                .pointerInput(isSttEnabled) {
-                                    awaitEachGesture {
-                                        awaitFirstDown(requireUnconsumed = false)
-                                        currentOnKeyPressDown?.invoke("space")
-
-                                        var longPressTriggered = false
-                                        val longPressJob = scope.launch {
-                                            delay(400)
-                                            longPressTriggered = true
-
-                                            if (isSttEnabled) {
-                                                if (!PermissionHelper.hasRecordAudioPermission(context)) {
-                                                    Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
-                                                    PermissionHelper.requestRecordAudioPermission(context)
-                                                } else {
-                                                    currentOnVoiceModeChange?.invoke(true)
-                                                }
-                                            } else {
-                                                while (true) {
-                                                    currentOnKeyPress("space")
-                                                    delay(80)
-                                                }
-                                            }
-                                        }
-
-                                        waitForUpOrCancellation()
-                                        longPressJob.cancel()
-                                        currentOnKeyRelease?.invoke("space")
-
-                                        if (!longPressTriggered) {
-                                            currentOnKeyPress("space")
-                                        }
-                                    }
-                                }
-                                .padding(horizontal = 2.dp, vertical = 0.dp)
-                                .fillMaxWidth()
-                                .fillMaxHeight()
-                                .then(spaceShadowModifier)
-                                .clip(RoundedCornerShape(shadowShapeRadius))
-                                .background(keyBackgroundColor),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isVoiceMode) {
-                                Icon(
-                                    imageVector = Icons.Default.Mic,
-                                    contentDescription = "语音输入",
-                                    tint = keyTextColor,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            } else {
-                                Text(
-                                    text = if (isAsciiMode) "English" else schemaName,
-                                    color = keyTextColor,
-                                    fontSize = 14.sp,
-                                    fontWeight = androidx.compose.ui.text.font.FontWeight.Normal,
-                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                                    maxLines = 1
-                                )
-
-                                if (isSttEnabled) {
-                                    Icon(
-                                        painter = painterResource(com.kingzcheung.xime.R.drawable.voice),
-                                        contentDescription = "语音输入",
-                                        tint = keyTextColor.copy(alpha = 0.3f),
-                                        modifier = Modifier.size(18.dp).align(Alignment.BottomStart).padding(start = 6.dp, bottom = 2.dp)
-                                    )
-                                } else {
-                                    Text(
-                                        text = "空格",
-                                        color = keyTextColor.copy(alpha = 0.3f),
-                                        fontSize = 10.sp,
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.Normal,
-                                        textAlign = androidx.compose.ui.text.style.TextAlign.Start,
-                                        maxLines = 1,
-                                        modifier = Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = 2.dp)
-                                    )
-                                }
-                            }
-                        }
+                        SpaceKey(
+                            schemaName = schemaName,
+                            isAsciiMode = isAsciiMode,
+                            isSttEnabled = isSttEnabled,
+                            isVoiceMode = isVoiceMode,
+                            keyBackgroundColor = keyBackgroundColor,
+                            keyTextColor = keyTextColor,
+                            shadowEnabled = shadowEnabled,
+                            shadowElevation = shadowElevation,
+                            shadowShapeRadius = shadowShapeRadius,
+                            modifier = Modifier.weight(3f),
+                            onKeyPress = onKeyPress,
+                            onKeyPressDown = onKeyPressDown,
+                            onKeyRelease = onKeyRelease,
+                            onVoiceModeChange = onVoiceModeChange,
+                        )
 
                         // 中/英切换 + 回车（硬编码 + 配置驱动）
                         if (isVoiceMode) {
@@ -994,7 +915,6 @@ fun KeyboardRowWithConfig(
         modifier = modifier
             .fillMaxWidth()
             .background(config.keyboardBackgroundColor),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         keys.forEach { key ->
             val rawSwipeUpLabel = KeysConfigHelper.getSwipeUpLabel(key, isAsciiMode)
@@ -1363,7 +1283,7 @@ private fun LandscapeKeyboardContent(
                     onKeyPressDown = onKeyPressDown,
                     backgroundColor = specialKeyBackgroundColor,
                     iconColor = keyTextColor,
-                    modifier = Modifier.weight(1.2f),
+                    modifier = Modifier.padding(2.dp,4.dp).weight(1.2f),
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
                         shadowShapeRadius = shadowShapeRadius,
@@ -1381,11 +1301,7 @@ private fun LandscapeKeyboardContent(
                         IconKeyButton(
                             icon = rememberVectorPainter(Icons.Default.Language),
                             onClick = {
-                                if (k2Action != GestureAction.COMMIT) {
-                                    onGestureAction.invoke(k2Action, k2Tap)
-                                } else {
-                                    onKeyPress(k2Tap)
-                                }
+                                onGestureAction.invoke(k2Action, k2Tap)
                             },
                             backgroundColor = keyBackgroundColor,
                             iconColor = keyTextColor,
@@ -2134,5 +2050,119 @@ private fun SplitSpaceKey(
                 .align(Alignment.BottomStart)
                 .padding(start = 6.dp, bottom = 2.dp)
         )
+    }
+}
+
+/** QWERTY 空格键 */
+@Composable
+private fun SpaceKey(
+    schemaName: String,
+    isAsciiMode: Boolean,
+    isSttEnabled: Boolean,
+    isVoiceMode: Boolean,
+    keyBackgroundColor: Color,
+    keyTextColor: Color,
+    shadowEnabled: Boolean,
+    shadowElevation: Dp,
+    shadowShapeRadius: Dp,
+    modifier: Modifier = Modifier,
+    onKeyPress: (String) -> Unit,
+    onKeyPressDown: ((String) -> Unit)?,
+    onKeyRelease: ((String) -> Unit)?,
+    onVoiceModeChange: ((Boolean) -> Unit)?,
+) {
+    val currentOnKeyPress by rememberUpdatedState(onKeyPress)
+    val currentOnKeyPressDown by rememberUpdatedState(onKeyPressDown)
+    val currentOnKeyRelease by rememberUpdatedState(onKeyRelease)
+    val currentOnVoiceModeChange by rememberUpdatedState(onVoiceModeChange)
+    val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
+        else Modifier
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .pointerInput(isSttEnabled) {
+                awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    currentOnKeyPressDown?.invoke("space")
+
+                    var longPressTriggered = false
+                    val longPressJob = scope.launch {
+                        delay(400)
+                        longPressTriggered = true
+
+                        if (isSttEnabled) {
+                            if (!PermissionHelper.hasRecordAudioPermission(context)) {
+                                Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
+                                PermissionHelper.requestRecordAudioPermission(context)
+                            } else {
+                                currentOnVoiceModeChange?.invoke(true)
+                            }
+                        } else {
+                            while (true) {
+                                currentOnKeyPress("space")
+                                delay(80)
+                            }
+                        }
+                    }
+
+                    waitForUpOrCancellation()
+                    longPressJob.cancel()
+                    currentOnKeyRelease?.invoke("space")
+
+                    if (!longPressTriggered) {
+                        currentOnKeyPress("space")
+                    }
+                }
+            }
+            .padding(LocalKeyVisualPadding.current)
+            .fillMaxWidth()
+            .fillMaxHeight()
+            .then(shadowModifier)
+            .clip(RoundedCornerShape(shadowShapeRadius))
+            .background(keyBackgroundColor),
+        contentAlignment = Alignment.Center
+    ) {
+        if (isVoiceMode) {
+            Icon(
+                imageVector = Icons.Default.Mic,
+                contentDescription = "语音输入",
+                tint = keyTextColor,
+                modifier = Modifier.size(24.dp)
+            )
+        } else {
+            Text(
+                text = if (isAsciiMode) "English" else schemaName,
+                color = keyTextColor,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Normal,
+                textAlign = TextAlign.Center,
+                maxLines = 1
+            )
+
+            if (isSttEnabled) {
+                Icon(
+                    painter = painterResource(com.kingzcheung.xime.R.drawable.voice),
+                    contentDescription = "语音输入",
+                    tint = keyTextColor.copy(alpha = 0.3f),
+                    modifier = Modifier.size(18.dp).align(Alignment.BottomStart).padding(start = 6.dp, bottom = 2.dp)
+                )
+            } else {
+                Text(
+                    text = "空格",
+                    color = keyTextColor.copy(alpha = 0.3f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Normal,
+                    textAlign = TextAlign.Start,
+                    maxLines = 1,
+                    modifier = Modifier.align(Alignment.BottomStart).padding(start = 6.dp, bottom = 2.dp)
+                )
+            }
+        }
     }
 }

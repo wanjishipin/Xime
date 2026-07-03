@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -26,6 +27,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -145,6 +147,9 @@ fun T9KeyboardLayout(
                 bubbleData?.let { drawSwipeBubble(it) }
             }
             .padding(bottom = if (isFloatingMode) 0.dp else 10.dp)) {
+        CompositionLocalProvider(
+            LocalKeyVisualPadding provides PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+        ) {
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -253,14 +258,12 @@ fun T9KeyboardLayout(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(3f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // 第1行
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     NineKeyButton(
                         digit = "1",
@@ -331,7 +334,6 @@ fun T9KeyboardLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     T9DigitKey(
                         digit = "4",
@@ -413,7 +415,6 @@ fun T9KeyboardLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     T9DigitKey(
                         digit = "7",
@@ -491,7 +492,6 @@ fun T9KeyboardLayout(
                 Row(modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                     KeyButton(
                         text = "123",
@@ -530,13 +530,12 @@ fun T9KeyboardLayout(
                     )
                 }
             }
-            Column(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                SwipeableIconKeyButton(
+                Column(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        .weight(1f),
+                ) {
+                    SwipeableIconKeyButton(
                     icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
                     onClick = { handleDelete() },
                     backgroundColor = specialKeyBackgroundColor,
@@ -582,9 +581,9 @@ fun T9KeyboardLayout(
                 )
             }
         }
+        }
     }
 }
-
 // ─── 九键数字键（可长按） ──────────────────────────────────────────────
 
 /**
@@ -722,7 +721,7 @@ private fun ResetKey(
     Box(
         modifier = modifier
             .fillMaxSize()
-//            .padding(horizontal = 2.dp, vertical = 4.25.dp)
+            .padding(horizontal = 2.dp, vertical = 4.dp)
             .then(shadowModifier)
             .clip(shape)
             .background(if (isPressed) backgroundColor.copy(alpha = 0.7f) else backgroundColor)
@@ -782,7 +781,7 @@ private fun T9SpaceKey(
     Box(
         modifier = modifier
             .fillMaxHeight()
-//            .padding(horizontal = 2.dp, vertical = 4.25.dp)
+            .padding(horizontal = 2.dp, vertical = 2.dp)
             .then(shadowModifier)
             .clip(shape)
             .background(backgroundColor)

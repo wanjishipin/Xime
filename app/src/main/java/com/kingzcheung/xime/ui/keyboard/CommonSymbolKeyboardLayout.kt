@@ -10,7 +10,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -85,18 +87,19 @@ fun CommonSymbolKeyboardLayout(
             }
             .padding(bottom = if (isFloatingMode) 0.dp else 10.dp),
     ) {
+        CompositionLocalProvider(
+            LocalKeyVisualPadding provides PaddingValues(horizontal = 2.dp, vertical = 4.dp)
+        ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .fillMaxHeight()
                 .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 (0..9).forEach { n ->
                     val digit = ((n+1)%10).toString()
@@ -119,7 +122,6 @@ fun CommonSymbolKeyboardLayout(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 row2Symbols.forEach { sym ->
                     KeyButton(
@@ -141,7 +143,6 @@ fun CommonSymbolKeyboardLayout(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 KeyButton(
                     text = "符号",
@@ -203,7 +204,6 @@ fun CommonSymbolKeyboardLayout(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 KeyButton(
                     text = "返回",
@@ -278,6 +278,7 @@ fun CommonSymbolKeyboardLayout(
                     fontSize = 14.sp,
                 )
             }
+        }
         }
     }
 }
