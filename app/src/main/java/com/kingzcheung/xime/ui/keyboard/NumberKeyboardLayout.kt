@@ -173,6 +173,7 @@ fun NumberKeyboardLayout(
                     .fillMaxHeight()
                     .background(keyboardBackgroundColor)
                     .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 NumberRows(
                     onKeyPress = onKeyPress,
@@ -234,14 +235,14 @@ private fun NumberRows(
             ) {
                 Column(
                     modifier = Modifier
-                        .padding(vertical = 2.dp)
+//                        .padding(vertical = 2.dp)
                         .fillMaxHeight()
                         .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .padding(top = 0.dp, bottom = 2.dp, start = 2.dp, end = 0.dp)
                             .weight(3f),
                     ) {
                         symbols.forEach { symbol ->
@@ -267,7 +268,7 @@ private fun NumberRows(
                             onClick = { onKeyPress("abc") },
                             backgroundColor = specialKeyBackgroundColor,
                             iconColor = keyTextColor,
-                            modifier = Modifier.padding(2.dp).weight(1f),
+                            modifier = Modifier.weight(1f),
                             onPress = { onKeyPressDown?.invoke("abc") },
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,
@@ -281,11 +282,13 @@ private fun NumberRows(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(3f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf("1", "2", "3").forEach { key ->
                             KeyButton(
@@ -298,7 +301,6 @@ private fun NumberRows(
                                 shadowElevation = shadowElevation,
                                 shadowShapeRadius = shadowShapeRadius,
                                 modifier = Modifier
-                                    .padding(2.dp)
                                     .weight(1f)
                             )
                         }
@@ -308,6 +310,7 @@ private fun NumberRows(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
 
                         listOf("4", "5", "6").forEach { key ->
@@ -321,7 +324,6 @@ private fun NumberRows(
                                 shadowElevation = shadowElevation,
                                 shadowShapeRadius = shadowShapeRadius,
                                 modifier = Modifier
-                                    .padding(2.dp)
                                     .weight(1f)
                             )
                         }
@@ -331,6 +333,7 @@ private fun NumberRows(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         listOf("7", "8", "9").forEach { key ->
                             KeyButton(
@@ -339,7 +342,6 @@ private fun NumberRows(
                                 backgroundColor = keyBackgroundColor,
                                 textColor = keyTextColor,
                                 modifier = Modifier
-                                    .padding(2.dp)
                                     .weight(1f),
                                 onPress = { onKeyPressDown?.invoke(key) },
                                 shadowEnabled = shadowEnabled,
@@ -354,6 +356,7 @@ private fun NumberRows(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
 
                         KeyButton(
@@ -361,7 +364,7 @@ private fun NumberRows(
                             onClick = { onKeyPress("symbol") },
                             backgroundColor = specialKeyBackgroundColor,
                             textColor = keyTextColor,
-                            modifier = Modifier.padding(2.dp).weight(1f),
+                            modifier = Modifier.weight(1f),
                             onPress = { onKeyPressDown?.invoke("symbol") },
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,
@@ -372,7 +375,7 @@ private fun NumberRows(
                             onClick = { onKeyPress("0") },
                             backgroundColor = keyBackgroundColor,
                             textColor = keyTextColor,
-                            modifier = Modifier.padding(2.dp).weight(1f),
+                            modifier = Modifier.weight(1f),
                             onPress = { onKeyPressDown?.invoke("0") },
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,
@@ -383,7 +386,7 @@ private fun NumberRows(
                             onClick = { onKeyPress(".") },
                             backgroundColor = keyBackgroundColor,
                             textColor = keyTextColor,
-                            modifier = Modifier.padding(2.dp).weight(1f),
+                            modifier = Modifier.weight(1f),
                             onPress = { onKeyPressDown?.invoke(".") },
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,
@@ -397,13 +400,14 @@ private fun NumberRows(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     SwipeableIconKeyButton(
                         icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
                         onClick = { onKeyPress("delete") },
                         backgroundColor = specialKeyBackgroundColor,
                         iconColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         swipeText = "清空",
                         onSwipe = { onKeyPress("clear_composition") },
                         onLongClick = { onKeyPress("delete") },
@@ -427,7 +431,7 @@ private fun NumberRows(
                         onClick = { onKeyPress("space") },
                         backgroundColor = specialKeyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("space") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -438,7 +442,7 @@ private fun NumberRows(
                         onClick = { onKeyPress("emoji") },
                         backgroundColor = specialKeyBackgroundColor,
                         iconColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("emoji") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -449,7 +453,7 @@ private fun NumberRows(
                         onClick = { onKeyPress("enter") },
                         backgroundColor = specialKeyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("enter") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,

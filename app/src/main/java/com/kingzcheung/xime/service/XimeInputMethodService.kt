@@ -1966,12 +1966,24 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                     calculatorEngine.clear()
                     updateCalculatorCandidates()
                 }
+                "number", "common_symbol" -> {
+                    // Number/CommonSymbol 内部切换由 KeyboardView 的 key handler 处理
+                }
                 "emoji" -> {
                     withContext(Dispatchers.Main) {
                         commitText("😊")
                     }
                 }
                 else -> {
+                    val layoutState = keyboardViewModel.keyboardState.value
+                    if (key.length == 1 && (layoutState is com.kingzcheung.xime.ui.keyboard.KeyboardLayoutState.Number || layoutState is com.kingzcheung.xime.ui.keyboard.KeyboardLayoutState.CommonSymbol)) {
+                        withContext(Dispatchers.Main) {
+                            commitText(key)
+                        }
+                        needsUIUpdate = true
+                        Log.d(TAG, "Number/Symbol keyboard: committed '$key' directly")
+                        return@launch
+                    }
                     val pendingEnglish = candState.pendingEnglishText
                     
                     // 非计算器键（如符号键盘的符号、全键盘的字母）清除计算器状态

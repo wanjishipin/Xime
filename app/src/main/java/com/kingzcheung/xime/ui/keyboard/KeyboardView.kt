@@ -64,6 +64,7 @@ fun KeyboardView(
     val isShifted by viewModel.isShifted.collectAsStateWithLifecycle()
     val keyboardState by viewModel.keyboardState.collectAsStateWithLifecycle()
     val page by viewModel.page.collectAsStateWithLifecycle()
+    val viewState by viewModel.viewState.collectAsStateWithLifecycle()
     val isLandscape = if (state.isFloatingMode) false
         else LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -74,20 +75,15 @@ fun KeyboardView(
     }
 
     LaunchedEffect(state.inputSessionId) {
-        when {
-            page !is KeyboardPage.Main -> viewModel.switchMain(MainType.FULL)
-            (page as KeyboardPage.Main).type == MainType.FULL -> {
-                if (keyboardState !is KeyboardLayoutState.Number) {
-                    viewModel.setKeyboardState(initialKeyboardLayoutState(state.isAsciiMode, state.currentSchemaId))
-                }
-            }
-        }
+        viewModel.dispatch(
+            KeyboardDispatchAction.InputSessionStarted(state.isAsciiMode, state.currentSchemaId)
+        )
     }
 
     LaunchedEffect(state.isAsciiMode, state.currentSchemaId) {
-        if (keyboardState is KeyboardLayoutState.Number) return@LaunchedEffect
-        val newState = initialKeyboardLayoutState(state.isAsciiMode, state.currentSchemaId)
-        viewModel.setKeyboardState(newState)
+        viewModel.dispatch(
+            KeyboardDispatchAction.AsciiModeChanged(state.isAsciiMode, state.currentSchemaId)
+        )
     }
 
     var savedNumberAsciiMode by remember { mutableStateOf<Boolean?>(null) }
@@ -119,7 +115,7 @@ fun KeyboardView(
         if (keyboardState is KeyboardLayoutState.Number) {
             if (savedNumberAsciiMode == null) {
                 savedNumberAsciiMode = state.isAsciiMode
-                if (!state.isAsciiMode) {
+                if (!state.isAsciiMode && page is KeyboardPage.Main) {
                     callbacks.onKeyPress("ime_switch", false)
                 }
             }

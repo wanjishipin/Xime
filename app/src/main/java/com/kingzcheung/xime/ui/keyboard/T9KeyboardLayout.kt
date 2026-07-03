@@ -157,13 +157,13 @@ fun T9KeyboardLayout(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // 左侧候选区：外层统一圆角/阴影，内部候选项无缝排列
                 Box(
                     modifier = Modifier
                         .fillMaxHeight()
                         .weight(3f)
-                        .padding(vertical = 2.dp)
                         .then(
                             if (shadowEnabled) {
                                 Modifier.shadow(
@@ -241,7 +241,7 @@ fun T9KeyboardLayout(
                     onClick = { onKeyPress("symbol") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp).weight(1f),
+                    modifier = Modifier.weight(1f),
                     onPress = { onKeyPressDown?.invoke("symbol") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -253,12 +253,14 @@ fun T9KeyboardLayout(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(3f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 // 第1行
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     NineKeyButton(
                         digit = "1",
@@ -266,7 +268,7 @@ fun T9KeyboardLayout(
                         onClick = { controller.onDigitPressed("1") },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("1") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -291,7 +293,7 @@ fun T9KeyboardLayout(
                         },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("2") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -315,7 +317,7 @@ fun T9KeyboardLayout(
                         },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("3") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -329,6 +331,7 @@ fun T9KeyboardLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     T9DigitKey(
                         digit = "4",
@@ -348,7 +351,7 @@ fun T9KeyboardLayout(
                         },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("4") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -372,7 +375,7 @@ fun T9KeyboardLayout(
                         },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("5") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -396,7 +399,7 @@ fun T9KeyboardLayout(
                         },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("6") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -410,6 +413,7 @@ fun T9KeyboardLayout(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     T9DigitKey(
                         digit = "7",
@@ -429,7 +433,7 @@ fun T9KeyboardLayout(
                         },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("7") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -453,7 +457,7 @@ fun T9KeyboardLayout(
                         },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("8") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -477,7 +481,7 @@ fun T9KeyboardLayout(
                         },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("9") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -486,13 +490,15 @@ fun T9KeyboardLayout(
                 }
                 Row(modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f),) {
+                    .weight(1f),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
                     KeyButton(
                         text = "123",
                         onClick = { onKeyPress("number") },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("mode_change") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -506,7 +512,7 @@ fun T9KeyboardLayout(
                         onVoiceModeChange = callbacks.onVoiceModeChange,
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1.8f),
+                        modifier = Modifier.weight(1.8f),
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
                         shadowShapeRadius = shadowShapeRadius,
@@ -516,7 +522,7 @@ fun T9KeyboardLayout(
                         onClick = { onKeyPress("ime_switch") },
                         backgroundColor = keyBackgroundColor,
                         iconColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke("ime_switch") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -528,13 +534,14 @@ fun T9KeyboardLayout(
                 modifier = Modifier
                     .fillMaxHeight()
                     .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 SwipeableIconKeyButton(
                     icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
                     onClick = { handleDelete() },
                     backgroundColor = specialKeyBackgroundColor,
                     iconColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp).weight(1f),
+                    modifier = Modifier.weight(1f),
                     swipeText = "清空",
                     onSwipe = { onKeyPress("clear_composition") },
                     onPress = { onKeyPressDown?.invoke("delete") },
@@ -557,7 +564,7 @@ fun T9KeyboardLayout(
                     onPress = { onKeyPressDown?.invoke("clear") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp).weight(1f),
+                    modifier = Modifier.weight(1f),
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
                     shadowShapeRadius = shadowShapeRadius,
@@ -567,7 +574,7 @@ fun T9KeyboardLayout(
                     onClick = { onKeyPress("enter") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp).weight(2f),
+                    modifier = Modifier.weight(2f),
                     onPress = { onKeyPressDown?.invoke("enter") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,

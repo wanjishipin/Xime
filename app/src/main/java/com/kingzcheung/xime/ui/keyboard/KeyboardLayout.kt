@@ -257,14 +257,14 @@ fun KeyboardLayout(
                     .fillMaxWidth()
                     .fillMaxHeight()
                     .background(keyboardBackgroundColor)
-                    .padding(start = 4.dp, end = 4.dp, bottom = 8.dp)
+                    .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
             ) {
 
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(KeyboardDimensions.RowSpacing),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     // 第一行
                     if (isVoiceMode) {
@@ -369,7 +369,7 @@ fun KeyboardLayout(
                                 backgroundColor = specialKeyBackgroundColor,
                                 iconColor = keyTextColor,
                                 modifier = Modifier
-                                    .padding(2.dp,4.dp)
+                                    .padding(2.dp,0.dp)
                                     .weight(1.4f)
                                     .fillMaxHeight(),
                                 shadowEnabled = shadowEnabled,
@@ -382,6 +382,7 @@ fun KeyboardLayout(
                                         .weight(7f)
                                         .fillMaxHeight()
                                         .background(keyboardBackgroundColor),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                 val bottomKeys = listOf("z", "x", "c", "v", "b", "n", "m")
                                 bottomKeys.forEach { key ->
@@ -455,7 +456,7 @@ fun KeyboardLayout(
                                         onClick = onClick,
                                         backgroundColor = keyBackgroundColor,
                                         textColor = keyTextColor,
-                                        modifier = Modifier.padding(2.dp,4.dp).weight(1f),
+                                        modifier = Modifier.weight(1f),
                                         swipeText = swipeUpText,
                                         swipeDownText = swipeDownBubbleText,
                                         swipeUpKeyLabel = swipeUpKeyLabel,
@@ -479,7 +480,7 @@ fun KeyboardLayout(
                                 backgroundColor = specialKeyBackgroundColor,
                                 iconColor = keyTextColor,
                                 modifier = Modifier
-                                    .padding(2.dp,4.dp)
+                                    .padding(2.dp,0.dp)
                                     .weight(1.4f)
                                     .fillMaxHeight(),
                                 swipeText = "清空",
@@ -510,6 +511,7 @@ fun KeyboardLayout(
                             .fillMaxWidth()
                             .weight(1f)
                             .background(keyboardBackgroundColor),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         if (isVoiceMode) {
                             DummyKeyButton(
@@ -527,7 +529,7 @@ fun KeyboardLayout(
                                 onClick = { onKeyPress("mode_change") },
                                 backgroundColor = specialKeyBackgroundColor,
                                 textColor = keyTextColor,
-                                modifier = Modifier.padding(2.dp,4.dp).weight(1.2f),
+                                modifier = Modifier.weight(1.2f),
                                 onPress = { onKeyPressDown?.invoke("mode_change") },
                                 onLongPressSelect = { label -> onKeyPress(if (label == "number") "mode_change_number" else "mode_change_common_symbol") },
                                 longPressItems = listOf("number", "common_symbol"),
@@ -610,7 +612,7 @@ fun KeyboardLayout(
                                     onClick = k2OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     iconColor = keyTextColor,
-                                    modifier = Modifier.padding(2.dp,4.dp).weight(0.8f),
+                                    modifier = Modifier.weight(0.8f),
                                     onPress = { onKeyPressDown?.invoke(k2TapValue) },
                                     shadowEnabled = shadowEnabled,
                                     shadowElevation = shadowElevation,
@@ -622,7 +624,7 @@ fun KeyboardLayout(
                                     onClick = k2OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     textColor = keyTextColor,
-                                    modifier = Modifier.padding(2.dp,4.dp).weight(0.8f),
+                                    modifier = Modifier.weight(0.8f),
                                     swipeText = k2SwipeUpLabel,
                                     swipeDownText = k2SwipeDownBubbleText,
                                     swipeDownKeyLabel = if (!isAsciiMode && (k2SwipeDownDisplay == DisplayMode.KEY || k2SwipeDownDisplay == DisplayMode.BOTH)) k2SwipeDownLabel else null,
@@ -687,7 +689,7 @@ fun KeyboardLayout(
                                         }
                                     }
                                 }
-                                .padding(horizontal = 2.dp, vertical = 4.dp)
+                                .padding(horizontal = 2.dp, vertical = 0.dp)
                                 .fillMaxWidth()
                                 .fillMaxHeight()
                                 .then(spaceShadowModifier)
@@ -816,7 +818,7 @@ fun KeyboardLayout(
                                     onClick = k4OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     iconColor = keyTextColor,
-                                    modifier = Modifier.padding(2.dp,4.dp).weight(0.8f),
+                                    modifier = Modifier.weight(0.8f),
                                     onPress = { onKeyPressDown?.invoke(k4TapValue) },
                                     shadowEnabled = shadowEnabled,
                                     shadowElevation = shadowElevation,
@@ -828,7 +830,7 @@ fun KeyboardLayout(
                                     onClick = k4OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     textColor = keyTextColor,
-                                    modifier = Modifier.padding(2.dp,4.dp).weight(0.8f),
+                                    modifier = Modifier.weight(0.8f),
                                     swipeText = k4SwipeUpLabel,
                                     swipeDownText = k4SwipeDownBubbleText,
                                     swipeDownKeyLabel = if (!isAsciiMode && (k4SwipeDownDisplay == DisplayMode.KEY || k4SwipeDownDisplay == DisplayMode.BOTH)) k4SwipeDownLabel else null,
@@ -852,7 +854,7 @@ fun KeyboardLayout(
                                 onClick = { onKeyPress("enter") },
                                 backgroundColor = specialKeyBackgroundColor,
                                 textColor = keyTextColor,
-                                modifier = Modifier.padding(2.dp,4.dp).weight(1.2f),
+                                modifier = Modifier.weight(1.2f),
                                 onPress = { onKeyPressDown?.invoke("enter") },
                                 shadowEnabled = shadowEnabled,
                                 shadowElevation = shadowElevation,
@@ -971,6 +973,7 @@ fun KeyboardRowWithConfig(
         modifier = modifier
             .fillMaxWidth()
             .background(config.keyboardBackgroundColor),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         keys.forEach { key ->
             val rawSwipeUpLabel = KeysConfigHelper.getSwipeUpLabel(key, isAsciiMode)
@@ -1042,7 +1045,7 @@ fun KeyboardRowWithConfig(
                 onClick = onClick,
                 backgroundColor = config.keyBackgroundColor,
                 textColor = config.keyTextColor,
-                modifier = Modifier.padding(2.dp,4.dp).weight(1f),
+                modifier = Modifier.weight(1f),
                 swipeText = swipeUpText,
                 swipeDownText = swipeDownBubbleText,
                 swipeUpKeyLabel = swipeUpKeyLabel,
@@ -1316,6 +1319,7 @@ private fun LandscapeKeyboardContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 ShiftCapsKeyButton(
                     shiftMode = visualShiftMode,
@@ -1382,7 +1386,7 @@ private fun LandscapeKeyboardContent(
                     backgroundColor = keyBackgroundColor,
                     textColor = keyTextColor,
                     schemaName = if (isAsciiMode) "English" else schemaName,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(3f),
+                    modifier = Modifier.weight(3f),
                     onPress = { onKeyPressDown?.invoke("space") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -1499,6 +1503,7 @@ private fun LandscapeKeyboardContent(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 SplitSpaceKey(
                     onClick = { onKeyPress("space") },
@@ -1516,7 +1521,7 @@ private fun LandscapeKeyboardContent(
                     onClick = { onKeyPress("mode_change") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(1.2f),
+                    modifier = Modifier.weight(1.2f),
                     onPress = { onKeyPressDown?.invoke("mode_change") },
                     onLongPressSelect = { label -> onKeyPress(if (label == "number") "mode_change_number" else "mode_change_common_symbol") },
                     longPressItems = listOf("number", "common_symbol"),

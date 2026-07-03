@@ -90,12 +90,13 @@ fun CommonSymbolKeyboardLayout(
                 .fillMaxWidth()
                 .fillMaxHeight()
                 .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(KeyboardDimensions.RowSpacing),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 (0..9).forEach { n ->
                     val digit = ((n+1)%10).toString()
@@ -104,7 +105,7 @@ fun CommonSymbolKeyboardLayout(
                         onClick = { onKeyPress(digit) },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp,4.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke(digit) },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -118,6 +119,7 @@ fun CommonSymbolKeyboardLayout(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 row2Symbols.forEach { sym ->
                     KeyButton(
@@ -125,7 +127,7 @@ fun CommonSymbolKeyboardLayout(
                         onClick = { onKeyPress(sym) },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp,4.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke(sym) },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -139,13 +141,14 @@ fun CommonSymbolKeyboardLayout(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 KeyButton(
                     text = "符号",
                     onClick = { onKeyPress("symbol") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(1.3f),
+                    modifier = Modifier.weight(1.3f),
                     onPress = { onKeyPressDown?.invoke("symbol") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -158,7 +161,7 @@ fun CommonSymbolKeyboardLayout(
                         onClick = { onKeyPress(sym) },
                         backgroundColor = keyBackgroundColor,
                         textColor = keyTextColor,
-                        modifier = Modifier.padding(2.dp,4.dp).weight(1f),
+                        modifier = Modifier.weight(1f),
                         onPress = { onKeyPressDown?.invoke(sym) },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -171,7 +174,7 @@ fun CommonSymbolKeyboardLayout(
                     onClick = { onKeyPress("delete") },
                     backgroundColor = specialKeyBackgroundColor,
                     iconColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(1.2f),
+                    modifier = Modifier.weight(1.2f),
                     swipeText = "清空",
                     onSwipe = { onKeyPress("clear_composition") },
                     onLongClick = { onKeyPress("delete") },
@@ -200,13 +203,14 @@ fun CommonSymbolKeyboardLayout(
                 modifier = Modifier
                     .fillMaxWidth()
                     .weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 KeyButton(
                     text = "返回",
                     onClick = { onKeyPress("abc") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(1.2f),
+                    modifier = Modifier.weight(1.2f),
                     onPress = { onKeyPressDown?.invoke("abc") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -218,7 +222,7 @@ fun CommonSymbolKeyboardLayout(
                     onClick = { onKeyPress("number") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(1.2f),
+                    modifier = Modifier.weight(1.2f),
                     onPress = { onKeyPressDown?.invoke("number") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -230,7 +234,7 @@ fun CommonSymbolKeyboardLayout(
                     onClick = { onKeyPress(commaChar) },
                     backgroundColor = keyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(1f),
+                    modifier = Modifier.weight(1f),
                     onPress = { onKeyPressDown?.invoke(commaChar) },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -242,7 +246,7 @@ fun CommonSymbolKeyboardLayout(
                     onClick = { onKeyPress("space") },
                     backgroundColor = keyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(2.5f),
+                    modifier = Modifier.weight(2.5f),
                     onPress = { onKeyPressDown?.invoke("space") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -254,7 +258,7 @@ fun CommonSymbolKeyboardLayout(
                     onClick = { onKeyPress(periodChar) },
                     backgroundColor = keyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(1f),
+                    modifier = Modifier.weight(1f),
                     onPress = { onKeyPressDown?.invoke(periodChar) },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
@@ -266,7 +270,7 @@ fun CommonSymbolKeyboardLayout(
                     onClick = { onKeyPress("enter") },
                     backgroundColor = specialKeyBackgroundColor,
                     textColor = keyTextColor,
-                    modifier = Modifier.padding(2.dp,4.dp).weight(1.2f),
+                    modifier = Modifier.weight(1.2f),
                     onPress = { onKeyPressDown?.invoke("enter") },
                     shadowEnabled = shadowEnabled,
                     shadowElevation = shadowElevation,
