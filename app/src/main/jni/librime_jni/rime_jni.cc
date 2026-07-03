@@ -759,7 +759,7 @@ Java_com_kingzcheung_xime_rime_RimeEngine_nativeInitialize(
     env->ReleaseStringUTFChars(shared_data_dir, shared_dir);
 }
 
-// 创建会话（参考 trime：startup 只初始化引擎，session 延迟创建）
+// 创建会话（startup 只初始化引擎，session 延迟创建）
 JNIEXPORT jboolean JNICALL
 Java_com_kingzcheung_xime_rime_RimeEngine_nativeCreateSession(
     JNIEnv* env,

@@ -10,6 +10,7 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.os.Build
 import android.view.MotionEvent
+import android.view.View
 import android.widget.FrameLayout
 import kotlin.random.Random
 
@@ -17,7 +18,7 @@ class VoiceKeyboardContainer(
     context: Context,
     private val uiStateProvider: () -> InputUIState,
     private val onUiStateChanged: (InputUIState) -> Unit,
-    private val onPerformVibration: () -> Unit,
+    private val onPerformVibration: (View) -> Unit,
     private val onPerformUndo: () -> Unit,
     private val onPerformSearch: () -> Unit,
     private val onStopRecognition: () -> Unit,
@@ -240,7 +241,7 @@ class VoiceKeyboardContainer(
                 when {
                     ev.x < leftButtonEnd -> {
                         if (!lastLeftActive) {
-                            onPerformVibration()
+                            onPerformVibration(this@VoiceKeyboardContainer)
                             lastLeftActive = true
                         }
                         onUiStateChanged(uiStateProvider().copy(
@@ -249,7 +250,7 @@ class VoiceKeyboardContainer(
                     }
                     ev.x > rightButtonStart -> {
                         if (!lastRightActive) {
-                            onPerformVibration()
+                            onPerformVibration(this@VoiceKeyboardContainer)
                             lastRightActive = true
                         }
                         onUiStateChanged(uiStateProvider().copy(
@@ -266,7 +267,7 @@ class VoiceKeyboardContainer(
                 }
             } else if (ev.x < leftButtonEnd) {
                 if (!lastLeftActive) {
-                    onPerformVibration()
+                    onPerformVibration(this@VoiceKeyboardContainer)
                     lastLeftActive = true
                 }
                 onUiStateChanged(uiStateProvider().copy(
@@ -274,7 +275,7 @@ class VoiceKeyboardContainer(
                 ))
             } else if (ev.x > rightButtonStart) {
                 if (!lastRightActive) {
-                    onPerformVibration()
+                    onPerformVibration(this@VoiceKeyboardContainer)
                     lastRightActive = true
                 }
                 onUiStateChanged(uiStateProvider().copy(

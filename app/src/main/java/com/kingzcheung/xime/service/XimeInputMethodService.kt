@@ -49,6 +49,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import com.kingzcheung.xime.ui.keyboard.LocalStretchFactor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -168,6 +169,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     private var isTrackingVoiceButtons = false
     private var voiceRecordingStarted = false
     private var pendingVoiceAction: (() -> Unit)? = null
+    private var composeViewRef: View? = null
     private var lastClearedText: String = ""
     /** 累积的 partial commit 文本列表（多段选词场景下逐段追加） */
     private val t9PartialCommitTexts = mutableListOf<String>()
@@ -630,7 +632,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             context = this,
             uiStateProvider = { uiState.value },
             onUiStateChanged = { newState -> uiState.value = newState },
-            onPerformVibration = { feedbackManager.performVibration() },
+            onPerformVibration = { view -> feedbackManager.hapticFeedback(view) },
             onPerformUndo = { pendingVoiceAction = { performUndo() } },
             onPerformSearch = { pendingVoiceAction = { performSearch() } },
             onStopRecognition = { voiceRecognitionHandler.stopRecognition() },
@@ -653,6 +655,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         val composeView = ComposeView(this).apply {
             isFocusable = true
             isFocusableInTouchMode = true
+            composeViewRef = this
             setContent {
                 val cand = candidateState.value
                 val state = uiState.value
@@ -802,19 +805,20 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                 t9RightCandidateSelectedCount = state.t9RightCandidateSelectedCount,
                                 t9SelectedCandidatePinyin = state.t9SelectedCandidatePinyin,
                             )
+                            val view = LocalView.current
                             val callbacks = remember(floatingMinY) {
                                 KeyboardCallbacks(
                                     onKeyPress = { key, isShifted ->
                                         handleKeyPress(key, isShifted)
                                     },
                                     onKeyPressDown = { key ->
-                                        feedbackManager.performKeyPressDownEffect(key)
+                                        feedbackManager.performKeyPressDownEffect(key, view)
                                     },
                                     onCandidateSelect = { index ->
                                         selectCandidate(index)
                                     },
                                     onAssociationSelect = { index ->
-                                        feedbackManager.performKeyPressEffect()
+                                        feedbackManager.performKeyPressEffect(view = view)
                                         val cs = candidateState.value
                                         val adjustedCandidates = if (cs.pendingEnglishText.isNotEmpty()) {
                                             listOf(cs.pendingEnglishText) + cs.associationCandidates
@@ -2270,7 +2274,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     }
 
     private fun selectCandidate(index: Int) {
-        feedbackManager.performKeyPressEffect()
+        composeViewRef?.let { feedbackManager.performKeyPressEffect(view = it) }
 
         // 计算器模式
         if (calculatorEngine.isActive()) {

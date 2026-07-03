@@ -177,7 +177,63 @@ object SettingsPreferences {
     fun setVibrationIntensity(context: Context, intensity: Int) {
         getPrefs(context).edit().putInt(KEY_VIBRATION_INTENSITY, intensity).apply()
     }
-    
+
+
+    private const val KEY_HAPTIC_MODE = "haptic_mode"
+    private const val KEY_HAPTIC_ON_KEYUP = "haptic_on_keyup"
+    private const val KEY_VIBRATION_PRESS_DURATION = "vibration_press_duration"
+    private const val KEY_VIBRATION_LONG_PRESS_DURATION = "vibration_long_press_duration"
+    private const val KEY_VIBRATION_PRESS_AMPLITUDE = "vibration_press_amplitude"
+    private const val KEY_VIBRATION_LONG_PRESS_AMPLITUDE = "vibration_long_press_amplitude"
+
+    fun getHapticMode(context: Context): String {
+        return getPrefs(context).getString(KEY_HAPTIC_MODE, "following_system") ?: "following_system"
+    }
+
+    fun setHapticMode(context: Context, mode: String) {
+        getPrefs(context).edit().putString(KEY_HAPTIC_MODE, mode).apply()
+    }
+
+    fun isHapticOnKeyUp(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_HAPTIC_ON_KEYUP, false)
+    }
+
+    fun setHapticOnKeyUp(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_HAPTIC_ON_KEYUP, enabled).apply()
+    }
+
+    fun getVibrationPressDuration(context: Context): Int {
+        return getPrefs(context).getInt(KEY_VIBRATION_PRESS_DURATION, 0)
+    }
+
+    fun setVibrationPressDuration(context: Context, duration: Int) {
+        getPrefs(context).edit().putInt(KEY_VIBRATION_PRESS_DURATION, duration).apply()
+    }
+
+    fun getVibrationLongPressDuration(context: Context): Int {
+        return getPrefs(context).getInt(KEY_VIBRATION_LONG_PRESS_DURATION, 0)
+    }
+
+    fun setVibrationLongPressDuration(context: Context, duration: Int) {
+        getPrefs(context).edit().putInt(KEY_VIBRATION_LONG_PRESS_DURATION, duration).apply()
+    }
+
+    fun getVibrationPressAmplitude(context: Context): Int {
+        return getPrefs(context).getInt(KEY_VIBRATION_PRESS_AMPLITUDE, 0)
+    }
+
+    fun setVibrationPressAmplitude(context: Context, amplitude: Int) {
+        getPrefs(context).edit().putInt(KEY_VIBRATION_PRESS_AMPLITUDE, amplitude).apply()
+    }
+
+    fun getVibrationLongPressAmplitude(context: Context): Int {
+        return getPrefs(context).getInt(KEY_VIBRATION_LONG_PRESS_AMPLITUDE, 0)
+    }
+
+    fun setVibrationLongPressAmplitude(context: Context, amplitude: Int) {
+        getPrefs(context).edit().putInt(KEY_VIBRATION_LONG_PRESS_AMPLITUDE, amplitude).apply()
+    }
+
     fun getKeyboardTheme(context: Context): String {
         return getPrefs(context).getString(KEY_KEYBOARD_THEME, defaultKeyboardTheme) ?: defaultKeyboardTheme
     }

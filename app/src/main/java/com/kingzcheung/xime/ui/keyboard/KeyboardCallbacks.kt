@@ -5,6 +5,7 @@ import com.kingzcheung.xime.keyboard.GestureAction
 data class KeyboardCallbacks(
     val onKeyPress: (String, Boolean) -> Unit,
     val onKeyPressDown: ((String) -> Unit)? = null,
+    val onKeyRelease: ((String) -> Unit)? = null,
     val onCandidateSelect: (Int) -> Unit,
     val onAssociationSelect: ((Int) -> Unit)? = null,
     val onClearAssociation: (() -> Unit)? = null,

@@ -304,6 +304,7 @@ fun SwipeableKeyButton(
     onSwipeDown: ((String) -> Unit)? = null,
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)? = null,
     onPress: (() -> Unit)? = null,
+    onRelease: (() -> Unit)? = null,
     onLongPressSelect: ((String) -> Unit)? = null,
     longPressItems: List<String>? = null,
     longPressDrawableIds: List<Int>? = null,
@@ -332,6 +333,7 @@ fun SwipeableKeyButton(
     val currentOnSwipeDown by rememberUpdatedState(onSwipeDown)
     val currentOnSwipeStateChange by rememberUpdatedState(onSwipeStateChange)
     val currentOnPress by rememberUpdatedState(onPress)
+    val currentOnRelease by rememberUpdatedState(onRelease)
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongPressSelect by rememberUpdatedState(onLongPressSelect)
     val currentLongPressItems by rememberUpdatedState(longPressItems)
@@ -371,6 +373,7 @@ fun SwipeableKeyButton(
                             currentOnClick()
                         }
                         isPressed = false
+                        currentOnRelease?.invoke()
                         dragOffsetX = 0f
                         dragOffsetY = 0f
                         hasTriggeredSwipeUp = false
@@ -385,6 +388,7 @@ fun SwipeableKeyButton(
                             currentOnClick()
                         }
                         isPressed = false
+                        currentOnRelease?.invoke()
                         dragOffsetX = 0f
                         dragOffsetY = 0f
                         hasTriggeredSwipeUp = false
@@ -443,6 +447,7 @@ fun SwipeableKeyButton(
                             currentOnPress?.invoke()
                             tryAwaitRelease()
                             isPressed = false
+                            currentOnRelease?.invoke()
                             currentOnSwipeStateChange?.invoke(SwipeState(false, null, false, emptyList(), false, null), buttonBounds)
                         },
                         onTap = {
@@ -540,6 +545,7 @@ fun SwipeableKeyButton(
                     } finally {
                         longPressJob.cancel()
                         isPressed = false
+                        currentOnRelease?.invoke()
                         currentOnSwipeStateChange?.invoke(SwipeState(), buttonBounds)
                     }
                 }
@@ -622,7 +628,8 @@ fun KeyboardRow(
     onSwipeKey: ((String) -> Unit)? = null,
     onSwipeDownKey: ((String) -> Unit)? = null,
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)? = null,
-    onKeyPressDown: ((String) -> Unit)? = null
+    onKeyPressDown: ((String) -> Unit)? = null,
+    onKeyRelease: ((String) -> Unit)? = null
 ) {
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -632,6 +639,7 @@ fun KeyboardRow(
             val swipeDownText = swipeDownKeys?.getOrNull(index)
             val rowOnClick = remember(key, onKeyPress) { { onKeyPress(key) } }
             val rowOnPress: (() -> Unit)? = remember(key, onKeyPressDown) { { onKeyPressDown?.invoke(key); Unit } }
+            val rowOnRelease: (() -> Unit)? = remember(key, onKeyRelease) { { onKeyRelease?.invoke(key); Unit } }
             SwipeableKeyButton(
                 text = if (isShifted) key.uppercase() else key,
                 onClick = rowOnClick,
@@ -643,7 +651,8 @@ fun KeyboardRow(
                 onSwipe = onSwipeKey,
                 onSwipeDown = onSwipeDownKey,
                 onSwipeStateChange = onSwipeStateChange,
-                onPress = rowOnPress
+                onPress = rowOnPress,
+                onRelease = rowOnRelease
             )
         }
     }
@@ -659,6 +668,7 @@ fun IconKeyButton(
     isHighlighted: Boolean = false,
     iconSize: androidx.compose.ui.unit.Dp = 20.dp,
     onPress: (() -> Unit)? = null,
+    onRelease: (() -> Unit)? = null,
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
@@ -691,6 +701,7 @@ fun IconKeyButton(
                         onPress?.invoke()
                         tryAwaitRelease()
                         isPressed = false
+                        onRelease?.invoke()
                     },
                     onTap = {
                         onClick()

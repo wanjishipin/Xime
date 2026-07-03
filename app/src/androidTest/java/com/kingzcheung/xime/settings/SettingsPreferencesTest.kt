@@ -88,6 +88,51 @@ class SettingsPreferencesTest {
     }
 
     @Test
+    fun `haptic mode defaults to following system`() {
+        assertEquals("following_system", SettingsPreferences.getHapticMode(context))
+    }
+
+    @Test
+    fun `haptic mode persists values`() {
+        SettingsPreferences.setHapticMode(context, "enabled")
+        assertEquals("enabled", SettingsPreferences.getHapticMode(context))
+
+        SettingsPreferences.setHapticMode(context, "disabled")
+        assertEquals("disabled", SettingsPreferences.getHapticMode(context))
+
+        SettingsPreferences.setHapticMode(context, "following_system")
+        assertEquals("following_system", SettingsPreferences.getHapticMode(context))
+    }
+
+    @Test
+    fun `haptic on key up defaults to false`() {
+        assertFalse(SettingsPreferences.isHapticOnKeyUp(context))
+    }
+
+    @Test
+    fun `vibration duration and amplitude defaults to zero`() {
+        assertEquals(0, SettingsPreferences.getVibrationPressDuration(context))
+        assertEquals(0, SettingsPreferences.getVibrationLongPressDuration(context))
+        assertEquals(0, SettingsPreferences.getVibrationPressAmplitude(context))
+        assertEquals(0, SettingsPreferences.getVibrationLongPressAmplitude(context))
+    }
+
+    @Test
+    fun `vibration duration and amplitude persist`() {
+        SettingsPreferences.setVibrationPressDuration(context, 30)
+        assertEquals(30, SettingsPreferences.getVibrationPressDuration(context))
+
+        SettingsPreferences.setVibrationLongPressDuration(context, 50)
+        assertEquals(50, SettingsPreferences.getVibrationLongPressDuration(context))
+
+        SettingsPreferences.setVibrationPressAmplitude(context, 128)
+        assertEquals(128, SettingsPreferences.getVibrationPressAmplitude(context))
+
+        SettingsPreferences.setVibrationLongPressAmplitude(context, 200)
+        assertEquals(200, SettingsPreferences.getVibrationLongPressAmplitude(context))
+    }
+
+    @Test
     fun `keyboard theme and bottom buttons persist`() {
         assertEquals("lavender_purple", SettingsPreferences.getKeyboardTheme(context))
         assertFalse(SettingsPreferences.showBottomButtons(context))
