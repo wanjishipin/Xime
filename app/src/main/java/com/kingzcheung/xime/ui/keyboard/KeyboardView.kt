@@ -150,13 +150,16 @@ fun KeyboardView(
     } ?: 0
     val screenW = LocalConfiguration.current.screenWidthDp
     val screenH = LocalConfiguration.current.screenHeightDp
-    val cardWidthDp = (minOf(screenW, screenH) * 0.85f).roundToInt()
+    val portraitScreenWidth = minOf(screenW, screenH)
+    val cardWidthDp = (portraitScreenWidth * 0.85f).roundToInt()
     val floatScaleFactor = if (state.isFloatingMode) cardWidthDp.toFloat() / screenW.toFloat() else 0.85f
+    val floatFontScale = if (state.isFloatingMode) cardWidthDp.toFloat() / portraitScreenWidth.toFloat() else 1f
 
     val contentModifier = modifier.background(keyboardBgColor)
     FloatingKeyboardContainer(
         isFloatingMode = state.isFloatingMode,
         scaleFactor = floatScaleFactor,
+        fontScaleFactor = floatFontScale,
         offsetX = state.floatingOffsetX,
         offsetY = state.floatingOffsetY,
         minOffsetY = state.floatingMinOffsetY,

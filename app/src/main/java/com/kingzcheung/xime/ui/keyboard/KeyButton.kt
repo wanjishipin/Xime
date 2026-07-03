@@ -14,18 +14,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
 import com.kingzcheung.xime.util.CharInfo
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +51,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+
+/** 按键视觉缩进（padding），用于消除 spacedBy 死区。
+ *  pointerInput 在 padding 之前，触摸区=全尺寸；
+ *  shadow/clip/background 在 padding 之后，视觉区=缩进后。
+ *  各布局按需要覆盖：QWERTY 默认 (2.dp, 4.25.dp)，T9/数字 (2.dp, 2.dp) */
+val LocalKeyVisualPadding = staticCompositionLocalOf {
+    PaddingValues(horizontal = 2.dp, vertical = 4.25.dp)
+}
 
 data class SwipeState(
     val isSwiping: Boolean = false,
@@ -123,128 +134,128 @@ fun KeyButton(
         )
     }
     
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .fillMaxWidth()
-            .pointerInput(Unit) {
-                detectDragGestures(
-                    onDragStart = {
-                        dragActivated = true
-                        isPressed = true
-                        dragOffsetX = 0f
-                        dragOffsetY = 0f
-                        hasTriggeredSwipeUp = false
-                        hasTriggeredSwipeDown = false
-                        isSwiping = false
-                        isSwipeDown = false
-                    },
-                    onDragEnd = {
-                        if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) {
-                            currentOnClick()
-                        }
-                        isPressed = false
-                        currentOnRelease?.invoke()
-                        dragOffsetX = 0f
-                        dragOffsetY = 0f
-                        hasTriggeredSwipeUp = false
-                        hasTriggeredSwipeDown = false
-                        isSwiping = false
-                        isSwipeDown = false
-                        longPressActivated = false
-                        dragActivated = false
-                        onSwipeStateChange?.invoke(SwipeState(false, null, false))
-                    },
-                    onDragCancel = {
-                        if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) {
-                            currentOnClick()
-                        }
-                        isPressed = false
-                        currentOnRelease?.invoke()
-                        dragOffsetX = 0f
-                        dragOffsetY = 0f
-                        hasTriggeredSwipeUp = false
-                        hasTriggeredSwipeDown = false
-                        isSwiping = false
-                        isSwipeDown = false
-                        dragActivated = false
-                        onSwipeStateChange?.invoke(SwipeState(false, null, false))
-                    },
-                    onDrag = { change, dragAmount ->
-                        dragOffsetX += dragAmount.x
-                        dragOffsetY += dragAmount.y
-                        
-                        if (dragOffsetY < 0) {
-                            if (abs(dragOffsetY) > abs(dragOffsetX) * 1.1f) {
-                                val shouldShowBubble = dragOffsetY < bubbleShowThresholdUp && swipeText != null
-                                if (shouldShowBubble != isSwiping) {
-                                    isSwiping = shouldShowBubble
-                                    isSwipeDown = false
-                                    onSwipeStateChange?.invoke(SwipeState(shouldShowBubble, swipeText, false))
-                                }
-                                
-                                if (dragOffsetY < swipeUpThreshold && !hasTriggeredSwipeUp && swipeText != null && onSwipe != null) {
-                                    hasTriggeredSwipeUp = true
-                                    onSwipe(swipeText)
-                                }
-                            }
-                        } else if (dragOffsetY > 0) {
-                            if (dragOffsetY > abs(dragOffsetX) * 1.1f) {
-                                val shouldShowBubble = dragOffsetY > bubbleShowThresholdDown && swipeDownText != null
-                                if (shouldShowBubble != isSwipeDown) {
-                                    isSwipeDown = shouldShowBubble
-                                    isSwiping = shouldShowBubble
-                                    onSwipeStateChange?.invoke(SwipeState(shouldShowBubble, swipeDownText, true))
-                                }
-                                
-                                if (dragOffsetY > swipeDownThreshold && !hasTriggeredSwipeDown && swipeDownText != null && onSwipeDown != null) {
-                                    hasTriggeredSwipeDown = true
-                                    onSwipeDown(swipeDownText)
-                                }
-                            }
-                        }
-                    }
-                )
-            }
-            .pointerInput(currentOnLongClick) {
-                if (currentOnLongClick == null) {
-                    detectTapGestures(
-                        onPress = {
+        Box(
+            modifier = modifier
+                .fillMaxHeight()
+                .fillMaxWidth()
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = {
+                            dragActivated = true
                             isPressed = true
-                            onPress?.invoke()
-                            tryAwaitRelease()
-                            isPressed = false
-                            currentOnRelease?.invoke()
+                            dragOffsetX = 0f
+                            dragOffsetY = 0f
+                            hasTriggeredSwipeUp = false
+                            hasTriggeredSwipeDown = false
+                            isSwiping = false
+                            isSwipeDown = false
                         },
-                        onTap = {
-                            if (!dragActivated && !hasTriggeredSwipeUp && !hasTriggeredSwipeDown) onClick()
-                        }
-                    )
-                } else {
-                    detectTapGestures(
-                        onPress = {
-                            isPressed = true
-                            longPressActivated = false
-                            onPress?.invoke()
-                            tryAwaitRelease()
-                            isPressed = false
-                            currentOnRelease?.invoke()
-                        },
-                        onTap = {
-                            if (!dragActivated && !hasTriggeredSwipeUp && !hasTriggeredSwipeDown && !longPressActivated) {
+                        onDragEnd = {
+                            if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) {
                                 currentOnClick()
                             }
+                            isPressed = false
+                            currentOnRelease?.invoke()
+                            dragOffsetX = 0f
+                            dragOffsetY = 0f
+                            hasTriggeredSwipeUp = false
+                            hasTriggeredSwipeDown = false
+                            isSwiping = false
+                            isSwipeDown = false
                             longPressActivated = false
+                            dragActivated = false
+                            onSwipeStateChange?.invoke(SwipeState(false, null, false))
                         },
-                        onLongPress = {
-                            longPressActivated = true
-                            view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                            currentOnLongClick?.invoke()
+                        onDragCancel = {
+                            if (!hasTriggeredSwipeUp && !hasTriggeredSwipeDown) {
+                                currentOnClick()
+                            }
+                            isPressed = false
+                            currentOnRelease?.invoke()
+                            dragOffsetX = 0f
+                            dragOffsetY = 0f
+                            hasTriggeredSwipeUp = false
+                            hasTriggeredSwipeDown = false
+                            isSwiping = false
+                            isSwipeDown = false
+                            dragActivated = false
+                            onSwipeStateChange?.invoke(SwipeState(false, null, false))
+                        },
+                        onDrag = { change, dragAmount ->
+                            dragOffsetX += dragAmount.x
+                            dragOffsetY += dragAmount.y
+                            
+                            if (dragOffsetY < 0) {
+                                if (abs(dragOffsetY) > abs(dragOffsetX) * 1.1f) {
+                                    val shouldShowBubble = dragOffsetY < bubbleShowThresholdUp && swipeText != null
+                                    if (shouldShowBubble != isSwiping) {
+                                        isSwiping = shouldShowBubble
+                                        isSwipeDown = false
+                                        onSwipeStateChange?.invoke(SwipeState(shouldShowBubble, swipeText, false))
+                                    }
+                                    
+                                    if (dragOffsetY < swipeUpThreshold && !hasTriggeredSwipeUp && swipeText != null && onSwipe != null) {
+                                        hasTriggeredSwipeUp = true
+                                        onSwipe(swipeText)
+                                    }
+                                }
+                            } else if (dragOffsetY > 0) {
+                                if (dragOffsetY > abs(dragOffsetX) * 1.1f) {
+                                    val shouldShowBubble = dragOffsetY > bubbleShowThresholdDown && swipeDownText != null
+                                    if (shouldShowBubble != isSwipeDown) {
+                                        isSwipeDown = shouldShowBubble
+                                        isSwiping = shouldShowBubble
+                                        onSwipeStateChange?.invoke(SwipeState(shouldShowBubble, swipeDownText, true))
+                                    }
+                                    
+                                    if (dragOffsetY > swipeDownThreshold && !hasTriggeredSwipeDown && swipeDownText != null && onSwipeDown != null) {
+                                        hasTriggeredSwipeDown = true
+                                        onSwipeDown(swipeDownText)
+                                    }
+                                }
+                            }
                         }
                     )
                 }
-            }
-//            .padding(horizontal = 2.dp, vertical = 4.25.dp)
+                .pointerInput(currentOnLongClick) {
+                    if (currentOnLongClick == null) {
+                        detectTapGestures(
+                            onPress = {
+                                isPressed = true
+                                onPress?.invoke()
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentOnRelease?.invoke()
+                            },
+                            onTap = {
+                                if (!dragActivated && !hasTriggeredSwipeUp && !hasTriggeredSwipeDown) onClick()
+                            }
+                        )
+                    } else {
+                        detectTapGestures(
+                            onPress = {
+                                isPressed = true
+                                longPressActivated = false
+                                onPress?.invoke()
+                                tryAwaitRelease()
+                                isPressed = false
+                                currentOnRelease?.invoke()
+                            },
+                            onTap = {
+                                if (!dragActivated && !hasTriggeredSwipeUp && !hasTriggeredSwipeDown && !longPressActivated) {
+                                    currentOnClick()
+                                }
+                                longPressActivated = false
+                            },
+                            onLongPress = {
+                                longPressActivated = true
+                                view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                                currentOnLongClick?.invoke()
+                            }
+                        )
+                    }
+                }
+            .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
             .clip(shadowShape)
             .background(
@@ -559,6 +570,7 @@ fun SwipeableKeyButton(
             .onGloballyPositioned { coordinates ->
                 buttonBounds = coordinates.boundsInRoot()
             }
+            .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
             .clip(shadowShape)
             .background(
@@ -714,7 +726,7 @@ fun IconKeyButton(
                     }
                 )
             }
-//            .padding(horizontal = 2.dp, vertical = 4.25.dp)
+            .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
             .clip(shadowShape)
             .background(
@@ -979,7 +991,7 @@ fun SwipeableIconKeyButton(
             .onGloballyPositioned { coordinates ->
                 buttonBounds = coordinates.boundsInRoot()
             }
-//            .padding(horizontal = 2.dp, vertical = 4.25.dp)
+            .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
             .clip(shadowShape)
             .background(

@@ -674,11 +674,23 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                 val navBarAlreadyExcluded = (physicalScreenDp - screenHeightDp) >= (navBarHeightDp + statusBarHeightDp - 3)
                 val floatingMinY = if (navBarAlreadyExcluded) 0 else visibleNavBarHeightDp
 
-                val isLandscape = !state.isFloatingMode && resources.configuration.screenWidthDp > screenHeightDp
-                val orientationHeight = SettingsPreferences.getKeyboardHeightDp(this@XimeInputMethodService, isLandscape)
-                val displayHeight = orientationHeight.coerceAtMost((screenHeightDp * 8) / 10)
+                val screenWidthDp = resources.configuration.screenWidthDp
+                val screenIsLandscape = screenWidthDp > screenHeightDp
+                val portraitScreenHeightDp = if (screenIsLandscape) screenWidthDp else screenHeightDp
+                val isLandscape = !state.isFloatingMode && screenIsLandscape
+                val orientationHeight = if (state.isFloatingMode) {
+                    val prefs = SettingsPreferences.getPrefsPublic(this@XimeInputMethodService)
+                    val storedPortrait = prefs.getInt("keyboard_height_dp", -1)
+                    if (storedPortrait > 0) storedPortrait else {
+                        val storedLandscape = prefs.getInt("keyboard_height_dp_landscape", -1)
+                        if (storedLandscape > 0) storedLandscape else portraitScreenHeightDp * SettingsPreferences.DEFAULT_KEYBOARD_HEIGHT_PERCENT / 100
+                    }
+                } else {
+                    SettingsPreferences.getKeyboardHeightDp(this@XimeInputMethodService, screenIsLandscape)
+                }
+                val displayHeight = orientationHeight.coerceAtMost((if (state.isFloatingMode) portraitScreenHeightDp else screenHeightDp) * 8 / 10)
                 val keyboardHeight = if (state.showKeyboardResize) {
-                    if (isLandscape) (screenHeightDp * 7) / 10 else displayHeight.coerceAtLeast(screenHeightDp / 2)
+                    if (screenIsLandscape) (screenHeightDp * 7) / 10 else displayHeight.coerceAtLeast(screenHeightDp / 2)
                 } else if (isHandwritingMode) {
                     screenHeightDp / 2
                 } else {
@@ -744,17 +756,17 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             Box(modifier = Modifier.fillMaxSize())
                         } else {
                         val keyboardBgColor = cardBg
-                        Column(
+                        Box(
                             modifier = Modifier
-                                .align(androidx.compose.ui.Alignment.BottomCenter)
-                                .fillMaxWidth()
-                            .then(if (!state.isFloatingMode) Modifier.background(keyboardBgColor) else Modifier)
+                                .fillMaxSize()
+                                .then(if (!state.isFloatingMode) Modifier.background(keyboardBgColor) else Modifier)
                     ) {
                         Box(
                             modifier = Modifier
 
                                 .fillMaxWidth()
                                 .height(if (state.showKeyboardResize) (state.resizePreviewHeightDp + state.keyboardBottomPaddingDp).dp else (floatingCardContentHeight + state.keyboardBottomPaddingDp).dp)
+                                .align(if (state.isFloatingMode) androidx.compose.ui.Alignment.BottomCenter else androidx.compose.ui.Alignment.TopStart)
                         ) {
                         CompositionLocalProvider(LocalStretchFactor provides state.stretchFactor) {
                             val kbState = KeyboardUiState(
@@ -996,9 +1008,6 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                 )
                             }
                             keyboardCallbacks = callbacks
-                            if (state.isFloatingMode && uiState.value.floatingOffsetY < floatingMinY) {
-                                uiState.value = uiState.value.copy(floatingOffsetY = floatingMinY)
-                            }
                             KeyboardView(
                                 viewModel = keyboardViewModel,
                                 state = kbState,
@@ -2510,6 +2519,12 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
             }
             updateSchemaName()
             updateUI()
+            // 确保键盘布局与方案匹配（如 T9 九键不应被 switchMain 重置为全键盘）
+            keyboardViewModel.dispatch(
+                com.kingzcheung.xime.ui.keyboard.KeyboardDispatchAction.AsciiModeChanged(
+                    rimeEngine.isAsciiMode(), schemaId
+                )
+            )
             Toast.makeText(this, "已切换输入方案", Toast.LENGTH_SHORT).show()
             Log.d(TAG, "Switched to schema: $schemaId")
         } catch (e: Exception) {
@@ -2586,17 +2601,11 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         val cardWidth = (portraitWidth * 0.85f).roundToInt()
         val halfMargin = maxOf(0, (screenW - cardWidth) / 2)
         val cappedKbH = SettingsPreferences.getKeyboardHeightDp(this, isLandscape).coerceAtMost((screenH * 8) / 10)
-        val cardH = (cappedKbH * 0.85f).roundToInt() + 18
-        // 用物理屏幕高度保证跨版本一致性
-        val physicalDp = (resources.displayMetrics.heightPixels / resources.displayMetrics.density).roundToInt()
-        val effectiveH = if (enabled) physicalDp - tryGetStatusBarHeightDp() else screenH
-        val maxY = maxOf(effectiveNavBarDp, effectiveH - cardH - 20)
         val clampedX = loadedX.coerceIn(-halfMargin, halfMargin)
-        val clampedY = loadedY.coerceIn(effectiveNavBarDp, maxY)
         uiState.value = uiState.value.copy(
             isFloatingMode = enabled,
             floatingOffsetX = clampedX,
-            floatingOffsetY = clampedY,
+            floatingOffsetY = 0,
         )
         if (enabled) {
             currentEffectiveKeyboardHeight = cappedKbH + 18 + 50 + uiState.value.keyboardBottomPaddingDp

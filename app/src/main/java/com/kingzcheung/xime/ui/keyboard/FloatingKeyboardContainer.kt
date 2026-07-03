@@ -3,6 +3,7 @@ package com.kingzcheung.xime.ui.keyboard
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -32,6 +33,7 @@ private const val DRAG_BAR_HEIGHT = 18
 fun FloatingKeyboardContainer(
     isFloatingMode: Boolean,
     scaleFactor: Float,
+    fontScaleFactor: Float = scaleFactor,
     offsetX: Int,
     offsetY: Int,
     minOffsetY: Int = 0,
@@ -47,21 +49,24 @@ fun FloatingKeyboardContainer(
     }
 
     val density = LocalDensity.current
-    val safeOffsetY = offsetY.coerceAtLeast(minOffsetY)
+    val safeOffsetY = offsetY
 
-    Box(
+    BoxWithConstraints(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.BottomCenter
     ) {
+        val cardTotalHeight = maxHeight
         Box(
             modifier = Modifier
                 .fillMaxWidth(scaleFactor)
+                .height(cardTotalHeight)
                 .offset(x = offsetX.dp, y = (-safeOffsetY).dp)
                 .shadow(12.dp, RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
                 .onGloballyPositioned { coords ->
                     val pos = coords.positionInWindow()
                     val size = coords.size
+                    android.util.Log.d("FloatingCard", "pos=(${pos.x.toInt()},${pos.y.toInt()}) size=(${size.width},${size.height}) maxH=$cardTotalHeight offsetY=$safeOffsetY")
                     onCardPositioned(
                         pos.x.roundToInt(),
                         pos.y.roundToInt(),
@@ -81,10 +86,12 @@ fun FloatingKeyboardContainer(
                     },
                     onDragEnd = onDragEnd
                 )
-                CompositionLocalProvider(
-                    LocalDensity provides Density(density = density.density, fontScale = density.fontScale * scaleFactor)
-                ) {
-                    keyboardContent()
+                Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    CompositionLocalProvider(
+                        LocalDensity provides Density(density = density.density, fontScale = density.fontScale * fontScaleFactor)
+                    ) {
+                        keyboardContent()
+                    }
                 }
             }
         }
