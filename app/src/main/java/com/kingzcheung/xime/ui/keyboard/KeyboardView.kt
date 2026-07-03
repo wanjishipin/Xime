@@ -74,18 +74,6 @@ fun KeyboardView(
         callbacks.onKeyboardModeChange?.invoke(active)
     }
 
-    LaunchedEffect(state.inputSessionId) {
-        viewModel.dispatch(
-            KeyboardDispatchAction.InputSessionStarted(state.isAsciiMode, state.currentSchemaId)
-        )
-    }
-
-    LaunchedEffect(state.isAsciiMode, state.currentSchemaId) {
-        viewModel.dispatch(
-            KeyboardDispatchAction.AsciiModeChanged(state.isAsciiMode, state.currentSchemaId)
-        )
-    }
-
     var savedNumberAsciiMode by remember { mutableStateOf<Boolean?>(null) }
 
     val t9Controller = remember {
@@ -97,6 +85,19 @@ fun KeyboardView(
             onRightCommitUndone = { count ->
                 callbacks.onT9RightCommitUndone?.invoke(count)
             }
+        )
+    }
+
+    LaunchedEffect(state.inputSessionId) {
+        t9Controller.reset()
+        viewModel.dispatch(
+            KeyboardDispatchAction.InputSessionStarted(state.isAsciiMode, state.currentSchemaId)
+        )
+    }
+
+    LaunchedEffect(state.isAsciiMode, state.currentSchemaId) {
+        viewModel.dispatch(
+            KeyboardDispatchAction.AsciiModeChanged(state.isAsciiMode, state.currentSchemaId)
         )
     }
 
