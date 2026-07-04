@@ -41,10 +41,6 @@
     <td><img src="docs/Screenshot/方案市场.jpg" width="180"><br><p align="center">方案市场</p></td>
   </tr>
   <tr>
-
-    <td></td>
-    <td></td>
-    <td></td>
   </tr>
 </table>
 
