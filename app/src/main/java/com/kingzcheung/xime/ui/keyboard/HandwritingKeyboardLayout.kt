@@ -83,6 +83,7 @@ fun HandwritingKeyboardLayout(
             dragVersion++
         }
     }
+    LaunchedEffect(clearSignal) { strokes.clear(); dragVersion++ }
 
     suspend fun runPrediction() {
         if (!HandwritingEngine.isInitialized()) return

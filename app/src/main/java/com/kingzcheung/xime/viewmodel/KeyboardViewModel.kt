@@ -213,15 +213,20 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
                 }
             }
             is KeyboardDispatchAction.InputSessionStarted -> {
-                val kb = initialKeyboardLayoutState(action.isAsciiMode, action.schemaId)
-                val vs = when (kb) {
-                    is KeyboardLayoutState.Chinese -> KeyboardViewState.ChineseFull
-                    is KeyboardLayoutState.English -> KeyboardViewState.EnglishFull
-                    is KeyboardLayoutState.T9Pinyin -> KeyboardViewState.T9PinyinFull
-                    is KeyboardLayoutState.Stroke -> KeyboardViewState.StrokeFull
-                    else -> KeyboardViewState.ChineseFull
+                val currentPage = _page.value
+                if (currentPage is KeyboardPage.Main && currentPage.type == MainType.HANDWRITING) {
+                    Triple(_viewState.value, currentPage, _keyboardState.value)
+                } else {
+                    val kb = initialKeyboardLayoutState(action.isAsciiMode, action.schemaId)
+                    val vs = when (kb) {
+                        is KeyboardLayoutState.Chinese -> KeyboardViewState.ChineseFull
+                        is KeyboardLayoutState.English -> KeyboardViewState.EnglishFull
+                        is KeyboardLayoutState.T9Pinyin -> KeyboardViewState.T9PinyinFull
+                        is KeyboardLayoutState.Stroke -> KeyboardViewState.StrokeFull
+                        else -> KeyboardViewState.ChineseFull
+                    }
+                    Triple(vs, KeyboardPage.Main(MainType.FULL), kb)
                 }
-                Triple(vs, KeyboardPage.Main(MainType.FULL), kb)
             }
             is KeyboardDispatchAction.ShowOverlay -> {
                 Triple(KeyboardViewState.Overlay(action.route, action.backStack, current), KeyboardPage.Overlay(action.route, action.backStack, _page.value), _keyboardState.value)
