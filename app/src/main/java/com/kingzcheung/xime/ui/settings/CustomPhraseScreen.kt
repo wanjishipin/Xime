@@ -22,6 +22,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -48,6 +49,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -116,7 +118,6 @@ fun CustomPhraseContent(
                     }
                 }
             }
-
             if (uiState.isLoading) {
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { CircularProgressIndicator() }
             } else {
@@ -126,7 +127,7 @@ fun CustomPhraseContent(
 
                 if (uiState.entries.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text("暂无，点击右下角 + 添加", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        UsageHint()
                     }
                 } else if (uiState.filteredEntries.isEmpty()) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -243,5 +244,30 @@ private fun PhraseItem(entry: DictEntry, onEdit: () -> Unit, onDelete: () -> Uni
                 Icon(Icons.Default.Delete, contentDescription = "删除", tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f), modifier = Modifier.size(20.dp))
             }
         }
+    }
+}
+
+@Composable
+private fun UsageHint() {
+    val uriHandler = LocalUriHandler.current
+    Column(
+        modifier = Modifier
+            .clickable { uriHandler.openUri("https://ime.ximei.me/features/dictionary.html") }
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(Icons.Default.Info, contentDescription = null,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(40.dp))
+        Spacer(Modifier.height(12.dp))
+        Text("暂无自定义短语", style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(4.dp))
+        Text("点击右下角 + 添加",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.height(16.dp))
+        Text("个人词库与自定义短语的区别 → 查看使用说明",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.primary)
     }
 }
