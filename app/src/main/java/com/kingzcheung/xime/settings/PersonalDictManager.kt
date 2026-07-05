@@ -66,20 +66,28 @@ use_preset_vocabulary: false
 
     fun ensureSchemaPacks(context: Context) {
         val rimeDir = SchemaManager.getRimeDir(context)
-        val schemaFiles = rimeDir.listFiles { f -> f.name.endsWith(".schema.yaml") && !f.name.startsWith("user_simp_") } ?: return
-        for (sf in schemaFiles) {
-            val schemaId = sf.name.removeSuffix(".schema.yaml")
-            if (hasReverseLookupTranslator(sf)) {
-                // 使用 reverse_lookup_translator 的方案（如 wubi86_pinyin），
-                // table_translator 的字典不能替换为合并词典，否则输入无候选词
-            } else if (hasSpellerAlgebra(sf)) {
-                applyPackConfig(rimeDir, schemaId)
-            } else {
-                applyMergedDictConfig(rimeDir, schemaId)
-            }
-            // 所有方案都添加自定义短语翻译器
-            applyCustomPhraseTranslator(rimeDir, schemaId)
+        val enabledSchemas = SchemaManager.getEnabledSchemas(context)
+        for (schemaId in enabledSchemas) {
+            ensureSchemaPackInner(rimeDir, schemaId)
         }
+    }
+
+    fun ensureSchemaPack(context: Context, schemaId: String) {
+        val rimeDir = SchemaManager.getRimeDir(context)
+        ensureSchemaPackInner(rimeDir, schemaId)
+    }
+
+    private fun ensureSchemaPackInner(rimeDir: java.io.File, schemaId: String) {
+        val schemaFile = java.io.File(rimeDir, "${schemaId}.schema.yaml")
+        if (!schemaFile.exists()) return
+        if (hasReverseLookupTranslator(schemaFile)) {
+            // reverse_lookup 方案不替换词典，只加 custom_phrase
+        } else if (hasSpellerAlgebra(schemaFile)) {
+            applyPackConfig(rimeDir, schemaId)
+        } else {
+            applyMergedDictConfig(rimeDir, schemaId)
+        }
+        applyCustomPhraseTranslator(rimeDir, schemaId)
     }
 
     internal fun hasReverseLookupTranslator(schemaFile: java.io.File): Boolean {

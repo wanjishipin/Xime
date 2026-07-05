@@ -436,6 +436,95 @@ c	d
         assertFalse(PersonalDictManager.hasSpellerAlgebra(file))
     }
 
+    // ── ensureSchemaPack 按需创建 ──
+
+    @Test
+    fun `ensureSchemaPack creates custom yaml for schema with algebra`() {
+        val context = mockContext()
+        val rimeDir = java.io.File(context.filesDir, "rime")
+        rimeDir.mkdirs()
+        java.io.File(rimeDir, "pinyin_simp.schema.yaml").writeText("""
+speller:
+  alphabet: abc
+  algebra:
+    - erase/^xx$/
+""".trimIndent())
+        PersonalDictManager.ensureSchemaPack(context, "pinyin_simp")
+        val customFile = java.io.File(rimeDir, "pinyin_simp.custom.yaml")
+        assertTrue("custom.yaml should be created for schema with algebra", customFile.exists())
+        val text = customFile.readText(Charsets.UTF_8)
+        assertTrue(text.contains("translator/packs"))
+        assertTrue("custom_phrase should also be added", text.contains("table_translator@custom_phrase"))
+    }
+
+    @Test
+    fun `ensureSchemaPack creates merged dict for schema without algebra`() {
+        val context = mockContext()
+        val rimeDir = java.io.File(context.filesDir, "rime")
+        rimeDir.mkdirs()
+        java.io.File(rimeDir, "wubi86.schema.yaml").writeText("""
+speller:
+  alphabet: abcdefghijklmnopqrstuvwxyz
+  max_code_length: 4
+""".trimIndent())
+        PersonalDictManager.ensureSchemaPack(context, "wubi86")
+        assertTrue("merged dict should be created", java.io.File(rimeDir, "wubi86_merged.dict.yaml").exists())
+        val customFile = java.io.File(rimeDir, "wubi86.custom.yaml")
+        assertTrue("custom.yaml should be created", customFile.exists())
+        val text = customFile.readText(Charsets.UTF_8)
+        assertTrue(text.contains("translator/dictionary"))
+    }
+
+    @Test
+    fun `ensureSchemaPack skips reverse_lookup schemas`() {
+        val context = mockContext()
+        val rimeDir = java.io.File(context.filesDir, "rime")
+        rimeDir.mkdirs()
+        java.io.File(rimeDir, "wubi86_pinyin.schema.yaml").writeText("""
+translator:
+  dictionary: wubi86_pinyin
+  reverse_lookup_translator: true
+""".trimIndent())
+        PersonalDictManager.ensureSchemaPack(context, "wubi86_pinyin")
+        val customFile = java.io.File(rimeDir, "wubi86_pinyin.custom.yaml")
+        assertTrue("custom.yaml should be created (custom_phrase only)", customFile.exists())
+        val text = customFile.readText(Charsets.UTF_8)
+        assertTrue(text.contains("table_translator@custom_phrase"))
+        // reverse_lookup schemas should NOT get packs or merged dict
+        assertFalse("should not have packs", text.contains("translator/packs"))
+        assertFalse("should not have merged dict", text.contains("translator/dictionary"))
+    }
+
+    @Test
+    fun `ensureSchemaPack is no-op when schema file missing`() {
+        val context = mockContext()
+        val rimeDir = java.io.File(context.filesDir, "rime")
+        rimeDir.mkdirs()
+        // no schema file created
+        PersonalDictManager.ensureSchemaPack(context, "nonexistent")
+        val customFile = java.io.File(rimeDir, "nonexistent.custom.yaml")
+        assertFalse("no custom.yaml should be created for missing schema", customFile.exists())
+    }
+
+    @Test
+    fun `ensureSchemaPack is idempotent`() {
+        val context = mockContext()
+        val rimeDir = java.io.File(context.filesDir, "rime")
+        rimeDir.mkdirs()
+        java.io.File(rimeDir, "pinyin_simp.schema.yaml").writeText("""
+speller:
+  alphabet: abc
+  algebra:
+    - erase/^xx$/
+""".trimIndent())
+        PersonalDictManager.ensureSchemaPack(context, "pinyin_simp")
+        PersonalDictManager.ensureSchemaPack(context, "pinyin_simp")
+        val text = java.io.File(rimeDir, "pinyin_simp.custom.yaml").readText(Charsets.UTF_8)
+        // packs line should appear only once
+        assertEquals(1, text.split("user_simp_pinyin").size - 1)
+        assertEquals(1, text.split("table_translator@custom_phrase").size - 1)
+    }
+
     @Test
     fun `applyPackConfig creates custom yaml with packs for schema WITH algebra`() {
         val rimeDir = createTempDir()

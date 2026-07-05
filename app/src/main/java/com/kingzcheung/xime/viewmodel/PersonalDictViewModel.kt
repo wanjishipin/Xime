@@ -60,6 +60,7 @@ class PersonalDictViewModel(application: Application) : AndroidViewModel(applica
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true) }
             val entries = withContext(Dispatchers.IO) {
+                PersonalDictManager.ensureSchemaPack(context, schemaId)
                 PersonalDictManager.loadEntries(context, schemaId)
             }
             _uiState.update {
