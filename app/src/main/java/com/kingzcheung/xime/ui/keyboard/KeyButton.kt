@@ -275,7 +275,7 @@ fun KeyButton(
         )
         
         if (!swipeText.isNullOrEmpty()) {
-            val displayText = if (swipeText.length <= 2) swipeText else swipeText.take(2)
+            val displayText = if (swipeText.length <= 4) swipeText else swipeText.take(4)
             Text(
                 text = displayText,
                 color = textColor.copy(alpha = 0.5f),
@@ -591,7 +591,7 @@ fun SwipeableKeyButton(
         
         if (!(swipeUpKeyLabel ?: swipeText).isNullOrEmpty()) {
             val keyLabel = (swipeUpKeyLabel ?: swipeText)!!
-            val displayText = if (keyLabel.length <= 2) keyLabel else keyLabel.take(2)
+            val displayText = if (keyLabel.length <= 4) keyLabel else keyLabel.take(4)
             Text(
                 text = displayText,
                 color = textColor.copy(alpha = 0.6f),
@@ -604,7 +604,7 @@ fun SwipeableKeyButton(
         }
         
         if (!swipeDownKeyLabel.isNullOrEmpty()) {
-            val displayText = if (swipeDownKeyLabel.length <= 2) swipeDownKeyLabel else swipeDownKeyLabel.take(2)
+            val displayText = if (swipeDownKeyLabel.length <= 4) swipeDownKeyLabel else swipeDownKeyLabel.take(4)
             Text(
                 text = displayText,
                 color = textColor.copy(alpha = 0.5f),
