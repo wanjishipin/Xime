@@ -24,10 +24,11 @@ interface ActionExecutor {
     fun performEditorMenuAction(actionId: Int)
 
     /**
-     * 发送按键事件（用于光标移动等操作）。
-     * @param keyCode 按键码，如 [KeyEvent.KEYCODE_MOVE_HOME]、[KeyEvent.KEYCODE_MOVE_END]
+     * 发送按键事件（用于光标移动和特殊按键等操作）。
+     * @param keyCode  按键码，如 [KeyEvent.KEYCODE_MOVE_HOME]、[KeyEvent.KEYCODE_MOVE_END]
+     * @param metaState 修饰键掩码，0 表示无修饰键。如 [KeyEvent.META_CTRL_ON]
      */
-    fun sendKeyEvent(keyCode: Int)
+    fun sendKeyEvent(keyCode: Int, metaState: Int = 0)
 
     /**
      * 执行内置命令。
@@ -144,6 +145,16 @@ enum class GestureAction(val value: String) {
     /** 切换符号键盘。由 UI 层拦截处理。 */
     TOGGLE_SYMBOLS("toggle_symbols") {
         override fun execute(context: ActionExecutor, value: String) { /* no-op, handled at UI layer */ }
+    },
+
+    /** 发送特殊按键。value 为按键表达式（如 "Escape"、"Control+c"）。 */
+    SEND_KEY("send") {
+        override fun execute(context: ActionExecutor, value: String) {
+            val (keyCode, metaState) = Keycode.parseSend(value)
+            if (keyCode != 0) {
+                context.sendKeyEvent(keyCode, metaState)
+            }
+        }
     };
 
     /**

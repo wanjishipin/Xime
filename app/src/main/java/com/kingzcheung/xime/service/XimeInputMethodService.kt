@@ -1337,9 +1337,47 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         return super.onKeyDown(keyCode, event)
     }
 
-    override fun sendKeyEvent(keyCode: Int) {
-        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
-        currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_UP, keyCode))
+    override fun sendKeyEvent(keyCode: Int, metaState: Int) {
+        val now = SystemClock.uptimeMillis()
+        val ic = currentInputConnection ?: return
+
+        // ── 依次发送修饰键 down ──
+        if (metaState and KeyEvent.META_ALT_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ALT_LEFT, 0, 0))
+        }
+        if (metaState and KeyEvent.META_CTRL_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_CTRL_LEFT, 0, 0))
+        }
+        if (metaState and KeyEvent.META_SHIFT_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SHIFT_LEFT, 0, 0))
+        }
+        if (metaState and KeyEvent.META_META_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_META_LEFT, 0, 0))
+        }
+        if (metaState and KeyEvent.META_SYM_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_SYM, 0, 0))
+        }
+
+        // ── 发送目标键 down + up ──
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0, metaState))
+        ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, keyCode, 0, metaState))
+
+        // ── 逆序发送修饰键 up ──
+        if (metaState and KeyEvent.META_SYM_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SYM, 0, 0))
+        }
+        if (metaState and KeyEvent.META_META_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_META_LEFT, 0, 0))
+        }
+        if (metaState and KeyEvent.META_SHIFT_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_SHIFT_LEFT, 0, 0))
+        }
+        if (metaState and KeyEvent.META_CTRL_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_CTRL_LEFT, 0, 0))
+        }
+        if (metaState and KeyEvent.META_ALT_ON != 0) {
+            ic.sendKeyEvent(KeyEvent(now, now, KeyEvent.ACTION_UP, KeyEvent.KEYCODE_ALT_LEFT, 0, 0))
+        }
     }
 
     override fun executeCommand(name: String) {

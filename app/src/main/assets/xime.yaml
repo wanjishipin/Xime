@@ -64,7 +64,12 @@ color_schemes:
 #   - { label, action, value }
 #     label:  按键上显示的文字
 #     action: commit（上屏）, command（内置命令，value 为命令名）, select_all, copy, cut,
-#             paste, line_start, line_end, undo, none, repeat
+#             paste, line_start, line_end, undo, none, repeat, send（发送特殊按键）
+#     send:   发送特殊按键表达式（与 action: "send" + value 等价），如 "Escape"、"Control+c"、"Up"
+#            支持的按键: Escape, Tab, Return, BackSpace, Delete, space
+#            方向键: Up, Down, Left, Right
+#            导航键: Home, End, Page_Up, Page_Down, Insert
+#            功能键: F1-F12  修饰键组合: Control+c, Shift+Tab, Control+Shift+z
 #     command 可用命令：
 #       clear_composition - 清空当前输入编码和候选词
 #     value:  上屏时的输出文本（不指定则用 label）
