@@ -241,74 +241,70 @@ fun KeyboardView(
             }
 
             if (isClipboardSearching) {
-                // ── 搜索模式：搜索框 + 剪贴板列表放在 CandidateBar 位置 ──
+                // ── 搜索模式：搜索框 + 剪贴板列表 ──
                 val focusRequester = remember { FocusRequester() }
                 val filteredItems = remember(state.clipboardItems, clipboardSearchQuery) {
                     if (clipboardSearchQuery.isEmpty()) state.clipboardItems
                     else state.clipboardItems.filter { it.text.contains(clipboardSearchQuery, ignoreCase = true) }
                 }
                 LaunchedEffect(Unit) { focusRequester.requestFocus() }
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(
+                        onClick = {
+                            viewModel.exitClipboardSearch()
+                            callbacks.onKeyPress("clear_composition", false)
+                        },
+                        modifier = Modifier.size(30.dp)
                     ) {
+                        Icon(Icons.Outlined.Close, "退出搜索", tint = accentColor, modifier = Modifier.size(20.dp))
+                    }
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(34.dp)
+                            .clip(RoundedCornerShape(17.dp))
+                            .background(if (state.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                            .padding(horizontal = 10.dp),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (clipboardSearchQuery.isEmpty()) {
+                            Text("搜索剪贴板...", color = candidateTextColor.copy(alpha = 0.5f), fontSize = 13.sp)
+                        }
+                        BasicTextField(
+                            value = clipboardSearchQuery,
+                            onValueChange = { viewModel.updateClipboardSearchQuery(it) },
+                            singleLine = true,
+                            textStyle = TextStyle(color = candidateTextColor, fontSize = 13.sp),
+                            cursorBrush = SolidColor(accentColor),
+                            modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                        )
+                    }
+                    if (clipboardSearchQuery.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(4.dp))
                         IconButton(
-                            onClick = {
-                                viewModel.exitClipboardSearch()
-                                callbacks.onKeyPress("clear_composition", false)
-                            },
+                            onClick = { viewModel.updateClipboardSearchQuery("") },
                             modifier = Modifier.size(30.dp)
                         ) {
-                            Icon(Icons.Outlined.Close, "退出搜索", tint = accentColor, modifier = Modifier.size(20.dp))
-                        }
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .height(34.dp)
-                                .clip(RoundedCornerShape(17.dp))
-                                .background(if (state.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                                .padding(horizontal = 10.dp),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            if (clipboardSearchQuery.isEmpty()) {
-                                Text("搜索剪贴板...", color = candidateTextColor.copy(alpha = 0.5f), fontSize = 13.sp)
-                            }
-                            BasicTextField(
-                                value = clipboardSearchQuery,
-                                onValueChange = { viewModel.updateClipboardSearchQuery(it) },
-                                singleLine = true,
-                                textStyle = TextStyle(color = candidateTextColor, fontSize = 13.sp),
-                                cursorBrush = SolidColor(accentColor),
-                                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
-                            )
-                        }
-                        if (clipboardSearchQuery.isNotEmpty()) {
-                            Spacer(modifier = Modifier.width(4.dp))
-                            IconButton(
-                                onClick = { viewModel.updateClipboardSearchQuery("") },
-                                modifier = Modifier.size(30.dp)
-                            ) {
-                                Icon(Icons.Outlined.Close, "清空", tint = candidateTextColor.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
-                            }
+                            Icon(Icons.Outlined.Close, "清空", tint = candidateTextColor.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
                         }
                     }
+                }
+                if (clipboardSearchQuery.isNotEmpty()) {
                     if (filteredItems.isEmpty()) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            modifier = Modifier.fillMaxWidth().height(36.dp),
                             contentAlignment = Alignment.Center
                         ) {
-                            Text(
-                                text = if (clipboardSearchQuery.isEmpty()) "剪贴板为空" else "无匹配结果",
-                                color = candidateTextColor.copy(alpha = 0.5f),
-                                fontSize = 12.sp
-                            )
+                            Text("无匹配结果", color = candidateTextColor.copy(alpha = 0.5f), fontSize = 12.sp)
                         }
                     } else {
                         LazyColumn(
-                            modifier = Modifier.fillMaxWidth().height(120.dp),
+                            modifier = Modifier.fillMaxWidth().height(80.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
@@ -316,7 +312,7 @@ fun KeyboardView(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(32.dp)
+                                        .height(28.dp)
                                         .clip(RoundedCornerShape(6.dp))
                                         .background(candidateBarBg)
                                         .clickable {
@@ -339,7 +335,7 @@ fun KeyboardView(
                         }
                     }
                 }
-            } else {
+            }
             CandidateBar(
                 state = candidateBarState,
                 page = page,
@@ -465,7 +461,7 @@ fun KeyboardView(
                     },
                 )
             )
-            } // end else (ClipboardSearchBar)
+            // end else (ClipboardSearchBar) — 搜索模式下候选栏也显示
 
             val isMainKeyboard = page is KeyboardPage.Main
             if (isMainKeyboard) {
@@ -560,20 +556,21 @@ fun KeyboardView(
                                 }
                                 "emoji" -> viewModel.showOverlay(OverlayRoute.Emoji)
                                 else -> {
-                                    // 搜索模式：单字符键直接追加到搜索框，不经过 Rime
-                                    if (isClipboardSearching && key.length == 1) {
-                                        viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
-                                        return@KeyPress
-                                    }
-                                    // 搜索模式：空格键追加空格到搜索框
-                                    if (isClipboardSearching && key == "space") {
-                                        viewModel.updateClipboardSearchQuery(clipboardSearchQuery + " ")
-                                        return@KeyPress
-                                    }
-                                    // 搜索模式：BackSpace 优先删除搜索查询内容
+                                    // 搜索模式：BackSpace 优先删除搜索查询内容（去掉 preedit 条件）
                                     if (isClipboardSearching && (key == "BackSpace" || key == "Delete")) {
-                                        if (clipboardSearchQuery.isNotEmpty() && state.preeditText.isEmpty()) {
+                                        if (clipboardSearchQuery.isNotEmpty()) {
                                             viewModel.updateClipboardSearchQuery(clipboardSearchQuery.dropLast(1))
+                                            return@KeyPress
+                                        }
+                                    }
+                                    // 搜索模式：ASCII 模式下单字符/空格直接追加到搜索框
+                                    if (isClipboardSearching && state.isAsciiMode) {
+                                        if (key.length == 1) {
+                                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
+                                            return@KeyPress
+                                        }
+                                        if (key == "space") {
+                                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery + " ")
                                             return@KeyPress
                                         }
                                     }
@@ -590,7 +587,7 @@ fun KeyboardView(
                             }
                         }
                         val numberOnKeyPress: (String) -> Unit = { key ->
-                            if (isClipboardSearching && key.length == 1) {
+                            if (isClipboardSearching && state.isAsciiMode && key.length == 1) {
                                 viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
                             } else when (key) {
                                 "abc" -> {
@@ -623,7 +620,7 @@ fun KeyboardView(
                             }
                         }
                         val symbolOnKeyPress: (String) -> Unit = { key ->
-                            if (isClipboardSearching && key.length == 1) {
+                            if (isClipboardSearching && state.isAsciiMode && key.length == 1) {
                                 viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
                             } else when (key) {
                                 "abc" -> viewModel.setKeyboardState(
@@ -639,7 +636,7 @@ fun KeyboardView(
                             }
                         }
                         val commonSymbolOnKeyPress: (String) -> Unit = { key ->
-                            if (isClipboardSearching && key.length == 1) {
+                            if (isClipboardSearching && state.isAsciiMode && key.length == 1) {
                                 viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
                             } else when (key) {
                                 "abc" -> viewModel.setKeyboardState(
@@ -654,7 +651,7 @@ fun KeyboardView(
                             }
                         }
                         val strokeOnKeyPress: (String) -> Unit = { key ->
-                            if (isClipboardSearching && key.length == 1) {
+                            if (isClipboardSearching && state.isAsciiMode && key.length == 1) {
                                 viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
                             } else when (key) {
                                 "abc" -> viewModel.setKeyboardState(keyboardState.transition(
