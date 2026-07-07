@@ -40,6 +40,8 @@ import com.kingzcheung.xime.keyboard.OverlayRoute
 import com.kingzcheung.xime.keyboard.PanelType
 import com.kingzcheung.xime.keyboard.ToolbarAction
 import com.kingzcheung.xime.keyboard.ToolbarButton
+import com.kingzcheung.xime.keyboard.GestureAction
+import com.kingzcheung.xime.keyboard.Keycode
 import com.kingzcheung.xime.rime.T9InputController
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.settings.SettingsPreferences
@@ -65,6 +67,8 @@ fun KeyboardView(
     val keyboardState by viewModel.keyboardState.collectAsStateWithLifecycle()
     val page by viewModel.page.collectAsStateWithLifecycle()
     val viewState by viewModel.viewState.collectAsStateWithLifecycle()
+    val ctrlSticky by viewModel.ctrlSticky.collectAsStateWithLifecycle()
+    val altSticky by viewModel.altSticky.collectAsStateWithLifecycle()
     val isLandscape = if (state.isFloatingMode) false
         else LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -398,8 +402,15 @@ fun KeyboardView(
                                 }
                                 "emoji" -> viewModel.showOverlay(OverlayRoute.Emoji)
                                 else -> {
-                                    callbacks.onKeyPress(key, isShifted)
-                                    viewModel.onCharacterTyped()
+                                    // 粘滞修饰键：Ctrl/Alt 激活时，字母键发送组合键
+                                    val sendExpr = buildStickySendExpr(key, ctrlSticky, altSticky, isShifted)
+                                    if (sendExpr != null) {
+                                        callbacks.onGestureAction?.invoke(GestureAction.SEND_KEY, sendExpr)
+                                        viewModel.onCharacterTyped()
+                                    } else {
+                                        callbacks.onKeyPress(key, isShifted)
+                                        viewModel.onCharacterTyped()
+                                    }
                                 }
                             }
                         }
@@ -865,4 +876,34 @@ fun KeyboardView(
         }
     }
     }
+}
+
+/**
+ * 根据粘滞修饰键状态构建 send 表达式。
+ *
+ * 当 Ctrl 或 Alt 粘滞激活时，字母键不直接输入字符，而是发送组合键
+ *（如 "Control+c"）。Shift 粘滞或大写锁定时也附加 Shift 修饰键。
+ *
+ * @param key 按下的键名（如 "a"、"z"）
+ * @param ctrlSticky Ctrl 粘滞是否激活
+ * @param altSticky Alt 粘滞是否激活
+ * @param isShifted Shift 是否激活
+ * @return send 表达式（如 "Control+Shift+c"），无修饰键时返回 null
+ */
+private fun buildStickySendExpr(
+    key: String,
+    ctrlSticky: Boolean,
+    altSticky: Boolean,
+    isShifted: Boolean,
+): String? {
+    if (!ctrlSticky && !altSticky && !isShifted) return null
+    val keyLower = key.lowercase()
+    // 仅对单个字母键应用组合键，非字母键走普通输入
+    if (keyLower.length != 1 || !keyLower[0].isLetter()) return null
+    val parts = mutableListOf<String>()
+    if (ctrlSticky) parts += "Control"
+    if (altSticky) parts += "Alt"
+    if (isShifted) parts += "Shift"
+    parts += keyLower
+    return parts.joinToString("+")
 }

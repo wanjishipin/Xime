@@ -81,6 +81,12 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     private val _shiftMode = MutableStateFlow(ShiftMode.OFF)
     val shiftMode: StateFlow<ShiftMode> = _shiftMode.asStateFlow()
 
+    private val _ctrlSticky = MutableStateFlow(false)
+    val ctrlSticky: StateFlow<Boolean> = _ctrlSticky.asStateFlow()
+
+    private val _altSticky = MutableStateFlow(false)
+    val altSticky: StateFlow<Boolean> = _altSticky.asStateFlow()
+
     private val _keyboardState = MutableStateFlow<KeyboardLayoutState>(KeyboardLayoutState.Chinese)
     val keyboardState: StateFlow<KeyboardLayoutState> = _keyboardState.asStateFlow()
 
@@ -307,6 +313,9 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
             _isShifted.value = false
             _shiftMode.value = ShiftMode.OFF
         }
+        // 粘滞修饰键在输入后自动取消
+        _ctrlSticky.value = false
+        _altSticky.value = false
     }
 
     fun setKeyboardState(state: KeyboardLayoutState) {
@@ -350,6 +359,19 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
     fun resetShift() {
         _isShifted.value = false
         _shiftMode.value = ShiftMode.OFF
+    }
+
+    fun toggleCtrl() {
+        _ctrlSticky.update { !it }
+    }
+
+    fun toggleAlt() {
+        _altSticky.update { !it }
+    }
+
+    fun resetStickyModifiers() {
+        _ctrlSticky.value = false
+        _altSticky.value = false
     }
 
     // ── Page Navigation ──

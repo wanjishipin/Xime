@@ -107,6 +107,8 @@ fun KeyboardLayout(
 ) {
     val isShifted by viewModel.isShifted.collectAsStateWithLifecycle()
     val shiftMode by viewModel.shiftMode.collectAsStateWithLifecycle()
+    val ctrlSticky by viewModel.ctrlSticky.collectAsStateWithLifecycle()
+    val altSticky by viewModel.altSticky.collectAsStateWithLifecycle()
 
     var visualIsShifted by remember { mutableStateOf(false) }
     LaunchedEffect(isShifted) {
@@ -561,6 +563,19 @@ fun KeyboardLayout(
                                 shadowShapeRadius = shadowShapeRadius,
                             )
 
+                            // Ctrl 粘滞键（?123 右侧，与 ?123 同色相邻）
+                            StickyModifierButton(
+                                text = "Ctrl",
+                                isActive = ctrlSticky,
+                                onClick = { viewModel.toggleCtrl() },
+                                backgroundColor = specialKeyBackgroundColor,
+                                textColor = keyTextColor,
+                                modifier = Modifier.weight(0.7f),
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                            )
+
                             // 逗号 — 从配置读取 "'"
                             val k2KeyGesture = KeysConfigHelper.getKeyGesture("'", isAsciiMode)
                             val k2TapAction = k2KeyGesture?.tap?.action
@@ -692,7 +707,7 @@ fun KeyboardLayout(
                                 modifier = Modifier.weight(1.2f)
                             )
                         } else {
-                            // shift_l — 从配置读取
+                        // shift_l — 从配置读取
                             val k4KeyGesture = KeysConfigHelper.getKeyGesture("shift_l", isAsciiMode)
                             val k4TapAction = k4KeyGesture?.tap?.action
                             val k4TapValue = k4KeyGesture?.tap?.value?.takeIf { it.isNotEmpty() }
@@ -796,6 +811,19 @@ fun KeyboardLayout(
                                     shadowShapeRadius = shadowShapeRadius,
                                 )
                             }
+
+                            // Alt 粘滞键（shift_l 右侧、回车左侧，与回车同色相邻）
+                            StickyModifierButton(
+                                text = "Alt",
+                                isActive = altSticky,
+                                onClick = { viewModel.toggleAlt() },
+                                backgroundColor = specialKeyBackgroundColor,
+                                textColor = keyTextColor,
+                                modifier = Modifier.weight(0.7f),
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                            )
 
                             // 回车 — 硬编码
                             KeyButton(
@@ -2183,5 +2211,73 @@ private fun SpaceKey(
                 )
             }
         }
+    }
+}
+
+/**
+ * 粘滞修饰键按钮（Ctrl / Alt）。
+ *
+ * 点击切换粘滞状态，激活时高亮显示（加深背景色）。
+ * 再次点击或输入字符后自动取消。
+ */
+@Composable
+private fun StickyModifierButton(
+    text: String,
+    isActive: Boolean,
+    onClick: () -> Unit,
+    backgroundColor: Color,
+    textColor: Color,
+    modifier: Modifier = Modifier,
+    shadowEnabled: Boolean = true,
+    shadowElevation: Dp = 1.dp,
+    shadowShapeRadius: Dp = 8.dp,
+) {
+    var isPressed by remember { mutableStateOf(false) }
+    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    }
+
+    fun darkenColor(color: Color, factor: Float = 0.15f): Color {
+        return Color(
+            red = (color.red * (1 - factor)).coerceIn(0f, 1f),
+            green = (color.green * (1 - factor)).coerceIn(0f, 1f),
+            blue = (color.blue * (1 - factor)).coerceIn(0f, 1f),
+            alpha = color.alpha
+        )
+    }
+
+    Box(
+        modifier = modifier
+            .pointerInput(Unit) {
+                detectTapGestures(
+                    onPress = {
+                        isPressed = true
+                        tryAwaitRelease()
+                        isPressed = false
+                    },
+                    onTap = { onClick() }
+                )
+            }
+            .padding(horizontal = 2.dp, vertical = 4.25.dp)
+            .then(shadowModifier)
+            .clip(shadowShape)
+            .background(
+                when {
+                    isPressed -> darkenColor(backgroundColor, 0.1f)
+                    isActive -> darkenColor(backgroundColor, 0.2f)
+                    else -> backgroundColor
+                }
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            color = textColor,
+            fontSize = 12.sp,
+            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            maxLines = 1
+        )
     }
 }
