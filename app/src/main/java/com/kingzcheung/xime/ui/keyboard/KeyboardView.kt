@@ -560,6 +560,16 @@ fun KeyboardView(
                                 }
                                 "emoji" -> viewModel.showOverlay(OverlayRoute.Emoji)
                                 else -> {
+                                    // 搜索模式：单字符键直接追加到搜索框，不经过 Rime
+                                    if (isClipboardSearching && key.length == 1) {
+                                        viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
+                                        return@KeyPress
+                                    }
+                                    // 搜索模式：空格键追加空格到搜索框
+                                    if (isClipboardSearching && key == "space") {
+                                        viewModel.updateClipboardSearchQuery(clipboardSearchQuery + " ")
+                                        return@KeyPress
+                                    }
                                     // 搜索模式：BackSpace 优先删除搜索查询内容
                                     if (isClipboardSearching && (key == "BackSpace" || key == "Delete")) {
                                         if (clipboardSearchQuery.isNotEmpty() && state.preeditText.isEmpty()) {
@@ -580,7 +590,9 @@ fun KeyboardView(
                             }
                         }
                         val numberOnKeyPress: (String) -> Unit = { key ->
-                            when (key) {
+                            if (isClipboardSearching && key.length == 1) {
+                                viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
+                            } else when (key) {
                                 "abc" -> {
                                     val saved = savedNumberAsciiMode
                                     savedNumberAsciiMode = null
@@ -611,7 +623,9 @@ fun KeyboardView(
                             }
                         }
                         val symbolOnKeyPress: (String) -> Unit = { key ->
-                            when (key) {
+                            if (isClipboardSearching && key.length == 1) {
+                                viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
+                            } else when (key) {
                                 "abc" -> viewModel.setKeyboardState(
                                     initialKeyboardLayoutState(state.isAsciiMode, state.currentSchemaId)
                                 )
@@ -625,7 +639,9 @@ fun KeyboardView(
                             }
                         }
                         val commonSymbolOnKeyPress: (String) -> Unit = { key ->
-                            when (key) {
+                            if (isClipboardSearching && key.length == 1) {
+                                viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
+                            } else when (key) {
                                 "abc" -> viewModel.setKeyboardState(
                                     initialKeyboardLayoutState(state.isAsciiMode, state.currentSchemaId)
                                 )
@@ -638,7 +654,9 @@ fun KeyboardView(
                             }
                         }
                         val strokeOnKeyPress: (String) -> Unit = { key ->
-                            when (key) {
+                            if (isClipboardSearching && key.length == 1) {
+                                viewModel.updateClipboardSearchQuery(clipboardSearchQuery + key)
+                            } else when (key) {
                                 "abc" -> viewModel.setKeyboardState(keyboardState.transition(
                                     KeyboardLayoutAction.SwitchToFull, state.isAsciiMode
                                 ))
