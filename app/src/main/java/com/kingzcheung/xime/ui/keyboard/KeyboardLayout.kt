@@ -762,8 +762,17 @@ fun KeyboardLayout(
                                     }
                                 }
                             }
-                            val k4OnSwipe: ((String) -> Unit)? = if (k4SwipeUpValue != null && k4SwipeUpAction != GestureAction.NONE) {
-                                remember(k4SwipeUpValue, onKeyPress) { { onKeyPress(k4SwipeUpValue) } }
+                            val k4OnSwipe: ((String) -> Unit)? = if (k4SwipeUpValue != null && k4SwipeUpAction != null && k4SwipeUpAction != GestureAction.NONE) {
+                                remember(k4SwipeUpAction, k4SwipeUpValue, onKeyPress, onGestureAction, onCommitText) {
+                                    { _: String ->
+                                        if (k4SwipeUpAction == GestureAction.COMMIT) {
+                                            (onCommitText ?: onKeyPress)(k4SwipeUpValue)
+                                        } else {
+                                            onGestureAction?.invoke(k4SwipeUpAction!!, k4SwipeUpValue)
+                                        }
+                                        Unit
+                                    }
+                                }
                             } else null
                             val k4OnSwipeDown: ((String) -> Unit)? = if (k4SwipeDownAction != null && k4SwipeDownLabel != null) {
                                 remember(k4SwipeDownAction, k4SwipeDownValue, k4SwipeDownLabel, onKeyPress, onGestureAction, onCommitText) {
@@ -789,13 +798,46 @@ fun KeyboardLayout(
                                     Unit
                                 }
                             }
-                            if (k4TapAction == GestureAction.TOGGLE_ASCII && k4LongPressLabels == null && k4Icon != null) {
-                                IconKeyButton(
-                                    icon = k4Icon,
+                            val k4HasSwipe = k4SwipeUpRaw != null || k4SwipeDownRaw != null
+                            if (k4TapAction == GestureAction.TOGGLE_ASCII) {
+                                // 中英切换键：始终使用地球图标，支持 swipe 手势
+                                val k4OnSwipeIcon: (() -> Unit)? = if (k4SwipeUpValue != null && k4SwipeUpAction != null && k4SwipeUpAction != GestureAction.NONE) {
+                                    remember(k4SwipeUpAction, k4SwipeUpValue, onKeyPress, onGestureAction, onCommitText) {
+                                        {
+                                            if (k4SwipeUpAction == GestureAction.COMMIT) {
+                                                (onCommitText ?: onKeyPress)(k4SwipeUpValue)
+                                            } else {
+                                                onGestureAction?.invoke(k4SwipeUpAction!!, k4SwipeUpValue)
+                                            }
+                                        }
+                                    }
+                                } else null
+                                val k4OnSwipeDownIcon: (() -> Unit)? = if (k4SwipeDownAction != null && k4SwipeDownLabel != null) {
+                                    remember(k4SwipeDownAction, k4SwipeDownValue, k4SwipeDownLabel, onKeyPress, onGestureAction, onCommitText) {
+                                        {
+                                            val label = k4SwipeDownLabel
+                                            if (k4SwipeDownAction == GestureAction.COMMIT) {
+                                                (onCommitText ?: onKeyPress)(k4SwipeDownValue?.ifEmpty { label } ?: label)
+                                            } else {
+                                                onGestureAction?.invoke(k4SwipeDownAction!!, k4SwipeDownValue?.ifEmpty { label } ?: label)
+                                            }
+                                        }
+                                    }
+                                } else null
+                                SwipeableIconKeyButton(
+                                    icon = rememberVectorPainter(Icons.Default.Language),
                                     onClick = k4OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     iconColor = keyTextColor,
                                     modifier = Modifier.weight(0.8f),
+                                    swipeText = if (swipeUpHintsEnabled && k4SwipeUpLabel.isNotEmpty()) k4SwipeUpLabel else null,
+                                    swipeUpLabel = if (swipeUpHintsEnabled && k4SwipeUpLabel.isNotEmpty()) k4SwipeUpLabel else null,
+                                    swipeDownLabel = if (swipeDownHintsEnabled && k4SwipeDownLabel != null) k4SwipeDownLabel else null,
+                                    onSwipe = k4OnSwipeIcon,
+                                    onSwipeDown = k4OnSwipeDownIcon,
+                                    onSwipeStateChange = { state, bounds ->
+                                        processSwipeState(state, bounds)
+                                    },
                                     onPress = { onKeyPressDown?.invoke(k4TapValue) },
                                     onRelease = { onKeyRelease?.invoke(k4TapValue) },
                                     shadowEnabled = shadowEnabled,
@@ -810,10 +852,9 @@ fun KeyboardLayout(
                                     backgroundColor = keyBackgroundColor,
                                     textColor = keyTextColor,
                                     modifier = Modifier.weight(0.8f),
-                                    icon = k4Icon,
                                     swipeText = k4SwipeUpLabel.takeIf { it.isNotEmpty() },
-                                    swipeDownText = k4SwipeDownBubbleText,
-                                    swipeDownKeyLabel = if ((k4SwipeDownDisplay == DisplayMode.KEY || k4SwipeDownDisplay == DisplayMode.BOTH)) k4SwipeDownLabel else null,
+                                    swipeDownText = if (swipeDownHintsEnabled && k4SwipeDownDisplay != DisplayMode.KEY) k4SwipeDownLabel else null,
+                                    swipeDownKeyLabel = if (swipeDownHintsEnabled && (k4SwipeDownDisplay == DisplayMode.KEY || k4SwipeDownDisplay == DisplayMode.BOTH)) k4SwipeDownLabel else null,
                                     onSwipe = k4OnSwipe,
                                     onSwipeDown = k4OnSwipeDown,
                                     onSwipeStateChange = { state, bounds ->
