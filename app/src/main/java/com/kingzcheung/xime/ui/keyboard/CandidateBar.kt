@@ -382,7 +382,10 @@ fun CandidateBar(
                                 Icon(
                                     imageVector = action.button.icon,
                                     contentDescription = action.button.label,
-                                    tint = if (isPressed) visuals.textColor.copy(alpha = 0.6f) else if (visuals.isDarkTheme) visuals.textColor else visuals.textColor.copy(alpha = 0.65f),
+                                    tint = if (action.isActive) visuals.accentColor
+                                        else if (isPressed) visuals.textColor.copy(alpha = 0.6f)
+                                        else if (visuals.isDarkTheme) visuals.textColor
+                                        else visuals.textColor.copy(alpha = 0.65f),
                                     modifier = Modifier.size(20.dp)
                                 )
                             }

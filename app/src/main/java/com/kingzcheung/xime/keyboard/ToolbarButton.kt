@@ -13,6 +13,7 @@ import androidx.compose.material.icons.twotone.Quickreply
 import androidx.compose.material.icons.twotone.SelectAll
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Create
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.outlined.Gesture
 import androidx.compose.material.icons.twotone.ContentPasteGo
@@ -29,6 +30,7 @@ enum class ToolbarButton(
     QUICK_PHRASE("quick_phrase", "快捷发送", Icons.TwoTone.Quickreply),
     SYMBOL("symbol", "符号", Icons.TwoTone.Paid),
     FLOAT("float", "悬浮", Icons.Default.PictureInPicture),
+    PIN("pin", "置顶", Icons.Default.PushPin),
     SELECT_ALL("select_all", "全选", Icons.TwoTone.SelectAll),
     COPY("copy", "复制", Icons.TwoTone.ContentCopy),
     PASTE("paste", "黏贴", Icons.TwoTone.ContentPaste),
@@ -46,5 +48,6 @@ enum class ToolbarButton(
 
 data class ToolbarAction(
     val button: ToolbarButton,
-    val onClick: () -> Unit
+    val onClick: () -> Unit,
+    val isActive: Boolean = false
 )
