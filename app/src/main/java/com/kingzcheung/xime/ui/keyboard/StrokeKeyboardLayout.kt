@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.EmojiEmotions
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -62,6 +63,7 @@ fun StrokeKeyboardLayout(
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
+    keyCornerRadius: Dp = 8.dp,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
     isFloatingMode: Boolean = false,
@@ -89,6 +91,7 @@ fun StrokeKeyboardLayout(
         keyboardWidth = keyboardBounds.width
     )
 
+    CompositionLocalProvider(LocalKeyCornerRadius provides keyCornerRadius) {
     Box(
         modifier = modifier
             .background(keyboardBackgroundColor)
@@ -199,6 +202,7 @@ fun StrokeKeyboardLayout(
             }
         }
     }
+    }
 }
 
 private data class StrokeKeyDef(
@@ -261,7 +265,7 @@ private fun StrokeRows(
                             modifier = Modifier.weight(1f),
                             onPress = { onKeyPressDown?.invoke(symbol) },
                             isFirst = index == 0,
-                            isLast = index == symbols.lastIndex
+                            isLast = index == symbols.lastIndex,
                         )
                     }
                 }
@@ -497,16 +501,17 @@ private fun StrokeSymbolKey(
     modifier: Modifier = Modifier,
     onPress: (() -> Unit)? = null,
     isFirst: Boolean = false,
-    isLast: Boolean = false
+    isLast: Boolean = false,
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnPress by rememberUpdatedState(onPress)
+    val cornerRadius = LocalKeyCornerRadius.current
     val shape = RoundedCornerShape(
-        topStart = if (isFirst) 8.dp else 0.dp,
-        topEnd = if (isFirst) 8.dp else 0.dp,
-        bottomStart = if (isLast) 8.dp else 0.dp,
-        bottomEnd = if (isLast) 8.dp else 0.dp
+        topStart = if (isFirst) cornerRadius else 0.dp,
+        topEnd = if (isFirst) cornerRadius else 0.dp,
+        bottomStart = if (isLast) cornerRadius else 0.dp,
+        bottomEnd = if (isLast) cornerRadius else 0.dp
     )
     Box(
         modifier = modifier
@@ -553,9 +558,10 @@ private fun StrokeKeyButton(
     val density = LocalDensity.current
     val swipeUpThreshold = with(density) { (-40).dp.toPx() }
 
-    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    val keyCornerRadius = LocalKeyCornerRadius.current
+    val keyClipShape = remember(keyCornerRadius) { RoundedCornerShape(keyCornerRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, keyClipShape) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, keyClipShape) else Modifier
     }
 
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
@@ -612,7 +618,7 @@ private fun StrokeKeyButton(
             }
             .padding(horizontal = 2.dp, vertical = 2.dp)
             .then(shadowModifier)
-            .clip(shadowShape)
+            .clip(keyClipShape)
             .background(
                 if (isPressed) darkenColor(backgroundColor, 0.2f)
                 else backgroundColor

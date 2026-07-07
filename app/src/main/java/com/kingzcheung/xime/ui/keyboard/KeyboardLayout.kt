@@ -127,6 +127,7 @@ fun KeyboardLayout(
     val specialKeyBackgroundColor = if (uiState.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
         ?: themeSpecialKeyColor else kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
     val kbShadow = KeysConfigHelper.getKeyboardShadow()
+    val kbKey = KeysConfigHelper.getKeyboardKeyConfig()
     val shadowEnabled = kbShadow.enabled
     val shadowElevation = kbShadow.elevation.dp
     val shadowShapeRadius = kbShadow.shapeRadius.dp
@@ -233,6 +234,7 @@ fun KeyboardLayout(
 
     val isLandscape = !uiState.isFloatingMode && LocalConfiguration.current.screenWidthDp > LocalConfiguration.current.screenHeightDp
 
+    CompositionLocalProvider(LocalKeyCornerRadius provides kbKey.cornerRadius.dp) {
     Box(
         modifier = modifier
             .background(keyboardBackgroundColor)
@@ -831,6 +833,7 @@ fun KeyboardLayout(
         }
     }
 
+    }
 }
 
 @Composable
@@ -896,7 +899,7 @@ private fun DummyKeyButton(
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
             .background(backgroundColor)
     )
 }
@@ -1031,9 +1034,10 @@ private fun ShiftCapsKeyButton(
 ) {
     var isPressed by remember { mutableStateOf(false) }
 
-    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    val keyCornerRadius = LocalKeyCornerRadius.current
+    val keyClipShape = remember(keyCornerRadius) { RoundedCornerShape(keyCornerRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, keyClipShape) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, keyClipShape) else Modifier
     }
 
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
@@ -1071,7 +1075,7 @@ private fun ShiftCapsKeyButton(
                 }
             }
             .then(shadowModifier)
-            .clip(shadowShape)
+            .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
             .background(
                 if (isPressed) darkenColor(backgroundColor, 0.1f)
                 else if (shiftMode == ShiftMode.CAPS) darkenColor(backgroundColor, 0.2f)
@@ -1155,6 +1159,7 @@ private fun LandscapeKeyboardContent(
     val specialKeyBackgroundColor = if (uiState.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
         ?: themeSpecialKeyColor else kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
     val kbShadow = KeysConfigHelper.getKeyboardShadow()
+    val kbKey = KeysConfigHelper.getKeyboardKeyConfig()
     val shadowEnabled = kbShadow.enabled
     val shadowElevation = kbShadow.elevation.dp
     val shadowShapeRadius = kbShadow.shapeRadius.dp
@@ -1629,9 +1634,10 @@ fun SwipeableKeyButtonLandscape(
     val bubbleShowThresholdUp = swipeUpThreshold * 0.3f
     val bubbleShowThresholdDown = swipeDownThreshold * 0.3f
 
-    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    val keyCornerRadius = LocalKeyCornerRadius.current
+    val keyClipShape = remember(keyCornerRadius) { RoundedCornerShape(keyCornerRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, keyClipShape) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, keyClipShape) else Modifier
     }
 
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
@@ -1843,7 +1849,7 @@ fun SwipeableKeyButtonLandscape(
             }
             .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
-            .clip(shadowShape)
+            .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
             .background(if (isPressed) darkenColor(backgroundColor) else backgroundColor),
         contentAlignment = Alignment.TopStart
     ) {
@@ -2022,9 +2028,10 @@ private fun SplitSpaceKey(
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
 ) {
-    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    val keyCornerRadius = LocalKeyCornerRadius.current
+    val keyClipShape = remember(keyCornerRadius) { RoundedCornerShape(keyCornerRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, keyClipShape) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, keyClipShape) else Modifier
     }
 
     Box(
@@ -2032,7 +2039,7 @@ private fun SplitSpaceKey(
             .fillMaxHeight()
             .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
-            .clip(shadowShape)
+            .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
             .background(backgroundColor)
             .clickable(
                 interactionSource = null,
@@ -2089,8 +2096,9 @@ private fun SpaceKey(
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-        if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
+    val keyCornerRadius = LocalKeyCornerRadius.current
+    val shadowModifier = remember(shadowEnabled, shadowElevation, keyCornerRadius) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(keyCornerRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
         else Modifier
     }
 
@@ -2135,7 +2143,7 @@ private fun SpaceKey(
             .fillMaxWidth()
             .fillMaxHeight()
             .then(shadowModifier)
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
             .background(keyBackgroundColor),
         contentAlignment = Alignment.Center
     ) {

@@ -93,6 +93,7 @@ fun T9KeyboardLayout(
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
+    keyCornerRadius: Dp = 8.dp,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
     isFloatingMode: Boolean = false,
@@ -149,6 +150,7 @@ fun T9KeyboardLayout(
         keyboardWidth = keyboardBounds.width
     )
 
+    CompositionLocalProvider(LocalKeyCornerRadius provides keyCornerRadius) {
     Box(
         modifier = modifier
             .background(keyboardBackgroundColor)
@@ -245,6 +247,7 @@ fun T9KeyboardLayout(
             }
         }
     }
+    }
 }
 
 // ─── 横屏候选面板 — 包装组件 ────────────────────────────────────────
@@ -265,10 +268,10 @@ private fun T9LandscapeCandidatePanel(
             .fillMaxSize()
             .then(
                 if (shadowEnabled) {
-                    Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius))
+                    Modifier.shadow(shadowElevation, RoundedCornerShape(LocalKeyCornerRadius.current))
                 } else Modifier
             )
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
             .background(keyBackgroundColor)
     ) {
         val rimeCandidates = uiState.candidates
@@ -404,7 +407,7 @@ private fun T9KeyboardContent(
                             Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius))
                         } else Modifier
                     )
-                    .clip(RoundedCornerShape(shadowShapeRadius))
+                    .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
                     .background(keyBackgroundColor)
             ) {
                 val showCandidates = controller.firstOptions.isNotEmpty()

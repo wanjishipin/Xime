@@ -59,6 +59,7 @@ fun NumberKeyboardLayout(
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
+    keyCornerRadius: Dp = 8.dp,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
     isFloatingMode: Boolean = false,
@@ -86,6 +87,7 @@ fun NumberKeyboardLayout(
         keyboardWidth = keyboardBounds.width
     )
 
+    CompositionLocalProvider(LocalKeyCornerRadius provides keyCornerRadius) {
     Box(
         modifier = modifier
             .background(keyboardBackgroundColor)
@@ -214,6 +216,7 @@ fun NumberKeyboardLayout(
             }
         }
 
+    }
     }
 }
 
@@ -504,11 +507,12 @@ private fun NumberSymbolKey(
     var isPressed by remember { mutableStateOf(false) }
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnPress by rememberUpdatedState(onPress)
+    val cornerRadius = LocalKeyCornerRadius.current
     val shape = RoundedCornerShape(
-        topStart = if (isFirst) 8.dp else 0.dp,
-        topEnd = if (isFirst) 8.dp else 0.dp,
-        bottomStart = if (isLast) 8.dp else 0.dp,
-        bottomEnd = if (isLast) 8.dp else 0.dp
+        topStart = if (isFirst) cornerRadius else 0.dp,
+        topEnd = if (isFirst) cornerRadius else 0.dp,
+        bottomStart = if (isLast) cornerRadius else 0.dp,
+        bottomEnd = if (isLast) cornerRadius else 0.dp
     )
     Box(
         modifier = modifier

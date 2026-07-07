@@ -42,6 +42,7 @@ fun CommonSymbolKeyboardLayout(
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
+    keyCornerRadius: Dp = 8.dp,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
     isFloatingMode: Boolean = false,
@@ -87,6 +88,7 @@ fun CommonSymbolKeyboardLayout(
         keyboardWidth = keyboardBounds.width,
     )
 
+    CompositionLocalProvider(LocalKeyCornerRadius provides keyCornerRadius) {
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -307,6 +309,7 @@ fun CommonSymbolKeyboardLayout(
             }
             }
         }
+    }
     }
 }
 

@@ -37,6 +37,7 @@ fun KeyboardLayoutScreen(
     val specialKeyBgColor = if (uiState.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
         ?: themeSpecialKeyColor else kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
     val kbShadow = KeysConfigHelper.getKeyboardShadow()
+    val kbKey = KeysConfigHelper.getKeyboardKeyConfig()
 
     val onGestureAction: (GestureAction, String) -> Unit = { action, value ->
         when (action) {
@@ -125,6 +126,7 @@ fun KeyboardLayoutScreen(
                 shadowEnabled = kbShadow.enabled,
                 shadowElevation = kbShadow.elevation.dp,
                 shadowShapeRadius = kbShadow.shapeRadius.dp,
+                keyCornerRadius = kbKey.cornerRadius.dp,
                 modifier = modifier,
                 onKeyPressDown = callbacks.onKeyPressDown,
                 isFloatingMode = uiState.isFloatingMode,
@@ -142,6 +144,7 @@ fun KeyboardLayoutScreen(
                 shadowEnabled = kbShadow.enabled,
                 shadowElevation = kbShadow.elevation.dp,
                 shadowShapeRadius = kbShadow.shapeRadius.dp,
+                keyCornerRadius = kbKey.cornerRadius.dp,
                 modifier = modifier,
                 onKeyPressDown = callbacks.onKeyPressDown,
                 isFloatingMode = uiState.isFloatingMode,
@@ -158,6 +161,7 @@ fun KeyboardLayoutScreen(
                 shadowEnabled = kbShadow.enabled,
                 shadowElevation = kbShadow.elevation.dp,
                 shadowShapeRadius = kbShadow.shapeRadius.dp,
+                keyCornerRadius = kbKey.cornerRadius.dp,
                 modifier = modifier,
                 onKeyPressDown = callbacks.onKeyPressDown,
                 isFloatingMode = uiState.isFloatingMode,
@@ -178,6 +182,7 @@ fun KeyboardLayoutScreen(
                     shadowEnabled = kbShadow.enabled,
                     shadowElevation = kbShadow.elevation.dp,
                     shadowShapeRadius = kbShadow.shapeRadius.dp,
+                    keyCornerRadius = kbKey.cornerRadius.dp,
                     modifier = modifier,
                     onKeyPressDown = callbacks.onKeyPressDown,
                     isFloatingMode = uiState.isFloatingMode,

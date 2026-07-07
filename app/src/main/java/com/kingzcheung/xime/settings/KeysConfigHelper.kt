@@ -77,6 +77,13 @@ data class KeyboardShadowConfig(
 )
 
 /**
+ * 键盘按键配置，从 xime.yaml keyboard.key 加载。
+ */
+data class KeyboardKeyConfig(
+    val cornerRadius: Int = 8,
+)
+
+/**
  * 键盘颜色配置，从 xime.yaml keyboard.colors 加载。
  * 所有颜色值为 0xRRGGBB 格式（不含 alpha）。
  */
@@ -294,6 +301,9 @@ object KeysConfigHelper {
     
     // 键盘阴影配置缓存
     private var keyboardShadowConfig: KeyboardShadowConfig = KeyboardShadowConfig()
+
+    // 键盘按键配置缓存
+    private var keyboardKeyConfig: KeyboardKeyConfig = KeyboardKeyConfig()
     
     // 按键布局模式缓存（中文 qwerty / 英文 qwerty_en）
     private var _buttonLayoutZh: ButtonLayout = ButtonLayout.STANDARD
@@ -327,6 +337,8 @@ object KeysConfigHelper {
             keyboardColorsConfig = parseKeyboardColorsFromAssets(context)
             // 键盘阴影（从原始 YAML 手动解析）
             keyboardShadowConfig = parseKeyboardShadowFromAssets(context)
+            // 键盘按键（从原始 YAML 手动解析）
+            keyboardKeyConfig = parseKeyboardKeyFromAssets(context)
             // 按键布局（从原始 YAML 手动解析，中英文分开）
             val parsedLayouts = parseButtonLayoutFromAssets(context)
             _buttonLayoutZh = parsedLayouts.first
@@ -499,6 +511,50 @@ object KeysConfigHelper {
         return KeyboardShadowConfig(enabled = enabled, elevation = elevation, shapeRadius = shapeRadius)
     }
 
+    /** 从 xime.yaml + xime.custom.yaml 合并解析键盘按键配置。 */
+    private fun parseKeyboardKeyFromAssets(context: Context): KeyboardKeyConfig {
+        val defaultText = readAssetText(context, XIME_CONFIG_FILE) ?: return KeyboardKeyConfig()
+        val default = parseKeyboardKeyYamlText(defaultText) ?: return KeyboardKeyConfig()
+        val custom = readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
+            ?.let { parseKeyboardKeyYamlText(it) }
+            ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
+                ?.let { parseKeyboardKeyYamlText(it) }
+        return custom ?: default
+    }
+
+    /** 从 YAML 文本中提取 keyboard.key 段。
+     *  兼容旧版：若 key.corner_radius 未设置，回退读取 shadow.shape_radius。 */
+    private fun parseKeyboardKeyYamlText(yamlText: String): KeyboardKeyConfig? {
+        val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+        val keyboardNode = root["keyboard"] as? YamlMap ?: return null
+        var cornerRadius = 8
+        // 优先读取 key.corner_radius
+        val keyNode = keyboardNode["key"] as? YamlMap
+        if (keyNode != null) {
+            for ((kNode, vNode) in keyNode.entries) {
+                val key = (kNode as? YamlScalar)?.content ?: continue
+                val value = (vNode as? YamlScalar)?.content ?: continue
+                if (key == "corner_radius") {
+                    cornerRadius = value.toIntOrNull() ?: 8
+                }
+            }
+        }
+        // 未设置 key.corner_radius 时，回退读取 shadow.shape_radius
+        if (cornerRadius == 8) {
+            val shadowNode = keyboardNode["shadow"] as? YamlMap
+            if (shadowNode != null) {
+                for ((kNode, vNode) in shadowNode.entries) {
+                    val key = (kNode as? YamlScalar)?.content ?: continue
+                    val value = (vNode as? YamlScalar)?.content ?: continue
+                    if (key == "shape_radius") {
+                        cornerRadius = value.toIntOrNull() ?: 8
+                    }
+                }
+            }
+        }
+        return KeyboardKeyConfig(cornerRadius = cornerRadius)
+    }
+
     /** 从 xime.yaml + xime.custom.yaml 合并解析按键布局模式（中英文分开）。 */
     private fun parseButtonLayoutFromAssets(context: Context): Pair<ButtonLayout, ButtonLayout> {
         val defaultText = readAssetText(context, XIME_CONFIG_FILE) ?: return Pair(ButtonLayout.STANDARD, ButtonLayout.STANDARD)
@@ -634,6 +690,9 @@ object KeysConfigHelper {
 
     /** 获取键盘阴影配置（从 xime.yaml keyboard.shadow 加载）。 */
     fun getKeyboardShadow(): KeyboardShadowConfig = keyboardShadowConfig
+
+    /** 获取键盘按键配置（从 xime.yaml keyboard.key 加载）。 */
+    fun getKeyboardKeyConfig(): KeyboardKeyConfig = keyboardKeyConfig
 
     /** 获取某个按键的手势配置。 */
     fun getKeyGesture(key: String): KeyGestureConfig? = keyGestureConfig[key.lowercase()]

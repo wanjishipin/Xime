@@ -97,11 +97,17 @@ keyboard:
     candidate_text_color: 0x202124
     candidate_text_color_dark: 0xE8EAED
 
-  # ── 按键阴影配置（可选，不设置则使用默认值）──
+  # ── 按键配置（可选，不设置则使用默认值）──
+  # corner_radius:      按键圆角半径（dp，默认 8）
+  key:
+    corner_radius: 8
+
+  # ── 按键阴影（可选，不设置则使用默认值）──
+  # enabled:            是否启用阴影
+  # elevation:          阴影高度（dp，默认 1）
   shadow:
     enabled: true
     elevation: 1
-    shape_radius: 8
 
   # ── 中文键盘 ──
   qwerty:

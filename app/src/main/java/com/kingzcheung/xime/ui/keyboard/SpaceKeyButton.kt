@@ -55,10 +55,10 @@ fun SpaceKeyButton(
         modifier = modifier
             .height((44 * LocalStretchFactor.current).dp)
             .then(
-                if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(shadowShapeRadius), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
+                if (shadowEnabled) Modifier.shadow(shadowElevation, RoundedCornerShape(LocalKeyCornerRadius.current), ambientColor = Color(0x80000000), spotColor = Color(0x80000000))
                 else Modifier
             )
-            .clip(RoundedCornerShape(shadowShapeRadius))
+            .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
             .background(
                 if (isPressed) backgroundColor.copy(alpha = 0.7f)
                 else backgroundColor

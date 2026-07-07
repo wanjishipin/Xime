@@ -127,6 +127,7 @@ fun KeyboardView(
 
     val kbColors = KeysConfigHelper.getKeyboardColors()
     val kbShadow = KeysConfigHelper.getKeyboardShadow()
+    val kbKey = KeysConfigHelper.getKeyboardKeyConfig()
     val longToColor: (Long) -> androidx.compose.ui.graphics.Color = { androidx.compose.ui.graphics.Color(0xFF000000 or it) }
     val keyboardBgColor = if (state.isDarkTheme) longToColor(kbColors.keyboardBgColorDark)
         else longToColor(kbColors.keyboardBgColor)
@@ -639,6 +640,7 @@ fun KeyboardView(
                         shadowEnabled = kbShadow.enabled,
                         shadowElevation = kbShadow.elevation.dp,
                         shadowShapeRadius = kbShadow.shapeRadius.dp,
+                        keyCornerRadius = kbKey.cornerRadius.dp,
                         onKeyPressDown = callbacks.onKeyPressDown,
                         isFloatingMode = state.isFloatingMode,
                         modifier = Modifier.weight(1f).fillMaxWidth()
@@ -662,6 +664,7 @@ fun KeyboardView(
                         shadowEnabled = kbShadow.enabled,
                         shadowElevation = kbShadow.elevation.dp,
                         shadowShapeRadius = kbShadow.shapeRadius.dp,
+                        keyCornerRadius = kbKey.cornerRadius.dp,
                         onKeyPressDown = callbacks.onKeyPressDown,
                         isFloatingMode = state.isFloatingMode,
                         modifier = Modifier.weight(1f).fillMaxWidth()

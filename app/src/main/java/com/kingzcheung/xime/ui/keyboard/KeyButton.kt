@@ -62,6 +62,10 @@ val LocalKeyVisualPadding = staticCompositionLocalOf {
     PaddingValues(horizontal = 2.dp, vertical = 4.25.dp)
 }
 
+/** 按键圆角半径，由各布局在根层通过 CompositionLocalProvider 提供。
+ *  独立于 shadow.shape_radius，为统一配置化而设。 */
+val LocalKeyCornerRadius = staticCompositionLocalOf { 8.dp }
+
 data class SwipeState(
     val isSwiping: Boolean = false,
     val swipeText: String? = null,
@@ -121,9 +125,10 @@ fun KeyButton(
     val bubbleShowThresholdUp = swipeUpThreshold
     val bubbleShowThresholdDown = swipeDownThreshold
 
-    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    val keyCornerRadius = LocalKeyCornerRadius.current
+    val keyClipShape = remember(keyCornerRadius) { RoundedCornerShape(keyCornerRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, keyClipShape) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, keyClipShape) else Modifier
     }
     
     // 辅助函数：生成更深的颜色（混合黑色）
@@ -259,7 +264,7 @@ fun KeyButton(
                 }
             .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
-            .clip(shadowShape)
+            .clip(keyClipShape)
             .background(
                 if (isPressed) darkenColor(backgroundColor, 0.2f)
                 else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
@@ -367,9 +372,10 @@ fun SwipeableKeyButton(
     val bubbleShowThresholdUp = swipeUpThreshold
     val bubbleShowThresholdDown = swipeDownThreshold
 
-    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    val keyCornerRadius = LocalKeyCornerRadius.current
+    val keyClipShape = remember(keyCornerRadius) { RoundedCornerShape(keyCornerRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, keyClipShape) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, keyClipShape) else Modifier
     }
     val context = LocalContext.current
     val chaiPuaFontFamily = remember { FontFamily(Font("ChaiPUA-0.2.7-snow.ttf", context.assets)) }
@@ -577,7 +583,7 @@ fun SwipeableKeyButton(
             }
             .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
-            .clip(shadowShape)
+            .clip(keyClipShape)
             .background(
                 if (isPressed) backgroundColor.copy(alpha = 0.7f)
                 else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
@@ -765,6 +771,8 @@ fun IconKeyButton(
     val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
         if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
     }
+    val keyCornerRadius = LocalKeyCornerRadius.current
+    val keyClipShape = remember(keyCornerRadius) { RoundedCornerShape(keyCornerRadius) }
     
     // 辅助函数：生成更深的颜色（混合黑色）
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
@@ -796,7 +804,7 @@ fun IconKeyButton(
             }
             .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
-            .clip(shadowShape)
+            .clip(keyClipShape)
             .background(
                 if (isPressed) darkenColor(backgroundColor, 0.1f)
                 else if (isHighlighted) darkenColor(backgroundColor, 0.2f)
@@ -890,9 +898,10 @@ fun SwipeableIconKeyButton(
         }
     }
 
-    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    val keyCornerRadius = LocalKeyCornerRadius.current
+    val keyClipShape = remember(keyCornerRadius) { RoundedCornerShape(keyCornerRadius) }
+    val shadowModifier = remember(shadowEnabled, shadowElevation, keyClipShape) {
+        if (shadowEnabled) Modifier.shadow(shadowElevation, keyClipShape) else Modifier
     }
     
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
@@ -1061,7 +1070,7 @@ fun SwipeableIconKeyButton(
             }
             .padding(LocalKeyVisualPadding.current)
             .then(shadowModifier)
-            .clip(shadowShape)
+            .clip(keyClipShape)
             .background(
                 if (isPressed) darkenColor(backgroundColor, 0.2f)
                 else if (isHighlighted) backgroundColor.copy(alpha = 0.8f)
