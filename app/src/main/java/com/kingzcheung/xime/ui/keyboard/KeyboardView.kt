@@ -6,12 +6,28 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -26,12 +42,22 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kingzcheung.xime.clipboard.ClipboardItem
 import com.kingzcheung.xime.handwriting.HandwritingCandidate
 import com.kingzcheung.xime.keyboard.KeyboardPage
 import com.kingzcheung.xime.rime.RimeEngine
@@ -69,6 +95,8 @@ fun KeyboardView(
     val viewState by viewModel.viewState.collectAsStateWithLifecycle()
     val ctrlSticky by viewModel.ctrlSticky.collectAsStateWithLifecycle()
     val altSticky by viewModel.altSticky.collectAsStateWithLifecycle()
+    val isClipboardSearching by viewModel.isClipboardSearching.collectAsStateWithLifecycle()
+    val clipboardSearchQuery by viewModel.clipboardSearchQuery.collectAsStateWithLifecycle()
     val isLandscape = if (state.isFloatingMode) false
         else LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -212,6 +240,106 @@ fun KeyboardView(
                 }
             }
 
+            if (isClipboardSearching) {
+                // ── 搜索模式：搜索框 + 剪贴板列表放在 CandidateBar 位置 ──
+                val focusRequester = remember { FocusRequester() }
+                val filteredItems = remember(state.clipboardItems, clipboardSearchQuery) {
+                    if (clipboardSearchQuery.isEmpty()) state.clipboardItems
+                    else state.clipboardItems.filter { it.text.contains(clipboardSearchQuery, ignoreCase = true) }
+                }
+                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                viewModel.exitClipboardSearch()
+                                callbacks.onKeyPress("clear_composition", false)
+                            },
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            Icon(Icons.Outlined.Close, "退出搜索", tint = accentColor, modifier = Modifier.size(20.dp))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(34.dp)
+                                .clip(RoundedCornerShape(17.dp))
+                                .background(if (state.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                .padding(horizontal = 10.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (clipboardSearchQuery.isEmpty()) {
+                                Text("搜索剪贴板...", color = candidateTextColor.copy(alpha = 0.5f), fontSize = 13.sp)
+                            }
+                            BasicTextField(
+                                value = clipboardSearchQuery,
+                                onValueChange = { viewModel.updateClipboardSearchQuery(it) },
+                                singleLine = true,
+                                textStyle = TextStyle(color = candidateTextColor, fontSize = 13.sp),
+                                cursorBrush = SolidColor(accentColor),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                            )
+                        }
+                        if (clipboardSearchQuery.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(
+                                onClick = { viewModel.updateClipboardSearchQuery("") },
+                                modifier = Modifier.size(30.dp)
+                            ) {
+                                Icon(Icons.Outlined.Close, "清空", tint = candidateTextColor.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+                    if (filteredItems.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (clipboardSearchQuery.isEmpty()) "剪贴板为空" else "无匹配结果",
+                                color = candidateTextColor.copy(alpha = 0.5f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth().height(120.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            items(filteredItems, key = { it.id }) { item ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(32.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(candidateBarBg)
+                                        .clickable {
+                                            callbacks.onClipboardSelect?.invoke(item.text)
+                                            viewModel.exitClipboardSearch()
+                                        }
+                                        .padding(horizontal = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = item.text,
+                                        color = candidateTextColor,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
             CandidateBar(
                 state = candidateBarState,
                 page = page,
@@ -248,7 +376,11 @@ fun KeyboardView(
                 ),
                 callbacks = CandidateBarCallbacks(
                     onCandidateSelect = { index ->
-                        if (showHandwritingCandidates && index in handwritingCandidates.indices) {
+                        if (isClipboardSearching) {
+                            val text = state.candidates.getOrNull(index) ?: return@CandidateBarCallbacks
+                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery + text)
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (showHandwritingCandidates && index in handwritingCandidates.indices) {
                             val ch = handwritingCandidates[index]
                             callbacks.onCommitText?.invoke(ch)
                             handwritingCandidates = emptyList()
@@ -259,7 +391,9 @@ fun KeyboardView(
                         }
                     },
                     onClearAssociation = {
-                        if (showHandwritingCandidates) {
+                        if (isClipboardSearching) {
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (showHandwritingCandidates) {
                             handwritingCandidates = emptyList()
                             handwritingComments = emptyList()
                             handwritingClearSignal++
@@ -267,9 +401,18 @@ fun KeyboardView(
                             callbacks.onClearAssociation?.invoke()
                         }
                     },
-                    onLogoClick = { viewModel.showOverlay(OverlayRoute.Menu) },
+                    onLogoClick = {
+                        if (isClipboardSearching) {
+                            viewModel.exitClipboardSearch()
+                        } else {
+                            viewModel.showOverlay(OverlayRoute.Menu)
+                        }
+                    },
                     onBack = {
-                        if (showHandwritingCandidates) {
+                        if (isClipboardSearching) {
+                            viewModel.exitClipboardSearch()
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (showHandwritingCandidates) {
                             handwritingCandidates = emptyList()
                             handwritingComments = emptyList()
                             handwritingClearSignal++
@@ -286,17 +429,31 @@ fun KeyboardView(
                         }
                     },
                     onHideKeyboard = {
+                        if (isClipboardSearching) {
+                            viewModel.exitClipboardSearch()
+                        }
                         callbacks.onHideKeyboard?.invoke()
                         viewModel.resetKeyboard(state.isAsciiMode, state.currentSchemaId)
                     },
-                    onShowMoreCandidates = { viewModel.showOverlay(OverlayRoute.CandidatePage) },
+                    onShowMoreCandidates = {
+                        if (!isClipboardSearching) {
+                            viewModel.showOverlay(OverlayRoute.CandidatePage)
+                        }
+                    },
                     onInputTextClick = {
-                        if (state.inputText.isNotEmpty()) {
+                        if (isClipboardSearching) {
+                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery + state.inputText)
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (state.inputText.isNotEmpty()) {
                             callbacks.onClipboardSelect?.invoke(state.inputText)
                         }
                     },
                     onAssociationSelect = { index ->
-                        if (showHandwritingCandidates && index in handwritingCandidates.indices) {
+                        if (isClipboardSearching) {
+                            val text = state.associationCandidates.getOrNull(index) ?: return@CandidateBarCallbacks
+                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery + text)
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (showHandwritingCandidates && index in handwritingCandidates.indices) {
                             val ch = handwritingCandidates[index]
                             callbacks.onCommitText?.invoke(ch)
                             handwritingCandidates = emptyList()
@@ -308,6 +465,7 @@ fun KeyboardView(
                     },
                 )
             )
+            } // end else (ClipboardSearchBar)
 
             val isMainKeyboard = page is KeyboardPage.Main
             if (isMainKeyboard) {
@@ -376,7 +534,7 @@ fun KeyboardView(
                             )
                         }
 
-                        val fullScreenOnKeyPress: (String) -> Unit = { key ->
+                        val fullScreenOnKeyPress: (String) -> Unit = KeyPress@{ key ->
                             when (key) {
                                 "shift" -> viewModel.toggleShift()
                                 "shift_single" -> viewModel.singleTapShift()
@@ -402,6 +560,13 @@ fun KeyboardView(
                                 }
                                 "emoji" -> viewModel.showOverlay(OverlayRoute.Emoji)
                                 else -> {
+                                    // 搜索模式：BackSpace 优先删除搜索查询内容
+                                    if (isClipboardSearching && (key == "BackSpace" || key == "Delete")) {
+                                        if (clipboardSearchQuery.isNotEmpty() && state.preeditText.isEmpty()) {
+                                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery.dropLast(1))
+                                            return@KeyPress
+                                        }
+                                    }
                                     // 粘滞修饰键：Ctrl/Alt 激活时，字母键发送组合键
                                     val sendExpr = buildStickySendExpr(key, ctrlSticky, altSticky, isShifted)
                                     if (sendExpr != null) {
@@ -782,6 +947,7 @@ fun KeyboardView(
                         isDarkTheme = state.isDarkTheme,
                         backgroundColor = keyboardBgColor,
                         viewModel = viewModel,
+                        onStartSearch = { viewModel.startClipboardSearch() },
                         onSelectItem = { text ->
                             callbacks.onClipboardSelect?.invoke(text)
                             viewModel.closeOverlay()

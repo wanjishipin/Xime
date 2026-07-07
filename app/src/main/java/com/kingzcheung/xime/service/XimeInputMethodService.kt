@@ -816,6 +816,8 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                 t9ResetSignal = state.t9ResetSignal,
                                 t9RightCandidateSelectedCount = state.t9RightCandidateSelectedCount,
                                 t9SelectedCandidatePinyin = state.t9SelectedCandidatePinyin,
+                                clipboardSearchQuery = keyboardViewModel.clipboardSearchQuery.value,
+                                isClipboardSearching = keyboardViewModel.isClipboardSearching.value,
                             )
                             val view = LocalView.current
                             val callbacks = remember(floatingMinY) {
@@ -2723,6 +2725,13 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     }
 
     override fun commitText(text: String) {
+        // 搜索模式：拦截文本提交，追加到搜索查询
+        if (keyboardViewModel.isClipboardSearching.value) {
+            keyboardViewModel.updateClipboardSearchQuery(
+                keyboardViewModel.clipboardSearchQuery.value + text
+            )
+            return
+        }
         currentInputConnection?.commitText(text, 1)
 
         if (isChineseMode) {
