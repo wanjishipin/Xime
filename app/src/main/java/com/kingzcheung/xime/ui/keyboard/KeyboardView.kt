@@ -556,8 +556,8 @@ fun KeyboardView(
                                 }
                                 "emoji" -> viewModel.showOverlay(OverlayRoute.Emoji)
                                 else -> {
-                                    // 搜索模式：BackSpace 优先删除搜索查询内容（去掉 preedit 条件）
-                                    if (isClipboardSearching && (key == "BackSpace" || key == "Delete")) {
+                                    // 搜索模式：BackSpace/delete 优先删除搜索查询内容
+                                    if (isClipboardSearching && (key == "BackSpace" || key == "Delete" || key == "delete")) {
                                         if (clipboardSearchQuery.isNotEmpty()) {
                                             viewModel.updateClipboardSearchQuery(clipboardSearchQuery.dropLast(1))
                                             return@KeyPress
