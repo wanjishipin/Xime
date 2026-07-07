@@ -2364,6 +2364,7 @@ private fun StickyModifierButton(
 
     Box(
         modifier = modifier
+            .fillMaxHeight()
             .pointerInput(Unit) {
                 detectTapGestures(
                     onPress = {
