@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -297,14 +298,14 @@ fun KeyboardView(
                 if (clipboardSearchQuery.isNotEmpty()) {
                     if (filteredItems.isEmpty()) {
                         Box(
-                            modifier = Modifier.fillMaxWidth().height(36.dp),
+                            modifier = Modifier.fillMaxWidth().height(28.dp),
                             contentAlignment = Alignment.Center
                         ) {
                             Text("无匹配结果", color = candidateTextColor.copy(alpha = 0.5f), fontSize = 12.sp)
                         }
                     } else {
                         LazyColumn(
-                            modifier = Modifier.fillMaxWidth().height(80.dp),
+                            modifier = Modifier.fillMaxWidth().heightIn(max = 56.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                             verticalArrangement = Arrangement.spacedBy(2.dp)
                         ) {
@@ -312,7 +313,7 @@ fun KeyboardView(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .height(28.dp)
+                                        .height(24.dp)
                                         .clip(RoundedCornerShape(6.dp))
                                         .background(candidateBarBg)
                                         .clickable {
