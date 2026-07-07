@@ -69,10 +69,8 @@ data class KeyboardUiState(
     val t9ResetSignal: Long = 0L,
     val t9RightCandidateSelectedCount: Long = 0L,
     val t9SelectedCandidatePinyin: String = "",
-    val showQuickSendForm: Boolean = false,
-    val quickSendFormFocused: Boolean = false,
-    val quickSendEditingItemId: Long? = null,
-    val quickSendEditingItemText: String = "",
+    val clipboardSearchQuery: String = "",
+    val isClipboardSearching: Boolean = false,
 )
 
 class KeyboardViewModel(application: Application) : AndroidViewModel(application) {
@@ -389,22 +387,6 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         _syncViewState()
     }
 
-    private var savedKbStateBeforeVoice: KeyboardLayoutState? = null
-
-    fun enterVoice() {
-        savedKbStateBeforeVoice = _keyboardState.value
-        _page.value = KeyboardPage.Main(MainType.VOICE)
-        _syncViewState()
-    }
-
-    fun exitVoice() {
-        val saved = savedKbStateBeforeVoice ?: return
-        _page.value = KeyboardPage.Main(MainType.FULL)
-        _keyboardState.value = saved
-        savedKbStateBeforeVoice = null
-        _syncViewState()
-    }
-
     /** Level 2: 进入面板（编号/符号等），可从任意页面进入 */
     fun enterPanel(type: PanelType) {
         val current = _page.value
@@ -516,15 +498,34 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         clipboardManager.addQuickSendItem(text)
     }
 
-    fun updateQuickSendItem(id: Long, text: String) {
-        clipboardManager.updateQuickSendItem(id, text)
-    }
-
     fun removeQuickSendItem(id: Long) {
         clipboardManager.removeFromQuickSend(id)
     }
 
     fun togglePinQuickSend(id: Long) {
         clipboardManager.togglePinQuickSend(id)
+    }
+
+    // ── 剪贴板搜索 ──
+
+    private val _clipboardSearchQuery = MutableStateFlow("")
+    val clipboardSearchQuery: StateFlow<String> = _clipboardSearchQuery.asStateFlow()
+
+    private val _isClipboardSearching = MutableStateFlow(false)
+    val isClipboardSearching: StateFlow<Boolean> = _isClipboardSearching.asStateFlow()
+
+    fun updateClipboardSearchQuery(query: String) {
+        _clipboardSearchQuery.value = query
+    }
+
+    fun startClipboardSearch() {
+        _isClipboardSearching.value = true
+        _clipboardSearchQuery.value = ""
+        closeOverlay()
+    }
+
+    fun exitClipboardSearch() {
+        _isClipboardSearching.value = false
+        _clipboardSearchQuery.value = ""
     }
 }

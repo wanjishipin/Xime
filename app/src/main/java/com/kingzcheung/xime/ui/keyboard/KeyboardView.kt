@@ -6,8 +6,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -15,10 +18,16 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.Close
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -35,13 +44,20 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kingzcheung.xime.clipboard.ClipboardItem
 import com.kingzcheung.xime.handwriting.HandwritingCandidate
 import com.kingzcheung.xime.keyboard.KeyboardPage
 import com.kingzcheung.xime.rime.RimeEngine
@@ -53,12 +69,9 @@ import com.kingzcheung.xime.keyboard.ToolbarButton
 import com.kingzcheung.xime.keyboard.GestureAction
 import com.kingzcheung.xime.keyboard.Keycode
 import com.kingzcheung.xime.rime.T9InputController
-import com.kingzcheung.xime.rime.filterCandidatesBySelectionHistory
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.settings.SettingsPreferences
-import com.kingzcheung.xime.ui.menubar.ClipboardView
-import com.kingzcheung.xime.ui.menubar.SchemaListView
-import com.kingzcheung.xime.ui.menubar.ToolbarCustomizeView
+import com.kingzcheung.xime.ui.settings.SchemaListView
 import com.kingzcheung.xime.ui.theme.KeyboardThemes
 import com.kingzcheung.xime.viewmodel.KeyboardUiState
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
@@ -74,7 +87,6 @@ fun KeyboardView(
     state: KeyboardUiState,
     callbacks: KeyboardCallbacks,
     modifier: Modifier = Modifier,
-    inlineSuggestions: List<*> = listOf<Any>(),
     onCardPositioned: (left: Int, top: Int, right: Int, bottom: Int) -> Unit = { _: Int, _: Int, _: Int, _: Int -> },
 ) {
     val isShifted by viewModel.isShifted.collectAsStateWithLifecycle()
@@ -83,15 +95,14 @@ fun KeyboardView(
     val viewState by viewModel.viewState.collectAsStateWithLifecycle()
     val ctrlSticky by viewModel.ctrlSticky.collectAsStateWithLifecycle()
     val altSticky by viewModel.altSticky.collectAsStateWithLifecycle()
+    val isClipboardSearching by viewModel.isClipboardSearching.collectAsStateWithLifecycle()
+    val clipboardSearchQuery by viewModel.clipboardSearchQuery.collectAsStateWithLifecycle()
     val isLandscape = if (state.isFloatingMode) false
         else LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     SideEffect {
-        val isHandwriting = page is KeyboardPage.Main && (page as KeyboardPage.Main).type == MainType.HANDWRITING
-        val active = isHandwriting || (
-            (keyboardState is KeyboardLayoutState.Chinese || keyboardState is KeyboardLayoutState.Stroke || keyboardState is KeyboardLayoutState.T9Pinyin)
+        val active = (keyboardState is KeyboardLayoutState.Chinese || keyboardState is KeyboardLayoutState.Stroke || keyboardState is KeyboardLayoutState.T9Pinyin)
             && page is KeyboardPage.Main && (page as KeyboardPage.Main).type == MainType.FULL
-        )
         callbacks.onKeyboardModeChange?.invoke(active)
     }
 
@@ -123,22 +134,9 @@ fun KeyboardView(
     }
 
     SideEffect {
-        callbacks.onT9RightCandidateWillBeSelected = { pinyin, textLength ->
-            if (pinyin.isNullOrBlank()) {
-                // emoji/符号等无拼音注释的候选词：直接提交上屏，不走消耗算法
-                t9Controller.onRightCandidateSelectedByDirectCommit()
-            } else {
-                t9Controller.onRightCandidateSelected(pinyin, textLength)
-            }
-            t9Controller.inputBuffer.isEmpty
-        }
-        callbacks.onT9ForceSendToRime = {
-            t9Controller.forceSendToRime()
-        }
-        callbacks.onFilterT9Candidates = { candidates, comments ->
-            filterCandidatesBySelectionHistory(
-                candidates, comments, t9Controller.selectionHistory
-            )
+        callbacks.onT9RightCandidateWillBeSelected = { pinyin ->
+            t9Controller.onRightCandidateSelected(pinyin)
+            t9Controller.inputBuffer.isEmpty()
         }
     }
 
@@ -150,6 +148,9 @@ fun KeyboardView(
         if (keyboardState is KeyboardLayoutState.Number) {
             if (savedNumberAsciiMode == null) {
                 savedNumberAsciiMode = state.isAsciiMode
+                if (!state.isAsciiMode && page is KeyboardPage.Main) {
+                    callbacks.onKeyPress("ime_switch", false)
+                }
             }
         } else {
             savedNumberAsciiMode = null
@@ -171,8 +172,6 @@ fun KeyboardView(
     val specialKeyBgColor = if (state.isDarkTheme) kbColors.specialKeyBgColorDark?.let { longToColor(it) }
         ?: themeSpecialKeyColor
         else kbColors.specialKeyBgColor?.let { longToColor(it) } ?: themeSpecialKeyColor
-    val specialKeyTextColor = if (state.isDarkTheme) androidx.compose.ui.graphics.Color.White
-        else KeyboardThemes.getSpecialKeyTextColor(state.themeId, false)
     val candidateBarBg = if (state.isDarkTheme) longToColor(kbColors.candidateBarBgColorDark)
         else longToColor(kbColors.candidateBarBgColor)
     val candidateTextColor = if (state.isDarkTheme) longToColor(kbColors.candidateTextColorDark)
@@ -241,33 +240,106 @@ fun KeyboardView(
                 }
             }
 
-            if (state.showQuickSendForm) {
-                QuickSendFormArea(
-                    backgroundColor = candidateBarBg,
-                    textColor = keyTextColor,
-                    accentColor = accentColor,
-                    isDarkTheme = state.isDarkTheme,
-                    isFocused = state.quickSendFormFocused,
-                    initialText = state.quickSendEditingItemText,
-                    cardBgColor = keyBgColor,
-                    editingItemId = state.quickSendEditingItemId,
-                    onClose = { text: String ->
-                        if (text.isNotBlank()) {
-                            val editingId = state.quickSendEditingItemId
-                            if (editingId != null) {
-                                viewModel.updateQuickSendItem(editingId, text)
-                            } else {
-                                viewModel.addQuickSendText(text)
+            if (isClipboardSearching) {
+                // ── 搜索模式：搜索框 + 剪贴板列表放在 CandidateBar 位置 ──
+                val focusRequester = remember { FocusRequester() }
+                val filteredItems = remember(state.clipboardItems, clipboardSearchQuery) {
+                    if (clipboardSearchQuery.isEmpty()) state.clipboardItems
+                    else state.clipboardItems.filter { it.text.contains(clipboardSearchQuery, ignoreCase = true) }
+                }
+                LaunchedEffect(Unit) { focusRequester.requestFocus() }
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                viewModel.exitClipboardSearch()
+                                callbacks.onKeyPress("clear_composition", false)
+                            },
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            Icon(Icons.Outlined.Close, "退出搜索", tint = accentColor, modifier = Modifier.size(20.dp))
+                        }
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(34.dp)
+                                .clip(RoundedCornerShape(17.dp))
+                                .background(if (state.isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                                .padding(horizontal = 10.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (clipboardSearchQuery.isEmpty()) {
+                                Text("搜索剪贴板...", color = candidateTextColor.copy(alpha = 0.5f), fontSize = 13.sp)
+                            }
+                            BasicTextField(
+                                value = clipboardSearchQuery,
+                                onValueChange = { viewModel.updateClipboardSearchQuery(it) },
+                                singleLine = true,
+                                textStyle = TextStyle(color = candidateTextColor, fontSize = 13.sp),
+                                cursorBrush = SolidColor(accentColor),
+                                modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                            )
+                        }
+                        if (clipboardSearchQuery.isNotEmpty()) {
+                            Spacer(modifier = Modifier.width(4.dp))
+                            IconButton(
+                                onClick = { viewModel.updateClipboardSearchQuery("") },
+                                modifier = Modifier.size(30.dp)
+                            ) {
+                                Icon(Icons.Outlined.Close, "清空", tint = candidateTextColor.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
                             }
                         }
-                        callbacks.onHideQuickSendForm?.invoke()
-                    },
-                    onFocusChange = { focused: Boolean ->
-                        callbacks.onQuickSendFormFocusChange?.invoke(focused)
-                    },
-                )
-            }
-
+                    }
+                    if (filteredItems.isEmpty()) {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(44.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = if (clipboardSearchQuery.isEmpty()) "剪贴板为空" else "无匹配结果",
+                                color = candidateTextColor.copy(alpha = 0.5f),
+                                fontSize = 12.sp
+                            )
+                        }
+                    } else {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth().height(120.dp),
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
+                            items(filteredItems, key = { it.id }) { item ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(32.dp)
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(candidateBarBg)
+                                        .clickable {
+                                            callbacks.onClipboardSelect?.invoke(item.text)
+                                            viewModel.exitClipboardSearch()
+                                        }
+                                        .padding(horizontal = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = item.text,
+                                        color = candidateTextColor,
+                                        fontSize = 12.sp,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
             CandidateBar(
                 state = candidateBarState,
                 page = page,
@@ -292,7 +364,6 @@ fun KeyboardView(
                         ToolbarButton.END -> ({ callbacks.onToolbarEditingAction?.invoke("end") })
                         ToolbarButton.FLOAT -> ({ callbacks.onFloatingModeChange?.invoke(!state.isFloatingMode) })
                         ToolbarButton.HANDWRITING_LOOKUP -> ({ isHandwritingLookup = !isHandwritingLookup })
-                        ToolbarButton.EDIT -> ({ viewModel.showOverlay(OverlayRoute.Edit) })
                     }
                     ToolbarAction(button, onClick)
                 },
@@ -305,7 +376,11 @@ fun KeyboardView(
                 ),
                 callbacks = CandidateBarCallbacks(
                     onCandidateSelect = { index ->
-                        if (showHandwritingCandidates && index in handwritingCandidates.indices) {
+                        if (isClipboardSearching) {
+                            val text = state.candidates.getOrNull(index) ?: return@CandidateBarCallbacks
+                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery + text)
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (showHandwritingCandidates && index in handwritingCandidates.indices) {
                             val ch = handwritingCandidates[index]
                             callbacks.onCommitText?.invoke(ch)
                             handwritingCandidates = emptyList()
@@ -316,7 +391,9 @@ fun KeyboardView(
                         }
                     },
                     onClearAssociation = {
-                        if (showHandwritingCandidates) {
+                        if (isClipboardSearching) {
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (showHandwritingCandidates) {
                             handwritingCandidates = emptyList()
                             handwritingComments = emptyList()
                             handwritingClearSignal++
@@ -324,9 +401,18 @@ fun KeyboardView(
                             callbacks.onClearAssociation?.invoke()
                         }
                     },
-                    onLogoClick = { viewModel.showOverlay(OverlayRoute.Menu) },
+                    onLogoClick = {
+                        if (isClipboardSearching) {
+                            viewModel.exitClipboardSearch()
+                        } else {
+                            viewModel.showOverlay(OverlayRoute.Menu)
+                        }
+                    },
                     onBack = {
-                        if (showHandwritingCandidates) {
+                        if (isClipboardSearching) {
+                            viewModel.exitClipboardSearch()
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (showHandwritingCandidates) {
                             handwritingCandidates = emptyList()
                             handwritingComments = emptyList()
                             handwritingClearSignal++
@@ -343,17 +429,31 @@ fun KeyboardView(
                         }
                     },
                     onHideKeyboard = {
+                        if (isClipboardSearching) {
+                            viewModel.exitClipboardSearch()
+                        }
                         callbacks.onHideKeyboard?.invoke()
                         viewModel.resetKeyboard(state.isAsciiMode, state.currentSchemaId)
                     },
-                    onShowMoreCandidates = { viewModel.showOverlay(OverlayRoute.CandidatePage) },
+                    onShowMoreCandidates = {
+                        if (!isClipboardSearching) {
+                            viewModel.showOverlay(OverlayRoute.CandidatePage)
+                        }
+                    },
                     onInputTextClick = {
-                        if (state.inputText.isNotEmpty()) {
+                        if (isClipboardSearching) {
+                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery + state.inputText)
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (state.inputText.isNotEmpty()) {
                             callbacks.onClipboardSelect?.invoke(state.inputText)
                         }
                     },
                     onAssociationSelect = { index ->
-                        if (showHandwritingCandidates && index in handwritingCandidates.indices) {
+                        if (isClipboardSearching) {
+                            val text = state.associationCandidates.getOrNull(index) ?: return@CandidateBarCallbacks
+                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery + text)
+                            callbacks.onKeyPress("clear_composition", false)
+                        } else if (showHandwritingCandidates && index in handwritingCandidates.indices) {
                             val ch = handwritingCandidates[index]
                             callbacks.onCommitText?.invoke(ch)
                             handwritingCandidates = emptyList()
@@ -363,9 +463,9 @@ fun KeyboardView(
                             callbacks.onAssociationSelect?.invoke(index)
                         }
                     },
-                ),
-                inlineSuggestions = inlineSuggestions,
+                )
             )
+            } // end else (ClipboardSearchBar)
 
             val isMainKeyboard = page is KeyboardPage.Main
             if (isMainKeyboard) {
@@ -434,7 +534,7 @@ fun KeyboardView(
                             )
                         }
 
-                        val fullScreenOnKeyPress: (String) -> Unit = { key ->
+                        val fullScreenOnKeyPress: (String) -> Unit = KeyPress@{ key ->
                             when (key) {
                                 "shift" -> viewModel.toggleShift()
                                 "shift_single" -> viewModel.singleTapShift()
@@ -460,6 +560,13 @@ fun KeyboardView(
                                 }
                                 "emoji" -> viewModel.showOverlay(OverlayRoute.Emoji)
                                 else -> {
+                                    // 搜索模式：BackSpace 优先删除搜索查询内容
+                                    if (isClipboardSearching && (key == "BackSpace" || key == "Delete")) {
+                                        if (clipboardSearchQuery.isNotEmpty() && state.preeditText.isEmpty()) {
+                                            viewModel.updateClipboardSearchQuery(clipboardSearchQuery.dropLast(1))
+                                            return@KeyPress
+                                        }
+                                    }
                                     // 粘滞修饰键：Ctrl/Alt 激活时，字母键发送组合键
                                     val sendExpr = buildStickySendExpr(key, ctrlSticky, altSticky, isShifted)
                                     if (sendExpr != null) {
@@ -475,7 +582,6 @@ fun KeyboardView(
                         val numberOnKeyPress: (String) -> Unit = { key ->
                             when (key) {
                                 "abc" -> {
-                                    callbacks.onKeyPress("abc", false)
                                     val saved = savedNumberAsciiMode
                                     savedNumberAsciiMode = null
                                     if (saved != null && saved != state.isAsciiMode) {
@@ -644,7 +750,6 @@ fun KeyboardView(
                             keyBackgroundColor = keyBgColor,
                             keyTextColor = keyTextColor,
                             specialKeyBackgroundColor = specialKeyBgColor,
-                            specialKeyTextColor = specialKeyTextColor,
                             modifier = Modifier.weight(1f),
                         )
                         if (state.keyboardBottomPaddingDp > 0) {
@@ -714,7 +819,6 @@ fun KeyboardView(
                         keyCornerRadius = kbKey.cornerRadius.dp,
                         onKeyPressDown = callbacks.onKeyPressDown,
                         isFloatingMode = state.isFloatingMode,
-                        specialKeyTextColor = specialKeyTextColor,
                         modifier = Modifier.weight(1f).fillMaxWidth()
                     )
 
@@ -739,7 +843,6 @@ fun KeyboardView(
                         keyCornerRadius = kbKey.cornerRadius.dp,
                         onKeyPressDown = callbacks.onKeyPressDown,
                         isFloatingMode = state.isFloatingMode,
-                        specialKeyTextColor = specialKeyTextColor,
                         modifier = Modifier.weight(1f).fillMaxWidth()
                     )
 
@@ -844,6 +947,7 @@ fun KeyboardView(
                         isDarkTheme = state.isDarkTheme,
                         backgroundColor = keyboardBgColor,
                         viewModel = viewModel,
+                        onStartSearch = { viewModel.startClipboardSearch() },
                         onSelectItem = { text ->
                             callbacks.onClipboardSelect?.invoke(text)
                             viewModel.closeOverlay()
@@ -852,15 +956,7 @@ fun KeyboardView(
                         onBack = { viewModel.closeOverlay() },
                         onClipboardTabChange = { viewModel.pushOverlay(OverlayRoute.Clipboard(it)) },
                         bottomPaddingDp = state.keyboardBottomPaddingDp,
-                        modifier = Modifier.fillMaxWidth().fillMaxHeight(),
-                        onQuickSendAddClick = {
-                            viewModel.closeOverlay()
-                            callbacks.onShowQuickSendForm?.invoke()
-                        },
-                        onQuickSendEditItem = { id, text ->
-                            viewModel.closeOverlay()
-                            callbacks.onQuickSendEditItem?.invoke(id, text)
-                        },
+                        modifier = Modifier.fillMaxWidth().fillMaxHeight()
                     )
                     is OverlayRoute.ToolbarCustomize -> ToolbarCustomizeView(
                         toolbarButtons = state.toolbarButtons,
@@ -872,24 +968,6 @@ fun KeyboardView(
                         bottomPaddingDp = state.keyboardBottomPaddingDp,
                         modifier = Modifier.fillMaxWidth().fillMaxHeight()
                     )
-                    is OverlayRoute.Edit -> {
-                        val editAction: (String) -> Unit = { action ->
-                            when (action) {
-                                "delete" -> callbacks.onKeyPress("delete", false)
-                                "enter" -> callbacks.onKeyPress("enter", false)
-                                else -> callbacks.onToolbarEditingAction?.invoke(action)
-                            }
-                        }
-                        EditKeyboardLayout(
-                            onAction = editAction,
-                            onBack = { viewModel.closeOverlay() },
-                            backgroundColor = candidateBarBg,
-                            textColor = keyTextColor,
-                            accentColor = accentColor,
-                            bottomPaddingDp = state.keyboardBottomPaddingDp,
-                            modifier = Modifier.fillMaxWidth().fillMaxHeight()
-                        )
-                    }
                     is OverlayRoute.Emoji -> EmojiKeyboardLayout(
                         onEmojiSelect = { emoji ->
                             if (emoji == "delete") {

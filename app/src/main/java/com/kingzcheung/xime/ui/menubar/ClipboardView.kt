@@ -1,4 +1,4 @@
-package com.kingzcheung.xime.ui.menubar
+package com.kingzcheung.xime.ui.keyboard
 
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.ContentCut
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -52,8 +53,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.clipboard.ClipboardItem
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
@@ -72,10 +71,9 @@ fun ClipboardView(
     onSplitWords: (String, Long) -> Unit,
     onBack: (() -> Unit)? = null,
     onClipboardTabChange: ((Int) -> Unit)? = null,
+    onStartSearch: () -> Unit = {},
     bottomPaddingDp: Int = 0,
-    modifier: Modifier = Modifier,
-    onQuickSendAddClick: (() -> Unit)? = null,
-    onQuickSendEditItem: ((Long, String) -> Unit)? = null,
+    modifier: Modifier = Modifier
 ) {
     val itemBgColor = MaterialTheme.colorScheme.surfaceContainerLow
     val textColor = MaterialTheme.colorScheme.onSurface
@@ -161,25 +159,21 @@ fun ClipboardView(
                     }
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            if (selectedTab == 1 && onQuickSendAddClick != null) {
-                Box(
-                    modifier = Modifier
-                        .size(28.dp)
-                        .clip(CircleShape)
-                        .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                        .clickable(onClick = onQuickSendAddClick),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Add,
-                        contentDescription = "添加快捷发送",
-                        tint = accentColor,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
+            Spacer(modifier = Modifier.width(6.dp))
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                    .clickable { onStartSearch() },
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Search,
+                    contentDescription = "搜索",
+                    tint = accentColor,
+                    modifier = Modifier.size(20.dp)
+                )
             }
         }
 
@@ -224,9 +218,7 @@ fun ClipboardView(
                     subTextColor = subTextColor,
                     accentColor = accentColor,
                     viewModel = viewModel,
-                    onSelect = onSelectItem,
-                    onQuickSendAddClick = onQuickSendAddClick,
-                    onQuickSendEditItem = onQuickSendEditItem,
+                    onSelect = onSelectItem
                 )
             }
         }
