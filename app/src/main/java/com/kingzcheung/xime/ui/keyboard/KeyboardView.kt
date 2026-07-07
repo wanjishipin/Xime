@@ -295,15 +295,18 @@ fun KeyboardView(
                         }
                     }
                 }
-                if (clipboardSearchQuery.isNotEmpty()) {
-                    if (filteredItems.isEmpty()) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().height(28.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text("无匹配结果", color = candidateTextColor.copy(alpha = 0.5f), fontSize = 12.sp)
-                        }
-                    } else {
+                if (filteredItems.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().height(28.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (clipboardSearchQuery.isEmpty()) "剪贴板为空" else "无匹配结果",
+                            color = candidateTextColor.copy(alpha = 0.5f),
+                            fontSize = 12.sp
+                        )
+                    }
+                } else {
                         LazyColumn(
                             modifier = Modifier.fillMaxWidth().heightIn(max = 56.dp),
                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
@@ -336,8 +339,7 @@ fun KeyboardView(
                         }
                     }
                 }
-            }
-            CandidateBar(
+                CandidateBar(
                 state = candidateBarState,
                 page = page,
                 isFloatingMode = state.isFloatingMode,
