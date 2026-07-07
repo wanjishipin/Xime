@@ -528,4 +528,11 @@ class KeyboardViewModel(application: Application) : AndroidViewModel(application
         _isClipboardSearching.value = false
         _clipboardSearchQuery.value = ""
     }
+
+    private val _isKeyboardPinned = MutableStateFlow(false)
+    val isKeyboardPinned: StateFlow<Boolean> = _isKeyboardPinned.asStateFlow()
+
+    fun togglePin() {
+        _isKeyboardPinned.value = !_isKeyboardPinned.value
+    }
 }

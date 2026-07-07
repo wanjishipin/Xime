@@ -98,6 +98,7 @@ fun KeyboardView(
     val altSticky by viewModel.altSticky.collectAsStateWithLifecycle()
     val isClipboardSearching by viewModel.isClipboardSearching.collectAsStateWithLifecycle()
     val clipboardSearchQuery by viewModel.clipboardSearchQuery.collectAsStateWithLifecycle()
+    val isKeyboardPinned by viewModel.isKeyboardPinned.collectAsStateWithLifecycle()
     val isLandscape = if (state.isFloatingMode) false
         else LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
@@ -362,9 +363,10 @@ fun KeyboardView(
                         ToolbarButton.HOME -> ({ callbacks.onToolbarEditingAction?.invoke("home") })
                         ToolbarButton.END -> ({ callbacks.onToolbarEditingAction?.invoke("end") })
                         ToolbarButton.FLOAT -> ({ callbacks.onFloatingModeChange?.invoke(!state.isFloatingMode) })
+                        ToolbarButton.PIN -> ({ viewModel.togglePin() })
                         ToolbarButton.HANDWRITING_LOOKUP -> ({ isHandwritingLookup = !isHandwritingLookup })
                     }
-                    ToolbarAction(button, onClick)
+                    ToolbarAction(button, onClick, isActive = button == ToolbarButton.PIN && isKeyboardPinned)
                 },
                 visuals = CandidateBarVisuals(
                     backgroundColor = candidateBarBg,

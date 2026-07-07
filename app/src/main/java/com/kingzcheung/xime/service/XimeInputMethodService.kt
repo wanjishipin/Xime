@@ -1498,6 +1498,13 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
 
     override fun onFinishInput() {
         super.onFinishInput()
+        if (keyboardViewModel.isKeyboardPinned.value) {
+            // 置顶模式：系统隐藏后立即重新弹出
+            window?.window?.decorView?.postDelayed({
+                requestShowSelf(0)
+            }, 100)
+            return
+        }
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         clearInputState()
         recentClipboardItemsState.value = emptyList()
@@ -1505,6 +1512,12 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     
     override fun onWindowHidden() {
         super.onWindowHidden()
+        if (keyboardViewModel.isKeyboardPinned.value) {
+            window?.window?.decorView?.postDelayed({
+                requestShowSelf(0)
+            }, 100)
+            return
+        }
         clearInputState()
         recentClipboardItemsState.value = emptyList()
     }
@@ -1542,6 +1555,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
     }
     
     private fun hideKeyboard() {
+        if (keyboardViewModel.isKeyboardPinned.value) return  // 置顶模式不隐藏
         clearInputState()
         requestHideSelf(0)
     }
