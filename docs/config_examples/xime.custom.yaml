@@ -7,6 +7,7 @@
 #   第二行 a-l swipe_up:   ) _ - + = ; : > <
 #   第三行 z-m swipe_up:   | \ ? / ' " ~
 #   逗号键: 点号在下，逗号在上（与默认相反）
+#   shift_l: 上滑 Tab，下滑反 Tab（Shift+Tab）
 keyboard:
   qwerty:
     keys:
@@ -40,10 +41,13 @@ keyboard:
       v: { tap: "v", swipe_up: "/", swipe_down: { label: "→", send: "Right" }, long_press: { display: "bubble", values: ["v", "V"] } }
       b: { tap: "b", swipe_up: "'", swipe_down: { label: "PgUp", send: "Page_Up" }, long_press: { display: "bubble", values: ["b", "B"] } }
       n: { tap: "n", swipe_up: '"', swipe_down: { label: "PgDn", send: "Page_Down" }, long_press: { display: "bubble", values: ["n", "N", "ñ"] } }
-      m: { tap: "m", swipe_up: "~", swipe_down: { label: "Ins", send: "Insert" }, long_press: { display: "bubble", values: ["m", "M"] } }
+      m: { tap: "m", swipe_up: "~", swipe_down: { label: "Menu", send: "Menu" }, long_press: { display: "bubble", values: ["m", "M"] } }
 
       # ── 逗号键：点号在下，逗号在上（与默认相反）──
       "'": { tap: { label: "。", value: "." }, swipe_up: { label: "，", value: "," } }
+
+      # ── shift 键：上滑 Tab，下滑反 Tab（Shift+Tab）──
+      shift_l: { tap: { label: "英", action: "toggle_ascii" }, swipe_up: { label: "Tab", send: "Tab" }, swipe_down: { label: "⇤", send: "Shift+Tab" } }
 
   # ── 英文键盘布局（与中文保持完全一致）──
   qwerty_en:
@@ -78,7 +82,10 @@ keyboard:
       v: { tap: "v", swipe_up: "/", swipe_down: { label: "→", send: "Right" }, long_press: { display: "bubble", values: ["v", "V"] } }
       b: { tap: "b", swipe_up: "'", swipe_down: { label: "PgUp", send: "Page_Up" }, long_press: { display: "bubble", values: ["b", "B"] } }
       n: { tap: "n", swipe_up: '"', swipe_down: { label: "PgDn", send: "Page_Down" }, long_press: { display: "bubble", values: ["n", "N"] } }
-      m: { tap: "m", swipe_up: "~", swipe_down: { label: "Ins", send: "Insert" }, long_press: { display: "bubble", values: ["m", "M"] } }
+      m: { tap: "m", swipe_up: "~", swipe_down: { label: "Menu", send: "Menu" }, long_press: { display: "bubble", values: ["m", "M"] } }
 
       # ── 逗号键：点号在下，逗号在上（与默认相反）──
       "'": { tap: { label: ".", value: "." }, swipe_up: { label: ",", value: "," } }
+
+      # ── shift 键：上滑 Tab，下滑反 Tab（Shift+Tab）──
+      shift_l: { tap: { label: "中", action: "toggle_ascii" }, swipe_up: { label: "Tab", send: "Tab" }, swipe_down: { label: "⇤", send: "Shift+Tab" } }

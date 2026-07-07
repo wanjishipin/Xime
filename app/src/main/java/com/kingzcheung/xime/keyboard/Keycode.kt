@@ -21,6 +21,7 @@ object Keycode {
         "Delete" to KeyEvent.KEYCODE_FORWARD_DEL,
         "space" to KeyEvent.KEYCODE_SPACE,
         "Insert" to KeyEvent.KEYCODE_INSERT,
+        "Menu" to KeyEvent.KEYCODE_MENU,
 
         // 方向键
         "Up" to KeyEvent.KEYCODE_DPAD_UP,
