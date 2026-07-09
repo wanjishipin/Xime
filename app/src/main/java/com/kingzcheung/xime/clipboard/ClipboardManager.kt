@@ -25,6 +25,7 @@ class ClipboardManager private constructor(private val context: Context) {
     companion object {
         private const val TAG = "ClipboardManager"
         private const val MAX_ITEMS = 1000
+        const val DEFAULT_MAX_ITEMS = 1000
         private const val MAX_QUICK_SEND_ITEMS = 20
         private const val PREFS_NAME = "clipboard_prefs"
         private const val KEY_CLIPBOARD_ITEMS = "clipboard_items"
@@ -169,6 +170,8 @@ class ClipboardManager private constructor(private val context: Context) {
     fun addItem(text: String) {
         if (text.isBlank()) return
         
+        val maxItems = getMaxItems()
+        
         val currentItems = _clipboardItems.value.toMutableList()
         
         val existingIndex = currentItems.indexOfFirst { it.text == text }
@@ -181,11 +184,11 @@ class ClipboardManager private constructor(private val context: Context) {
             currentItems.add(0, newItem)
             
             val unpinnedCount = currentItems.count { !it.isPinned }
-            if (unpinnedCount > MAX_ITEMS) {
+            if (unpinnedCount > maxItems) {
                 val toRemove = currentItems
                     .filter { !it.isPinned }
                     .sortedBy { it.timestamp }
-                    .take(unpinnedCount - MAX_ITEMS)
+                    .take(unpinnedCount - maxItems)
                 currentItems.removeAll(toRemove.toSet())
             }
         }
@@ -193,6 +196,29 @@ class ClipboardManager private constructor(private val context: Context) {
         _clipboardItems.value = currentItems
         saveItems()
         updateRecentItems()
+    }
+    
+    fun getMaxItems(): Int {
+        return try {
+            com.kingzcheung.xime.settings.SettingsPreferences.getClipboardMaxItems(context)
+        } catch (e: Exception) {
+            DEFAULT_MAX_ITEMS
+        }
+    }
+    
+    fun applyMaxItems(maxItems: Int) {
+        val currentItems = _clipboardItems.value.toMutableList()
+        val unpinnedCount = currentItems.count { !it.isPinned }
+        if (unpinnedCount > maxItems) {
+            val toRemove = currentItems
+                .filter { !it.isPinned }
+                .sortedBy { it.timestamp }
+                .take(unpinnedCount - maxItems)
+            currentItems.removeAll(toRemove.toSet())
+            _clipboardItems.value = currentItems
+            saveItems()
+            updateRecentItems()
+        }
     }
     
     private fun <T> MutableList<T>.moveToTop(index: Int) {

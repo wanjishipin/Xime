@@ -81,6 +81,17 @@ object SettingsPreferences {
     private const val KEY_PAGE_SIZE = "page_size"
     const val DEFAULT_PAGE_SIZE = 0 // 0 表示使用 Rime schema 默认值
 
+    private const val KEY_CLIPBOARD_MAX_ITEMS = "clipboard_max_items"
+    const val DEFAULT_CLIPBOARD_MAX_ITEMS = 1000
+
+    fun getClipboardMaxItems(context: Context): Int {
+        return getPrefs(context).getInt(KEY_CLIPBOARD_MAX_ITEMS, DEFAULT_CLIPBOARD_MAX_ITEMS)
+    }
+
+    fun setClipboardMaxItems(context: Context, maxItems: Int) {
+        getPrefs(context).edit().putInt(KEY_CLIPBOARD_MAX_ITEMS, maxItems.coerceIn(10, 10000)).apply()
+    }
+
     fun isCompactModeEnabled(context: Context): Boolean {
         return getPrefs(context).getBoolean(KEY_COMPACT_MODE, true)
     }

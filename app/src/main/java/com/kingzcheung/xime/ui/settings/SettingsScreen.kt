@@ -37,7 +37,8 @@ fun SettingsScreen(
                 onNavigateToSpeechToText = { navController.navigate(SettingsRoutes.SpeechToText) },
                 onNavigateToModelManagement = { navController.navigate(SettingsRoutes.ModelManagement) },
                 onNavigateToAbout = { navController.navigate(SettingsRoutes.About) },
-                onNavigateToWebDav = { navController.navigate(SettingsRoutes.WebDav) }
+                onNavigateToWebDav = { navController.navigate(SettingsRoutes.WebDav) },
+                onNavigateToClipboard = { navController.navigate(SettingsRoutes.Clipboard) }
             )
         }
         composable(SettingsRoutes.Schema) {
@@ -148,6 +149,11 @@ fun SettingsScreen(
         }
         composable(SettingsRoutes.WebDav) {
             WebDavSyncContent(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(SettingsRoutes.Clipboard) {
+            ClipboardSettingsContent(
                 onBack = { navController.popBackStack() }
             )
         }

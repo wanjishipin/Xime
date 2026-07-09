@@ -25,6 +25,7 @@ import androidx.compose.material.icons.twotone.Ballot
 
 import androidx.compose.material.icons.twotone.Build
 import androidx.compose.material.icons.twotone.CloudSync
+import androidx.compose.material.icons.twotone.ContentPasteGo
 import androidx.compose.material.icons.twotone.Description
 import androidx.compose.material.icons.twotone.Extension
 import androidx.compose.material.icons.twotone.GraphicEq
@@ -79,7 +80,8 @@ fun SettingsMainContent(
     onNavigateToSpeechToText: () -> Unit,
     onNavigateToModelManagement: () -> Unit = {},
     onNavigateToAbout: () -> Unit,
-    onNavigateToWebDav: () -> Unit = {}
+    onNavigateToWebDav: () -> Unit = {},
+    onNavigateToClipboard: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -360,6 +362,18 @@ fun SettingsMainContent(
                         title = "WebDAV 同步",
                         subtitle = "通过 WebDAV 备份和恢复输入方案与配置",
                         onClick = onNavigateToWebDav,
+                        showArrow = true
+                    )
+                })
+            }
+
+            item {
+                SettingsSection(title = "剪贴板", content = {
+                    SettingsItem(
+                        icon = Icons.TwoTone.ContentPasteGo,
+                        title = "剪贴板设置",
+                        subtitle = "调整剪贴板最大条数等",
+                        onClick = onNavigateToClipboard,
                         showArrow = true
                     )
                 })
