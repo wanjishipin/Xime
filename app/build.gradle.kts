@@ -305,7 +305,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.kingzcheung.xime"
+        applicationId = "com.wanjishipin.xime"
         minSdk = 28
         targetSdk = 35
         versionCode = 53

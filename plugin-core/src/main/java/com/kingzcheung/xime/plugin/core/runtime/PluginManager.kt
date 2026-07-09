@@ -244,7 +244,7 @@ object PluginManager {
         
         // 获取系统中已安装的插件包名
         val installedPackageNames = try {
-            val intent = android.content.Intent("com.kingzcheung.xime.plugin.EXTENSION")
+            val intent = android.content.Intent("com.wanjishipin.xime.plugin.EXTENSION")
             val resolveInfos = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
                 context.packageManager.queryIntentActivities(
                     intent,
