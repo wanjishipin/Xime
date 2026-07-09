@@ -11,7 +11,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.kingzcheung.xime.plugin.emoji"
+        applicationId = "com.wanjishipin.xime.plugin.emoji"
         minSdk = 28
         targetSdk = 35
         versionCode = 6
