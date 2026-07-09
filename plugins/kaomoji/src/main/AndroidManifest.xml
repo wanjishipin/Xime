@@ -10,7 +10,7 @@
             android:name=".PluginDeclaration"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.kingzcheung.xime.plugin.EXTENSION" />
+                <action android:name="com.wanjishipin.xime.plugin.EXTENSION" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>

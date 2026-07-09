@@ -17,7 +17,7 @@
     <!-- 查询已安装的插件应用 -->
     <queries>
         <intent>
-            <action android:name="com.kingzcheung.xime.plugin.EXTENSION" />
+            <action android:name="com.wanjishipin.xime.plugin.EXTENSION" />
         </intent>
     </queries>
 
@@ -84,9 +84,9 @@
         <!-- 插件 ContentProvider 代理 -->
         <provider
             android:name=".provider.HostProvider"
-            android:authorities="com.kingzcheung.xime.plugin.proxy"
+            android:authorities="${applicationId}.plugin.proxy"
             android:exported="true" />
-        
+
     </application>
 
 </manifest>

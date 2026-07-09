@@ -142,7 +142,7 @@ class InstallerManager(
     suspend fun scanAndInstallSystemPlugins(): Int = withContext(Dispatchers.IO) {
         Log.d("InstallerManager", "Scanning system installed plugins...")
         
-        val intent = Intent("com.kingzcheung.xime.plugin.EXTENSION")
+        val intent = Intent("com.wanjishipin.xime.plugin.EXTENSION")
         val resolveInfos = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             context.packageManager.queryIntentActivities(
                 intent,

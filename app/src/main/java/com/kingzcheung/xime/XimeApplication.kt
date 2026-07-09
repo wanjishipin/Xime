@@ -40,7 +40,7 @@ class XimeApplication : Application(), ImageLoaderFactory {
     
     companion object {
         private const val TAG = "XimeApplication"
-        const val HOST_PROVIDER_AUTHORITY = "com.kingzcheung.xime.plugin.proxy"
+        const val HOST_PROVIDER_AUTHORITY = "com.wanjishipin.xime.plugin.proxy"
     }
     
     private val applicationScope = CoroutineScope(Dispatchers.IO)
