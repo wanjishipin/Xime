@@ -11,7 +11,7 @@ android {
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.kingzcheung.xime.plugin.kaomoji"
+        applicationId = "com.wanjishipin.xime.plugin.kaomoji"
         minSdk = 28
         targetSdk = 35
         versionCode = 6
