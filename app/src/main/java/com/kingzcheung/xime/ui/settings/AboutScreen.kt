@@ -333,43 +333,84 @@ fun AboutContent(
             // 源代码
             item {
                 Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable {
-                            uriHandler.openUri("https://github.com/wanjishipin/Xime")
-                        },
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                 ) {
-                    Row(
+                    Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(16.dp)
                     ) {
-                        Icon(
-                            imageVector = Icons.TwoTone.Code,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
+                        Text(
+                            text = "源代码",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "源代码",
-                                fontSize = 16.sp,
-                                fontWeight = FontWeight.Medium
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { uriHandler.openUri("https://github.com/ximeiorg/Xime") },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.TwoTone.Code,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
                             )
-                            Text(
-                                text = "github.com/wanjishipin/Xime",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "原始作者源代码",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "github.com/ximeiorg/Xime",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.TwoTone.OpenInNew,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.OpenInNew,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(18.dp)
-                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { uriHandler.openUri("https://github.com/wanjishipin/Xime") },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.TwoTone.Code,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "二改作者源代码",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "github.com/wanjishipin/Xime",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.TwoTone.OpenInNew,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
