@@ -64,14 +64,14 @@ class TranscriptionManager(private val context: Context) {
         _isRunning.value = true
         _partialText.value = ""
 
+        // 标点模型在后台线程加载，不影响识别启动
         Thread {
             try {
-                manager.preload()
                 initPunctuationModel()
                 // 标点模型加载完成后重新推理已有文本
                 reprocessTranscript()
             } catch (e: Exception) {
-                FileLogger.e(TAG, "Preload error: ${e.message}")
+                FileLogger.e(TAG, "Punctuation init error: ${e.message}")
             }
         }.start()
 
