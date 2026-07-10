@@ -299,7 +299,7 @@ fun getBuildTime(): String {
 val keystorePropertiesFile = rootProject.file("app/keystore.properties")
 val keystoreProperties = Properties()
 if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(keystorePropertiesFile.inputStream())
+    keystoreProperties.load(keystorePropertiesFile.inputStream().reader(Charsets.UTF_8))
 }
 
 android {
@@ -337,6 +337,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -344,8 +349,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // 只在本地有 keystore.properties 时才使用签名配置
-            // GitHub Actions 使用自己的签名方式
             if (keystorePropertiesFile.exists()) {
                 signingConfig = signingConfigs.getByName("release")
             }
