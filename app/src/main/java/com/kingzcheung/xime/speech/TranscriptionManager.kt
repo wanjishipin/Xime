@@ -46,6 +46,16 @@ class TranscriptionManager(private val context: Context) {
 
     private val rawSegments = mutableListOf<String>()
 
+    /**
+     * 标志位：stop() 已调用，正在等待 ASR 引擎的最终结果回调。
+     *
+     * 用于避免内容重复：
+     * - stop() 不再手动把 partialText 添加为 segment
+     * - 异步到达的 final result 会通过 handleResult 添加
+     * - 若 final result 不含新内容（与 partialText 相同），则用 partialText 补上
+     */
+    private var isStopping = false
+
     fun start() {
         if (_isRunning.value) return
 
@@ -81,20 +91,11 @@ class TranscriptionManager(private val context: Context) {
 
     fun stop() {
         if (!_isRunning.value) return
+        isStopping = true
         speechManager?.stopRecognition()
         _isRunning.value = false
         _amplitude.value = 0f
         _state.value = RecognitionState.IDLE
-
-        if (_partialText.value.isNotEmpty()) {
-            val partial = _partialText.value.replace(" ", "")
-            if (partial.isNotEmpty()) {
-                addRawSegment(partial)
-            }
-            _partialText.value = ""
-        }
-        // 停止时重新推理全部文本
-        reprocessTranscript()
         FileLogger.i(TAG, "Transcription stopped")
     }
 
@@ -125,8 +126,16 @@ class TranscriptionManager(private val context: Context) {
         if (cleanText.isNotEmpty() && !cleanText.startsWith("错误:")) {
             addRawSegment(cleanText)
             reprocessTranscript()
+        } else if (isStopping) {
+            // 停止时 final result 为空，用 partialText 兜底
+            val partial = _partialText.value.replace(" ", "")
+            if (partial.isNotEmpty()) {
+                addRawSegment(partial)
+                reprocessTranscript()
+            }
         }
         _partialText.value = ""
+        isStopping = false
     }
 
     private fun handlePartialResult(text: String) {
