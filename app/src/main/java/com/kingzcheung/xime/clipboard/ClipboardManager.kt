@@ -185,6 +185,178 @@ class ClipboardManager private constructor(private val context: Context) {
     private fun String.unescape(): String {
         return this.replace("〈PIPE〉", "|||").replace("〈COLON〉", ":::")
     }
+
+    fun exportToJson(): String {
+        val items = _clipboardItems.value
+        val sb = StringBuilder()
+        sb.append("[")
+        items.forEachIndexed { index, item ->
+            if (index > 0) sb.append(",")
+            sb.append("{\"id\":${item.id},\"text\":")
+            sb.append(escapeJsonString(item.text))
+            sb.append(",\"timestamp\":${item.timestamp},\"isPinned\":${item.isPinned},\"isQuickSend\":${item.isQuickSend}}")
+        }
+        sb.append("]")
+        return sb.toString()
+    }
+
+    fun importFromJson(json: String, replace: Boolean = false): Int {
+        val importedItems = parseJsonItems(json)
+        if (importedItems.isEmpty()) return 0
+
+        val currentItems = if (replace) mutableListOf() else _clipboardItems.value.toMutableList()
+
+        for (item in importedItems) {
+            val existingIndex = currentItems.indexOfFirst { it.text == item.text }
+            if (existingIndex >= 0) {
+                currentItems[existingIndex] = item
+                currentItems.moveToTop(existingIndex)
+            } else {
+                currentItems.add(0, item)
+            }
+        }
+
+        val maxItems = getMaxItems()
+        val unpinnedCount = currentItems.count { !it.isPinned }
+        if (unpinnedCount > maxItems) {
+            val toRemove = currentItems
+                .filter { !it.isPinned }
+                .sortedBy { it.timestamp }
+                .take(unpinnedCount - maxItems)
+            currentItems.removeAll(toRemove.toSet())
+        }
+
+        _clipboardItems.value = currentItems
+        saveItems()
+        updateRecentItems()
+        return importedItems.size
+    }
+
+    private fun parseJsonItems(json: String): List<ClipboardItem> {
+        val items = mutableListOf<ClipboardItem>()
+        var i = 0
+        val len = json.length
+
+        while (i < len) {
+            if (json[i] == '{') {
+                val end = findMatchingBrace(json, i)
+                if (end > i) {
+                    val objStr = json.substring(i + 1, end)
+                    val item = parseJsonObject(objStr)
+                    if (item != null) items.add(item)
+                    i = end + 1
+                } else {
+                    i++
+                }
+            } else {
+                i++
+            }
+        }
+        return items
+    }
+
+    private fun findMatchingBrace(s: String, start: Int): Int {
+        var depth = 0
+        for (i in start until s.length) {
+            when (s[i]) {
+                '{' -> depth++
+                '}' -> { depth--; if (depth == 0) return i }
+            }
+        }
+        return -1
+    }
+
+    private fun parseJsonObject(objStr: String): ClipboardItem? {
+        try {
+            val id = extractJsonLong(objStr, "id") ?: ClipboardManager.generateId()
+            val text = extractJsonString(objStr, "text") ?: return null
+            val timestamp = extractJsonLong(objStr, "timestamp") ?: System.currentTimeMillis()
+            val isPinned = extractJsonBoolean(objStr, "isPinned") ?: false
+            val isQuickSend = extractJsonBoolean(objStr, "isQuickSend") ?: false
+            return ClipboardItem(id = id, text = text, timestamp = timestamp, isPinned = isPinned, isQuickSend = isQuickSend)
+        } catch (e: Exception) {
+            return null
+        }
+    }
+
+    private fun extractJsonString(s: String, key: String): String? {
+        val pattern = "\"$key\""
+        val idx = s.indexOf(pattern)
+        if (idx < 0) return null
+        var i = idx + pattern.length
+        while (i < s.length && s[i] != ':') i++
+        if (i >= s.length) return null
+        i++
+        while (i < s.length && s[i] == ' ') i++
+        if (i >= s.length || s[i] != '"') return null
+        val sb = StringBuilder()
+        i++
+        while (i < s.length && s[i] != '"') {
+            if (s[i] == '\\' && i + 1 < s.length) {
+                when (s[i + 1]) {
+                    '"' -> sb.append('"')
+                    '\\' -> sb.append('\\')
+                    'n' -> sb.append('\n')
+                    't' -> sb.append('\t')
+                    'r' -> sb.append('\r')
+                    '/' -> sb.append('/')
+                    else -> { sb.append(s[i]); sb.append(s[i + 1]) }
+                }
+                i += 2
+            } else {
+                sb.append(s[i])
+                i++
+            }
+        }
+        return sb.toString()
+    }
+
+    private fun extractJsonLong(s: String, key: String): Long? {
+        val pattern = "\"$key\""
+        val idx = s.indexOf(pattern)
+        if (idx < 0) return null
+        var i = idx + pattern.length
+        while (i < s.length && s[i] != ':') i++
+        if (i >= s.length) return null
+        i++
+        while (i < s.length && s[i] == ' ') i++
+        val start = i
+        while (i < s.length && (s[i].isDigit() || s[i] == '-')) i++
+        if (start == i) return null
+        return s.substring(start, i).toLongOrNull()
+    }
+
+    private fun extractJsonBoolean(s: String, key: String): Boolean? {
+        val pattern = "\"$key\""
+        val idx = s.indexOf(pattern)
+        if (idx < 0) return null
+        var i = idx + pattern.length
+        while (i < s.length && s[i] != ':') i++
+        if (i >= s.length) return null
+        i++
+        while (i < s.length && s[i] == ' ') i++
+        return when {
+            s.startsWith("true", i) -> true
+            s.startsWith("false", i) -> false
+            else -> null
+        }
+    }
+
+    private fun escapeJsonString(s: String): String {
+        val sb = StringBuilder("\"")
+        for (ch in s) {
+            when (ch) {
+                '"' -> sb.append("\\\"")
+                '\\' -> sb.append("\\\\")
+                '\n' -> sb.append("\\n")
+                '\t' -> sb.append("\\t")
+                '\r' -> sb.append("\\r")
+                else -> sb.append(ch)
+            }
+        }
+        sb.append("\"")
+        return sb.toString()
+    }
     
     private fun startListening() {
         androidClipboardManager.addPrimaryClipChangedListener(clipboardListener)
