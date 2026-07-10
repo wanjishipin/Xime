@@ -32,6 +32,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.compositionLocalOf
@@ -101,6 +102,7 @@ fun KeyboardView(
     val isKeyboardPinned by viewModel.isKeyboardPinned.collectAsStateWithLifecycle()
     val isLandscape = if (state.isFloatingMode) false
         else LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val context = LocalContext.current
 
     SideEffect {
         val active = (keyboardState is KeyboardLayoutState.Chinese || keyboardState is KeyboardLayoutState.Stroke || keyboardState is KeyboardLayoutState.T9Pinyin)
@@ -365,6 +367,7 @@ fun KeyboardView(
                         ToolbarButton.FLOAT -> ({ callbacks.onFloatingModeChange?.invoke(!state.isFloatingMode) })
                         ToolbarButton.PIN -> ({ viewModel.togglePin() })
                         ToolbarButton.HANDWRITING_LOOKUP -> ({ isHandwritingLookup = !isHandwritingLookup })
+                        ToolbarButton.TRANSCRIPTION -> ({ viewModel.showOverlay(OverlayRoute.Transcription) })
                     }
                     ToolbarAction(button, onClick, isActive = button == ToolbarButton.PIN && isKeyboardPinned)
                 },
@@ -1004,6 +1007,24 @@ fun KeyboardView(
                         bottomPaddingDp = state.keyboardBottomPaddingDp,
                         modifier = Modifier.fillMaxWidth().fillMaxHeight()
                     )
+                    is OverlayRoute.Transcription -> {
+                        val transcriptionManager = remember { com.kingzcheung.xime.speech.TranscriptionManager(context) }
+                        DisposableEffect(Unit) {
+                            onDispose { transcriptionManager.release() }
+                        }
+                        TranscriptionOverlay(
+                            manager = transcriptionManager,
+                            backgroundColor = keyboardBgColor,
+                            accentColor = accentColor,
+                            textColor = keyTextColor,
+                            onDismiss = {
+                                transcriptionManager.release()
+                                viewModel.closeOverlay()
+                            },
+                            bottomPaddingDp = state.keyboardBottomPaddingDp,
+                            modifier = Modifier.fillMaxWidth().fillMaxHeight()
+                        )
+                    }
                     is OverlayRoute.Symbol -> SymbolKeyboardLayout(
                         onSelect = { symbol ->
                             if (symbol == "delete") {
