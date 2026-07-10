@@ -24,6 +24,7 @@ class TranscriptionManager(private val context: Context) {
 
     private var speechManager: SpeechRecognitionManager? = null
     private var punctuationInitialized = false
+    private var punctuationInitRequested = false
 
     private val _transcriptText = MutableStateFlow("")
     val transcriptText: StateFlow<String> = _transcriptText.asStateFlow()
@@ -42,6 +43,8 @@ class TranscriptionManager(private val context: Context) {
 
     private val _providerName = MutableStateFlow("")
     val providerName: StateFlow<String> = _providerName.asStateFlow()
+
+    private val rawSegments = mutableListOf<String>()
 
     fun start() {
         if (_isRunning.value) return
@@ -65,6 +68,8 @@ class TranscriptionManager(private val context: Context) {
             try {
                 manager.preload()
                 initPunctuationModel()
+                // 标点模型加载完成后重新推理已有文本
+                reprocessTranscript()
             } catch (e: Exception) {
                 FileLogger.e(TAG, "Preload error: ${e.message}")
             }
@@ -84,16 +89,19 @@ class TranscriptionManager(private val context: Context) {
         if (_partialText.value.isNotEmpty()) {
             val partial = _partialText.value.replace(" ", "")
             if (partial.isNotEmpty()) {
-                appendResult(partial)
+                addRawSegment(partial)
             }
             _partialText.value = ""
         }
+        // 停止时重新推理全部文本
+        reprocessTranscript()
         FileLogger.i(TAG, "Transcription stopped")
     }
 
     fun clear() {
         _transcriptText.value = ""
         _partialText.value = ""
+        rawSegments.clear()
     }
 
     fun appendManualText(text: String) {
@@ -115,8 +123,8 @@ class TranscriptionManager(private val context: Context) {
     private fun handleResult(text: String) {
         val cleanText = text.replace(" ", "")
         if (cleanText.isNotEmpty() && !cleanText.startsWith("错误:")) {
-            val punctuated = addPunctuation(cleanText)
-            appendResult(punctuated)
+            addRawSegment(cleanText)
+            reprocessTranscript()
         }
         _partialText.value = ""
     }
@@ -137,13 +145,30 @@ class TranscriptionManager(private val context: Context) {
         _amplitude.value = 0f
     }
 
-    private fun appendResult(text: String) {
-        _transcriptText.value = _transcriptText.value + text
+    private fun addRawSegment(text: String) {
+        if (text.isNotEmpty()) {
+            rawSegments.add(text)
+        }
+    }
+
+    private fun reprocessTranscript() {
+        if (rawSegments.isEmpty()) {
+            _transcriptText.value = ""
+            return
+        }
+        val fullRaw = rawSegments.joinToString("")
+        _transcriptText.value = addPunctuation(fullRaw)
     }
 
     private fun addPunctuation(text: String): String {
+        if (text.isEmpty()) return text
+
         val useLocal = SettingsPreferences.isSttUseLocal(context)
-        if (!useLocal) return text
+
+        // 在线引擎（阿里百炼）通常自带标点
+        if (!useLocal) {
+            return text
+        }
 
         val sherpaEngine = SherpaAsrEngine(context)
         val needsAutoPunctuation = sherpaEngine.getSelectedModelInfo()?.needsAutoPunctuation ?: true
@@ -156,13 +181,30 @@ class TranscriptionManager(private val context: Context) {
         if (punctuationEnabled && punctuationInitialized) {
             try {
                 val result = PunctuationInference.predict(cleanText)
-                return result
+                if (result.isNotEmpty()) return result
             } catch (e: Exception) {
                 FileLogger.e(TAG, "Punctuation model failed: ${e.message}")
             }
         }
 
-        return "$cleanText${heuristicPunctuation(cleanText)}"
+        // 标点模型未就绪时用启发式规则为每句加标点
+        return addHeuristicPunctuationToFullText(cleanText)
+    }
+
+    /**
+     * 对整段文本用启发式规则加标点：
+     * 按 ASR 返回的 segment 边界加标点，每个 segment 末尾加句号/问号/逗号。
+     */
+    private fun addHeuristicPunctuationToFullText(text: String): String {
+        if (rawSegments.isEmpty()) return text
+        val sb = StringBuilder()
+        for (segment in rawSegments) {
+            val seg = segment.replace(" ", "")
+            if (seg.isEmpty()) continue
+            sb.append(seg)
+            sb.append(heuristicPunctuation(seg))
+        }
+        return sb.toString()
     }
 
     private fun heuristicPunctuation(text: String): String {
@@ -174,7 +216,8 @@ class TranscriptionManager(private val context: Context) {
     }
 
     private fun initPunctuationModel() {
-        if (punctuationInitialized) return
+        if (punctuationInitialized || punctuationInitRequested) return
+        punctuationInitRequested = true
 
         val punctuationEnabled = SettingsPreferences.isPunctuationModelEnabled(context)
         if (!punctuationEnabled) return
