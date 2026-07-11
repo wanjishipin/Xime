@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.twotone.BugReport
 import androidx.compose.material.icons.twotone.Article
+import androidx.compose.material.icons.twotone.CloudDownload
 import androidx.compose.material.icons.twotone.Code
 import androidx.compose.material.icons.twotone.Description
 import androidx.compose.material.icons.twotone.PersonOutline
@@ -348,6 +349,38 @@ fun AboutContent(
                                 )
                                 Text(
                                     text = "mp.weixin.qq.com/s/2cg7axj9V5BiyeCNNQPYQg",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Icon(
+                                imageVector = Icons.AutoMirrored.TwoTone.OpenInNew,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { uriHandler.openUri("https://pan.baidu.com/s/1fZ29_qq5pVeNWT95kSmYog?pwd=f533") },
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.TwoTone.CloudDownload,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "网盘下载更新",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = "pan.baidu.com 提取码: f533",
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
