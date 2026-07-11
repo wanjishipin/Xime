@@ -13,6 +13,11 @@ import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserFactory
 import java.io.File
 import java.util.concurrent.TimeUnit
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 data class WebDavFile(
     val name: String,
@@ -363,5 +368,136 @@ object WebDavSyncHelper {
             Log.e(TAG, "Failed to parse PROPFIND response", e)
         }
         return files
+    }
+
+    // ==================== 全量备份/恢复 ====================
+
+    /**
+     * 将应用私有数据（filesDir）打包为 zip 并上传到 WebDAV。
+     * 包含 rime 方案、模型配置、用户词典、剪贴板等所有私有数据。
+     */
+    suspend fun uploadFullBackup(
+        context: Context,
+        baseUrl: String,
+        username: String,
+        password: String,
+        remotePath: String,
+        onProgress: (String) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val headers = authHeaders(username, password)
+            val base = normalizeUrl(baseUrl)
+            val remoteBase = "$base/$remotePath/backup"
+
+            ensureRemoteDir(client, remoteBase, headers)
+
+            val tmpZip = File(context.cacheDir, "xime_full_backup.zip")
+            if (tmpZip.exists()) tmpZip.delete()
+
+            onProgress("正在打包私有数据...")
+            val filesDir = context.filesDir
+            zipDirectory(filesDir, tmpZip, onProgress)
+
+            onProgress("正在上传全量备份...")
+            val remoteUrl = "$remoteBase/xime_full_backup.zip"
+            val err = uploadFile(client, remoteUrl, tmpZip, headers)
+            tmpZip.delete()
+
+            if (err != null) {
+                onProgress("上传失败: $err")
+                return@withContext false
+            }
+
+            onProgress("全量备份上传完成")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Full backup upload failed", e)
+            onProgress("全量备份失败: ${e.message}")
+            false
+        }
+    }
+
+    /**
+     * 从 WebDAV 下载全量备份 zip 并解压恢复到 filesDir。
+     * 会覆盖本地同名文件。
+     */
+    suspend fun downloadFullBackup(
+        context: Context,
+        baseUrl: String,
+        username: String,
+        password: String,
+        remotePath: String,
+        onProgress: (String) -> Unit
+    ): Boolean = withContext(Dispatchers.IO) {
+        try {
+            val headers = authHeaders(username, password)
+            val base = normalizeUrl(baseUrl)
+            val remoteUrl = "$base/$remotePath/backup/xime_full_backup.zip"
+
+            val tmpZip = File(context.cacheDir, "xime_full_restore.zip")
+            if (tmpZip.exists()) tmpZip.delete()
+
+            onProgress("正在下载全量备份...")
+            val err = downloadFile(client, remoteUrl, tmpZip, headers)
+            if (err != null) {
+                onProgress("下载失败: $err")
+                return@withContext false
+            }
+
+            onProgress("正在恢复私有数据...")
+            val filesDir = context.filesDir
+            unzipToDirectory(tmpZip, filesDir, onProgress)
+            tmpZip.delete()
+
+            onProgress("全量恢复完成")
+            true
+        } catch (e: Exception) {
+            Log.e(TAG, "Full backup download failed", e)
+            onProgress("全量恢复失败: ${e.message}")
+            false
+        }
+    }
+
+    private fun zipDirectory(rootDir: File, zipFile: File, onProgress: (String) -> Unit) {
+        ZipOutputStream(FileOutputStream(zipFile)).use { zos ->
+            rootDir.walkTopDown().forEach { file ->
+                if (file == rootDir) return@forEach
+                val relativePath = file.relativeTo(rootDir).path
+                if (file.isDirectory) {
+                    val entry = ZipEntry("$relativePath/")
+                    zos.putNextEntry(entry)
+                    zos.closeEntry()
+                } else {
+                    onProgress("打包 ${relativePath}")
+                    val entry = ZipEntry(relativePath)
+                    zos.putNextEntry(entry)
+                    FileInputStream(file).use { fis ->
+                        fis.copyTo(zos)
+                    }
+                    zos.closeEntry()
+                }
+            }
+        }
+    }
+
+    private fun unzipToDirectory(zipFile: File, destDir: File, onProgress: (String) -> Unit) {
+        if (!destDir.exists()) destDir.mkdirs()
+        ZipInputStream(FileInputStream(zipFile)).use { zis ->
+            var entry = zis.nextEntry
+            while (entry != null) {
+                val outFile = File(destDir, entry.name)
+                if (entry.isDirectory) {
+                    outFile.mkdirs()
+                } else {
+                    outFile.parentFile?.mkdirs()
+                    onProgress("恢复 ${entry.name}")
+                    FileOutputStream(outFile).use { fos ->
+                        zis.copyTo(fos)
+                    }
+                }
+                zis.closeEntry()
+                entry = zis.nextEntry
+            }
+        }
     }
 }

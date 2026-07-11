@@ -45,6 +45,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -90,6 +91,7 @@ fun WebDavSyncContent(
     var isUploading by remember { mutableStateOf(false) }
     var isDownloading by remember { mutableStateOf(false) }
     var syncProgress by remember { mutableStateOf<String?>(null) }
+    var fullBackup by remember { mutableStateOf(SettingsPreferences.isWebDavFullBackup(context)) }
 
     DisposableEffect(Unit) {
         onDispose {
@@ -97,6 +99,7 @@ fun WebDavSyncContent(
             SettingsPreferences.setWebDavUsername(context, username)
             SettingsPreferences.setWebDavPassword(context, password)
             SettingsPreferences.setWebDavPath(context, remotePath)
+            SettingsPreferences.setWebDavFullBackup(context, fullBackup)
         }
     }
 
@@ -105,6 +108,7 @@ fun WebDavSyncContent(
         SettingsPreferences.setWebDavUsername(context, username)
         SettingsPreferences.setWebDavPassword(context, password)
         SettingsPreferences.setWebDavPath(context, remotePath)
+        SettingsPreferences.setWebDavFullBackup(context, fullBackup)
     }
 
     Scaffold(
@@ -377,6 +381,33 @@ fun WebDavSyncContent(
                 }
 
                 Column(modifier = Modifier.padding(8.dp)) {
+                    // 全量备份开关
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                "全量备份",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                "备份所有私有数据（含模型、剪贴板等）",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline
+                            )
+                        }
+                        Switch(
+                            checked = fullBackup,
+                            onCheckedChange = { fullBackup = it }
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -387,9 +418,15 @@ fun WebDavSyncContent(
                                 isUploading = true
                                 syncProgress = null
                                 scope.launch {
-                                    val ok = WebDavSyncHelper.uploadSchemas(
-                                        context, serverUrl, username, password, remotePath
-                                    ) { msg -> syncProgress = msg }
+                                    val ok = if (fullBackup) {
+                                        WebDavSyncHelper.uploadFullBackup(
+                                            context, serverUrl, username, password, remotePath
+                                        ) { msg -> syncProgress = msg }
+                                    } else {
+                                        WebDavSyncHelper.uploadSchemas(
+                                            context, serverUrl, username, password, remotePath
+                                        ) { msg -> syncProgress = msg }
+                                    }
                                     isUploading = false
                                     if (ok) Toast.makeText(context, "上传完成", Toast.LENGTH_SHORT).show()
                                     else Toast.makeText(context, "上传失败", Toast.LENGTH_SHORT).show()
@@ -410,7 +447,7 @@ fun WebDavSyncContent(
                         Icon(Icons.TwoTone.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("上传到服务器", fontSize = 12.sp)
+                    Text(if (fullBackup) "全量上传" else "上传方案", fontSize = 12.sp)
                 }
                 Button(
                     onClick = {
@@ -418,9 +455,15 @@ fun WebDavSyncContent(
                         isDownloading = true
                         syncProgress = null
                         scope.launch {
-                            val ok = WebDavSyncHelper.downloadSchemas(
-                                context, serverUrl, username, password, remotePath
-                            ) { msg -> syncProgress = msg }
+                            val ok = if (fullBackup) {
+                                WebDavSyncHelper.downloadFullBackup(
+                                    context, serverUrl, username, password, remotePath
+                                ) { msg -> syncProgress = msg }
+                            } else {
+                                WebDavSyncHelper.downloadSchemas(
+                                    context, serverUrl, username, password, remotePath
+                                ) { msg -> syncProgress = msg }
+                            }
                             isDownloading = false
                             if (ok) {
                                 Toast.makeText(context, "下载完成", Toast.LENGTH_SHORT).show()
@@ -445,13 +488,14 @@ fun WebDavSyncContent(
                         Icon(Icons.TwoTone.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("从服务器下载", fontSize = 12.sp)
+                    Text(if (fullBackup) "全量恢复" else "从服务器下载", fontSize = 12.sp)
                 }
             }
 
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "同步内容：rime/ 目录下的方案文件、词典和用户配置，不含 build/ 目录。上传会覆盖远程文件，下载会覆盖本地文件。",
+                        if (fullBackup) "全量备份：打包应用全部私有数据（filesDir）为zip上传/下载恢复，包含模型、剪贴板、用户配置等。恢复时覆盖本地数据。"
+                        else "同步内容：rime/ 目录下的方案文件、词典和用户配置，不含 build/ 目录。上传会覆盖远程文件，下载会覆盖本地文件。",
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.outline
                     )

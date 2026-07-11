@@ -72,6 +72,7 @@ object SettingsPreferences {
     private const val KEY_WEBDAV_USERNAME = "webdav_username"
     private const val KEY_WEBDAV_PASSWORD = "webdav_password"
     private const val KEY_WEBDAV_PATH = "webdav_path"
+    private const val KEY_WEBDAV_FULL_BACKUP = "webdav_full_backup"
 
     private const val KEY_SCHEMA_IMPORT_WARNING_DISMISSED = "schema_import_warning_dismissed"
 
@@ -462,6 +463,14 @@ object SettingsPreferences {
 
     fun setWebDavPath(context: Context, path: String) {
         getPrefs(context).edit().putString(KEY_WEBDAV_PATH, path).apply()
+    }
+
+    fun isWebDavFullBackup(context: Context): Boolean {
+        return getPrefs(context).getBoolean(KEY_WEBDAV_FULL_BACKUP, false)
+    }
+
+    fun setWebDavFullBackup(context: Context, enabled: Boolean) {
+        getPrefs(context).edit().putBoolean(KEY_WEBDAV_FULL_BACKUP, enabled).apply()
     }
 
     fun isSchemaImportWarningDismissed(context: Context): Boolean {
