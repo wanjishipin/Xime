@@ -88,17 +88,7 @@ class PrivateFilesProvider : DocumentsProvider() {
     ): ParcelFileDescriptor {
         val file = resolve(documentId)
         if (file.isDirectory) throw FileNotFoundException("Directories cannot be opened: $documentId")
-        val flags = when (mode) {
-            "r" -> ParcelFileDescriptor.MODE_READ_ONLY
-            "w", "wt" -> ParcelFileDescriptor.MODE_WRITE_ONLY or
-                ParcelFileDescriptor.MODE_CREATE or ParcelFileDescriptor.MODE_TRUNCATE
-            "wa" -> ParcelFileDescriptor.MODE_WRITE_ONLY or
-                ParcelFileDescriptor.MODE_CREATE or ParcelFileDescriptor.MODE_APPEND
-            "rw" -> ParcelFileDescriptor.MODE_READ_WRITE or ParcelFileDescriptor.MODE_CREATE
-            "rwt" -> ParcelFileDescriptor.MODE_READ_WRITE or
-                ParcelFileDescriptor.MODE_CREATE or ParcelFileDescriptor.MODE_TRUNCATE
-            else -> throw IllegalArgumentException("Unsupported mode: $mode")
-        }
+        val flags = ParcelFileDescriptor.parseMode(mode)
         file.parentFile?.mkdirs()
         return ParcelFileDescriptor.open(file, flags)
     }
