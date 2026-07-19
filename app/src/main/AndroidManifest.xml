@@ -96,6 +96,7 @@
             android:name=".provider.PrivateFilesProvider"
             android:authorities="com.wanjishipin.xime.documents"
             android:exported="true"
+            android:permission="android.permission.MANAGE_DOCUMENTS"
             android:grantUriPermissions="true">
             <intent-filter>
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
