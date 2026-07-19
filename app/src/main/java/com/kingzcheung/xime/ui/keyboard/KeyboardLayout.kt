@@ -836,7 +836,7 @@ fun KeyboardLayout(
                                     swipeDownLabel = if (swipeDownHintsEnabled && k4SwipeDownLabel != null) k4SwipeDownLabel else null,
                                     onSwipe = k4OnSwipeIcon,
                                     onSwipeDown = k4OnSwipeDownIcon,
-                                    onLongClick = callbacks.onSwitchKeyboard,
+                                    onLongPress = callbacks.onSwitchKeyboard,
                                     onSwipeStateChange = { state, bounds ->
                                         processSwipeState(state, bounds)
                                     },

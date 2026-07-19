@@ -15,6 +15,7 @@ import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.PictureInPicture
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.outlined.Gesture
 import androidx.compose.material.icons.twotone.ContentPasteGo
 import androidx.compose.material.icons.twotone.RecordVoiceOver
@@ -40,7 +41,7 @@ enum class ToolbarButton(
     HANDWRITING_LOOKUP("handwriting_lookup", "手写找字", Icons.Outlined.Gesture),
     EDIT("edit", "编辑", Icons.Default.Create),
     TRANSCRIPTION("transcription", "听录", Icons.TwoTone.RecordVoiceOver),
-    VOICE_INPUT("voice_input", "语音输入", Icons.TwoTone.RecordVoiceOver);
+    VOICE_INPUT("voice_input", "语音输入", Icons.Default.Mic);
 
     companion object {
         val DEFAULT_VISIBLE = emptySet<ToolbarButton>()
