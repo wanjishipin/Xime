@@ -94,12 +94,13 @@
         <!-- 通过 Android Storage Access Framework 提供 filesDir 的读写访问。 -->
         <provider
             android:name=".provider.PrivateFilesProvider"
-            android:authorities="com.wanjishipin.xime.documents"
+            android:authorities="${applicationId}.documents"
             android:exported="true"
             android:permission="android.permission.MANAGE_DOCUMENTS"
             android:grantUriPermissions="true">
             <intent-filter>
                 <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+                <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </provider>
 

@@ -30,10 +30,16 @@ class PrivateFilesProvider : DocumentsProvider() {
                     DocumentsContract.Root.COLUMN_DOCUMENT_ID -> row.add(column, ROOT_ID)
                     DocumentsContract.Root.COLUMN_TITLE -> row.add(column, "Xime 私有数据")
                     DocumentsContract.Root.COLUMN_SUMMARY -> row.add(column, "Xime 应用私有目录")
+                    DocumentsContract.Root.COLUMN_ICON -> row.add(
+                        column,
+                        requireNotNull(context).applicationInfo.icon
+                    )
+                    DocumentsContract.Root.COLUMN_AVAILABLE_BYTES -> row.add(column, root.freeSpace)
                     DocumentsContract.Root.COLUMN_FLAGS -> row.add(
                         column,
                         DocumentsContract.Root.FLAG_SUPPORTS_CREATE or
                             DocumentsContract.Root.FLAG_SUPPORTS_RECENTS or
+                            DocumentsContract.Root.FLAG_SUPPORTS_IS_CHILD or
                             DocumentsContract.Root.FLAG_LOCAL_ONLY
                     )
                     DocumentsContract.Root.COLUMN_MIME_TYPES -> row.add(column, "*/*\n" + Document.MIME_TYPE_DIR)
@@ -59,6 +65,19 @@ class PrivateFilesProvider : DocumentsProvider() {
         if (!directory.isDirectory) throw FileNotFoundException(parentDocumentId)
         val cursor = MatrixCursor(projection?.toList()?.toTypedArray() ?: DEFAULT_DOCUMENT_COLUMNS)
         directory.listFiles()?.sortedBy { it.name }?.forEach { includeDocument(cursor, idFor(it)) }
+        return cursor
+    }
+
+    override fun queryRecentDocuments(
+        rootId: String,
+        projection: Array<out String>?
+    ): Cursor {
+        val cursor = MatrixCursor(projection?.toList()?.toTypedArray() ?: DEFAULT_DOCUMENT_COLUMNS)
+        resolve(rootId).walkTopDown()
+            .filter { it.isFile }
+            .sortedByDescending { it.lastModified() }
+            .take(20)
+            .forEach { includeDocument(cursor, idFor(it)) }
         return cursor
     }
 
@@ -157,20 +176,23 @@ class PrivateFilesProvider : DocumentsProvider() {
 
     private fun notifyParent(parent: File) {
         requireNotNull(context).contentResolver.notifyChange(
-            DocumentsContract.buildChildDocumentsUri(AUTHORITY, idFor(parent)), null
+                DocumentsContract.buildChildDocumentsUri(authority, idFor(parent)), null
         )
     }
 
     private fun mimeType(file: File): String = android.webkit.MimeTypeMap.getSingleton()
         .getMimeTypeFromExtension(file.extension.lowercase()) ?: "application/octet-stream"
 
+    private val authority: String
+        get() = requireNotNull(context).packageName + ".documents"
+
     companion object {
-        const val AUTHORITY = "com.wanjishipin.xime.documents"
         private const val ROOT_ID = "root"
         private val DEFAULT_ROOT_COLUMNS = arrayOf(
             DocumentsContract.Root.COLUMN_ROOT_ID, DocumentsContract.Root.COLUMN_DOCUMENT_ID,
             DocumentsContract.Root.COLUMN_TITLE, DocumentsContract.Root.COLUMN_SUMMARY,
-            DocumentsContract.Root.COLUMN_FLAGS, DocumentsContract.Root.COLUMN_MIME_TYPES
+            DocumentsContract.Root.COLUMN_FLAGS, DocumentsContract.Root.COLUMN_MIME_TYPES,
+            DocumentsContract.Root.COLUMN_ICON, DocumentsContract.Root.COLUMN_AVAILABLE_BYTES
         )
         private val DEFAULT_DOCUMENT_COLUMNS = arrayOf(
             Document.COLUMN_DOCUMENT_ID, Document.COLUMN_DISPLAY_NAME, Document.COLUMN_MIME_TYPE,
