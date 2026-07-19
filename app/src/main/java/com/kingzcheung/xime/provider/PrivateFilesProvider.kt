@@ -133,7 +133,9 @@ class PrivateFilesProvider : DocumentsProvider() {
     override fun isChildDocument(parentDocumentId: String, documentId: String): Boolean {
         val parent = resolve(parentDocumentId)
         val child = resolve(documentId)
-        return child != root && child.parentFile?.canonicalFile == parent
+        if (child == parent) return false
+        val parentPath = parent.toPath()
+        return child.toPath().startsWith(parentPath)
     }
 
     private fun includeDocument(cursor: MatrixCursor, documentId: String) {
