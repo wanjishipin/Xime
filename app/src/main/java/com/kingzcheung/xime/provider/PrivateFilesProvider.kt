@@ -97,6 +97,11 @@ class PrivateFilesProvider : DocumentsProvider() {
         val parent = resolve(parentDocumentId)
         require(parent.isDirectory) { "Parent is not a directory" }
         val target = child(parent, displayName)
+        if (target.exists()) {
+            val expectedDirectory = mimeType == Document.MIME_TYPE_DIR
+            require(target.isDirectory == expectedDirectory) { "Document type conflicts with $displayName" }
+            return idFor(target)
+        }
         val created = if (mimeType == Document.MIME_TYPE_DIR) target.mkdirs() else target.createNewFile()
         if (!created) throw IllegalStateException("Unable to create $displayName")
         notifyParent(parent)
