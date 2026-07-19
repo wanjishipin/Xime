@@ -91,6 +91,17 @@
             android:authorities="${applicationId}.plugin.proxy"
             android:exported="true" />
 
+        <!-- 通过 Android Storage Access Framework 提供 filesDir 的读写访问。 -->
+        <provider
+            android:name=".provider.PrivateFilesProvider"
+            android:authorities="com.wanjishipin.xime.documents"
+            android:exported="true"
+            android:grantUriPermissions="true">
+            <intent-filter>
+                <action android:name="android.content.action.DOCUMENTS_PROVIDER" />
+            </intent-filter>
+        </provider>
+
     </application>
 
 </manifest>
