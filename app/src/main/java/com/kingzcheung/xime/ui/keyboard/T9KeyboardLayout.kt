@@ -743,6 +743,7 @@ private fun T9KeyboardContent(
                     backgroundColor = keyBackgroundColor, iconColor = keyTextColor,
                     modifier = Modifier.weight(1f),
                     onPress = { onKeyPressDown?.invoke("ime_switch") },
+                    onLongClick = callbacks.onSwitchKeyboard,
                     shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
                 )
             }

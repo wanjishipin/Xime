@@ -68,6 +68,7 @@ fun EnglishKeyboardLayout(
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
     specialKeyTextColor: Color = Color.White,
+    onSwitchKeyboard: (() -> Unit)? = null,
 ) {
     val suppressCursorMove = LocalSuppressCursorMove.current
     val row1 = listOf("q", "w", "e", "r", "t", "y", "u", "i", "o", "p")
@@ -331,6 +332,7 @@ fun EnglishKeyboardLayout(
                             textColor = specialKeyTextColor,
                             modifier = Modifier.weight(0.8f),
                             onPress = { onKeyPressDown?.invoke("ime_switch") },
+                            onLongClick = onSwitchKeyboard,
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,
                             shadowShapeRadius = shadowShapeRadius,

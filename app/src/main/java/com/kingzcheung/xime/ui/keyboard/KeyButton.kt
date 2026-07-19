@@ -825,6 +825,7 @@ fun IconKeyButton(
     iconSize: androidx.compose.ui.unit.Dp = 20.dp,
     onPress: (() -> Unit)? = null,
     onRelease: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
@@ -875,6 +876,9 @@ fun IconKeyButton(
                     },
                     onTap = {
                         onClick()
+                    },
+                    onLongPress = {
+                        onLongClick?.invoke()
                     }
                 )
             }
@@ -921,6 +925,7 @@ fun SwipeableIconKeyButton(
     swipeText: String? = null,
     onSwipe: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    onLongPress: (() -> Unit)? = null,
     onPress: (() -> Unit)? = null,
     onRelease: (() -> Unit)? = null,
     // 上滑/下滑/左滑增强
@@ -1022,6 +1027,7 @@ fun SwipeableIconKeyButton(
                         hasTriggeredLongPress = false
                     },
                     onLongPress = {
+                        onLongPress?.invoke()
                         isLongPress = true
                     }
                 )

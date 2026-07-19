@@ -660,6 +660,7 @@ fun KeyboardLayout(
                                     modifier = Modifier.weight(0.8f),
                                     onPress = { onKeyPressDown?.invoke(k2TapValue) },
                                     onRelease = { onKeyRelease?.invoke(k2TapValue) },
+                                    onLongClick = callbacks.onSwitchKeyboard,
                                     shadowEnabled = shadowEnabled,
                                     shadowElevation = shadowElevation,
                                     shadowShapeRadius = shadowShapeRadius,
@@ -835,6 +836,7 @@ fun KeyboardLayout(
                                     swipeDownLabel = if (swipeDownHintsEnabled && k4SwipeDownLabel != null) k4SwipeDownLabel else null,
                                     onSwipe = k4OnSwipeIcon,
                                     onSwipeDown = k4OnSwipeDownIcon,
+                                    onLongClick = callbacks.onSwitchKeyboard,
                                     onSwipeStateChange = { state, bounds ->
                                         processSwipeState(state, bounds)
                                     },
@@ -1427,6 +1429,7 @@ private fun LandscapeKeyboardContent(
                             iconColor = keyTextColor,
                             modifier = Modifier.weight(0.8f),
                             onPress = { onKeyPressDown?.invoke(k2Swipe) },
+                            onLongClick = callbacks.onSwitchKeyboard,
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,
                             shadowShapeRadius = shadowShapeRadius,
