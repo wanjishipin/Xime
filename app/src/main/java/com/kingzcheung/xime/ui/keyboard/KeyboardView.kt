@@ -368,6 +368,7 @@ fun KeyboardView(
                         ToolbarButton.PIN -> ({ viewModel.togglePin() })
                         ToolbarButton.HANDWRITING_LOOKUP -> ({ isHandwritingLookup = !isHandwritingLookup })
                         ToolbarButton.TRANSCRIPTION -> ({ viewModel.showOverlay(OverlayRoute.Transcription) })
+                        ToolbarButton.VOICE_INPUT -> ({ callbacks.onVoiceInput?.invoke() })
                     }
                     ToolbarAction(button, onClick, isActive = button == ToolbarButton.PIN && isKeyboardPinned)
                 },

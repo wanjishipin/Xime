@@ -39,7 +39,8 @@ enum class ToolbarButton(
     END("end", "段尾", Icons.AutoMirrored.TwoTone.LastPage),
     HANDWRITING_LOOKUP("handwriting_lookup", "手写找字", Icons.Outlined.Gesture),
     EDIT("edit", "编辑", Icons.Default.Create),
-    TRANSCRIPTION("transcription", "听录", Icons.TwoTone.RecordVoiceOver);
+    TRANSCRIPTION("transcription", "听录", Icons.TwoTone.RecordVoiceOver),
+    VOICE_INPUT("voice_input", "语音输入", Icons.TwoTone.RecordVoiceOver);
 
     companion object {
         val DEFAULT_VISIBLE = emptySet<ToolbarButton>()

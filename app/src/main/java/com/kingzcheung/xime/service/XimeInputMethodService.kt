@@ -13,6 +13,8 @@ import android.view.inputmethod.CursorAnchorInfo
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputContentInfo
+import android.view.inputmethod.InputMethodManager
+import android.view.inputmethod.InputMethodSubtype
 import android.widget.FrameLayout
 import android.widget.Toast
 import androidx.compose.foundation.background
@@ -894,6 +896,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                                         @Suppress("DEPRECATION")
                                         imm.showInputMethodPicker()
                                     },
+                                    onVoiceInput = { switchToVoiceInput() },
                                     onToolbarEditingAction = { action -> handleToolbarEditingAction(action) },
                                     onCommitImage = { imagePath ->
                                         val success = commitImage(imagePath)
@@ -2425,6 +2428,35 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         Log.d(TAG, "Toggling ascii mode")
         rimeEngine.toggleAsciiMode()
         updateUI()
+    }
+
+    private fun switchToVoiceInput() {
+        val inputMethodManager = getSystemService(InputMethodManager::class.java)
+        val voiceInput = inputMethodManager.shortcutInputMethodsAndSubtypes
+            .asSequence()
+            .mapNotNull { (info, subtypes) ->
+                subtypes.firstOrNull { it.mode.equals("voice", ignoreCase = true) }
+                    ?.let { info.id to it }
+            }
+            .firstOrNull()
+
+        if (voiceInput == null) {
+            Toast.makeText(this, "未找到可用的语音输入法", Toast.LENGTH_SHORT).show()
+            return
+        }
+
+        val inputMethodId = voiceInput.first
+        val subtype = voiceInput.second
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            switchInputMethod(inputMethodId, subtype)
+        } else {
+            @Suppress("DEPRECATION")
+            inputMethodManager.setInputMethodAndSubtype(
+                window.window!!.attributes.token,
+                inputMethodId,
+                subtype
+            )
+        }
     }
     
     private fun reloadConfig() {
