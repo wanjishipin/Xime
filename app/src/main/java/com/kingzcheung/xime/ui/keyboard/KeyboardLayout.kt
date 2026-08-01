@@ -318,6 +318,7 @@ fun KeyboardLayout(
                                 swipeUpHintsEnabled = swipeUpHintsEnabled,
                                 onCommitText = onCommitText,
                                 onGestureAction = onGestureAction,
+                                onCharacterTyped = { viewModel.onCharacterTyped() },
                                 configVersion = cfgVer,
                             )
                         }
@@ -343,10 +344,17 @@ fun KeyboardLayout(
                                 .weight(1f)
                                 .fillMaxHeight(),
                         ) {
-                            // Tab 键（点按发 Tab，长按发 Shift+Tab）；窄于字母以让字母行宽度一致
+                            // Tab 键（Shift 激活时点按发 Shift+Tab，长按也发 Shift+Tab）；窄于字母以让字母行宽度一致
                             KeyButton(
                                 text = "Tab",
-                                onClick = { onKeyPress("tab") },
+                                onClick = {
+                                    if (isShifted) {
+                                        // Shift 激活时点按 Tab = Shift+Tab（反向 Tab）
+                                        onGestureAction?.invoke(GestureAction.SEND_KEY, "Shift+Tab")
+                                    } else {
+                                        onKeyPress("tab")
+                                    }
+                                },
                                 onLongClick = { onGestureAction?.invoke(GestureAction.SEND_KEY, "Shift+Tab") },
                                 backgroundColor = specialKeyBackgroundColor,
                                 textColor = specialKeyTextColor,
@@ -388,6 +396,7 @@ fun KeyboardLayout(
                                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                                     onCommitText = onCommitText,
                                     onGestureAction = onGestureAction,
+                                    onCharacterTyped = { viewModel.onCharacterTyped() },
                                     configVersion = cfgVer,
                                 )
                             }
@@ -460,14 +469,14 @@ fun KeyboardLayout(
                                 ) {
                                 val bottomKeys = keyRows.getOrElse(2) { listOf("z", "x", "c", "v", "b", "n", "m") }
                                 bottomKeys.forEach { key ->
-                                    val rawSwipeUpLabel = KeysConfigHelper.getSwipeUpLabel(key, isAsciiMode)
+                                    val rawSwipeUpLabel = KeysConfigHelper.getSwipeUpLabel(key, isAsciiMode, visualIsShifted)
                                     val swipeUpText =
                                         if (swipeUpHintsEnabled) rawSwipeUpLabel else null
-                                    val swipeUpAction = KeysConfigHelper.getSwipeUpAction(key, isAsciiMode)
-                                    val swipeUpDisplay = KeysConfigHelper.getSwipeUpDisplay(key, isAsciiMode)
+                                    val swipeUpAction = KeysConfigHelper.getSwipeUpAction(key, isAsciiMode, visualIsShifted)
+                                    val swipeUpDisplay = KeysConfigHelper.getSwipeUpDisplay(key, isAsciiMode, visualIsShifted)
                                     val swipeUpKeyLabel =
                                         if (swipeUpDisplay != DisplayMode.BUBBLE && swipeUpHintsEnabled) swipeUpText else null
-                                    val swipeUpCommitValue = KeysConfigHelper.getSwipeUpCommitValue(key, isAsciiMode)
+                                    val swipeUpCommitValue = KeysConfigHelper.getSwipeUpCommitValue(key, isAsciiMode, visualIsShifted)
                                     val swipeDownRaw =
                                         KeysConfigHelper.getKeyGesture(key, isAsciiMode)?.swipeDown
                                     val swipeDownLabel =
@@ -541,7 +550,17 @@ fun KeyboardLayout(
                                         swipeDownText = swipeDownBubbleText,
                                         swipeUpKeyLabel = swipeUpKeyLabel,
                                         swipeDownKeyLabel = if (swipeDownHintsEnabled && (swipeDownDisplay == DisplayMode.KEY || swipeDownDisplay == DisplayMode.BOTH)) swipeDownLabel else null,
-                                        onSwipe = if (swipeUpCommitValue != null && swipeUpAction != GestureAction.NONE) { { onKeyPress(swipeUpCommitValue) } } else null,
+                                        onSwipe = if (swipeUpCommitValue != null && swipeUpAction != GestureAction.NONE) {
+                                            {
+                                                if (visualIsShifted) {
+                                                    // Shift 激活时上滑提交的已是移位字符，直接上屏避免二次移位
+                                                    (onCommitText ?: onKeyPress)(swipeUpCommitValue)
+                                                    viewModel.onCharacterTyped()
+                                                } else {
+                                                    onKeyPress(swipeUpCommitValue)
+                                                }
+                                            }
+                                        } else null,
                                         onSwipeDown = onSwipeDown,
                                         onSwipeStateChange = onSwipeStateChange,
                                         onPress = onPress,
@@ -1070,6 +1089,7 @@ fun KeyboardRowWithConfig(
     swipeUpHintsEnabled: Boolean = true,
     onCommitText: ((String) -> Unit)? = null,
     onGestureAction: ((GestureAction, String) -> Unit)? = null,
+    onCharacterTyped: (() -> Unit)? = null,
     configVersion: Int = 0,
 ) {
     Row(
@@ -1078,13 +1098,13 @@ fun KeyboardRowWithConfig(
             .background(config.keyboardBackgroundColor),
     ) {
         keys.forEach { key ->
-            val rawSwipeUpLabel = KeysConfigHelper.getSwipeUpLabel(key, isAsciiMode)
+            val rawSwipeUpLabel = KeysConfigHelper.getSwipeUpLabel(key, isAsciiMode, isShifted)
             val swipeUpText = if (swipeUpHintsEnabled) rawSwipeUpLabel else null
-            val swipeUpAction = KeysConfigHelper.getSwipeUpAction(key, isAsciiMode)
-            val swipeUpDisplay = KeysConfigHelper.getSwipeUpDisplay(key, isAsciiMode)
+            val swipeUpAction = KeysConfigHelper.getSwipeUpAction(key, isAsciiMode, isShifted)
+            val swipeUpDisplay = KeysConfigHelper.getSwipeUpDisplay(key, isAsciiMode, isShifted)
             val swipeUpKeyLabel =
                 if (swipeUpDisplay != DisplayMode.BUBBLE && swipeUpHintsEnabled) swipeUpText else null
-            val swipeUpCommitValue = KeysConfigHelper.getSwipeUpCommitValue(key, isAsciiMode)
+            val swipeUpCommitValue = KeysConfigHelper.getSwipeUpCommitValue(key, isAsciiMode, isShifted)
             val swipeDownRaw = KeysConfigHelper.getKeyGesture(key, isAsciiMode)?.swipeDown
             val swipeDownLabel = swipeDownRaw?.label?.takeIf { it.isNotEmpty() }
             val swipeDownAction = swipeDownRaw?.action
@@ -1158,7 +1178,17 @@ fun KeyboardRowWithConfig(
                 swipeDownText = swipeDownBubbleText,
                 swipeUpKeyLabel = swipeUpKeyLabel,
                 swipeDownKeyLabel = if ((swipeDownDisplay == DisplayMode.KEY || swipeDownDisplay == DisplayMode.BOTH) && swipeDownHintsEnabled) swipeDownLabel else null,
-                onSwipe = if (swipeUpCommitValue != null && swipeUpAction != GestureAction.NONE) { { onKeyPress(swipeUpCommitValue) } } else null,
+                onSwipe = if (swipeUpCommitValue != null && swipeUpAction != GestureAction.NONE) {
+                    {
+                        if (isShifted) {
+                            // Shift 激活时上滑提交的已是移位字符，直接上屏避免二次移位
+                            (onCommitText ?: onKeyPress)(swipeUpCommitValue)
+                            onCharacterTyped?.invoke()
+                        } else {
+                            onKeyPress(swipeUpCommitValue)
+                        }
+                    }
+                } else null,
                 onSwipeDown = onSwipeDown,
                 onSwipeStateChange = onSwipeStateChange,
                 onPress = onPress,
@@ -1397,6 +1427,7 @@ private fun LandscapeKeyboardContent(
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
+                    onCharacterTyped = { viewModel.onCharacterTyped() },
                     onSwipeStateChange = onSwipeStateChange,
                 )
             }
@@ -1425,6 +1456,7 @@ private fun LandscapeKeyboardContent(
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
+                    onCharacterTyped = { viewModel.onCharacterTyped() },
                     onSwipeStateChange = onSwipeStateChange,
                 )
             }
@@ -1453,6 +1485,7 @@ private fun LandscapeKeyboardContent(
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
+                    onCharacterTyped = { viewModel.onCharacterTyped() },
                     onSwipeStateChange = onSwipeStateChange,
                 )
             }
@@ -1564,6 +1597,7 @@ private fun LandscapeKeyboardContent(
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
+                    onCharacterTyped = { viewModel.onCharacterTyped() },
                     onSwipeStateChange = onSwipeStateChange,
                 )
             }
@@ -1589,6 +1623,7 @@ private fun LandscapeKeyboardContent(
                     swipeUpHintsEnabled = swipeUpHintsEnabled,
                     onCommitText = onCommitText,
                     onGestureAction = onGestureAction,
+                    onCharacterTyped = { viewModel.onCharacterTyped() },
                     onSwipeStateChange = onSwipeStateChange,
                 )
             }
@@ -1616,6 +1651,7 @@ private fun LandscapeKeyboardContent(
                         swipeUpHintsEnabled = swipeUpHintsEnabled,
                         onCommitText = onCommitText,
                         onGestureAction = onGestureAction,
+                        onCharacterTyped = { viewModel.onCharacterTyped() },
                         onSwipeStateChange = onSwipeStateChange,
                     )
                 }
@@ -2098,6 +2134,7 @@ fun CompactKeyboardRowWithConfig(
     swipeUpHintsEnabled: Boolean = true,
     onCommitText: ((String) -> Unit)? = null,
     onGestureAction: ((GestureAction, String) -> Unit)? = null,
+    onCharacterTyped: (() -> Unit)? = null,
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)? = null,
     configVersion: Int = 0,
 ) {
@@ -2107,13 +2144,13 @@ fun CompactKeyboardRowWithConfig(
             .background(config.keyboardBackgroundColor),
     ) {
         keys.forEach { key ->
-            val rawSwipeUpLabel = KeysConfigHelper.getSwipeUpLabel(key, isAsciiMode)
+            val rawSwipeUpLabel = KeysConfigHelper.getSwipeUpLabel(key, isAsciiMode, isShifted)
             val swipeUpText = if (swipeUpHintsEnabled) rawSwipeUpLabel else null
-            val swipeUpAction = KeysConfigHelper.getSwipeUpAction(key, isAsciiMode)
-            val swipeUpDisplay = KeysConfigHelper.getSwipeUpDisplay(key, isAsciiMode)
+            val swipeUpAction = KeysConfigHelper.getSwipeUpAction(key, isAsciiMode, isShifted)
+            val swipeUpDisplay = KeysConfigHelper.getSwipeUpDisplay(key, isAsciiMode, isShifted)
             val swipeUpKeyLabel =
                 if (swipeUpDisplay != DisplayMode.BUBBLE && swipeUpHintsEnabled) swipeUpText else null
-            val swipeUpCommitValue = KeysConfigHelper.getSwipeUpCommitValue(key, isAsciiMode)
+            val swipeUpCommitValue = KeysConfigHelper.getSwipeUpCommitValue(key, isAsciiMode, isShifted)
             val swipeDownRaw = KeysConfigHelper.getKeyGesture(key, isAsciiMode)?.swipeDown
             val swipeDownLabel = swipeDownRaw?.label?.takeIf { it.isNotEmpty() }
             val swipeDownAction = swipeDownRaw?.action
@@ -2181,7 +2218,17 @@ fun CompactKeyboardRowWithConfig(
                 swipeDownText = swipeDownBubbleText,
                 swipeUpKeyLabel = swipeUpKeyLabel,
                 swipeDownKeyLabel = swipeDownKeyLabel,
-                onSwipe = if (swipeUpCommitValue != null && swipeUpAction != GestureAction.NONE) { { onKeyPress(swipeUpCommitValue) } } else null,
+                onSwipe = if (swipeUpCommitValue != null && swipeUpAction != GestureAction.NONE) {
+                    {
+                        if (isShifted) {
+                            // Shift 激活时上滑提交的已是移位字符，直接上屏避免二次移位
+                            (onCommitText ?: onKeyPress)(swipeUpCommitValue)
+                            onCharacterTyped?.invoke()
+                        } else {
+                            onKeyPress(swipeUpCommitValue)
+                        }
+                    }
+                } else null,
                 onSwipeDown = compactOnSwipeDown,
                 onSwipeStateChange = onSwipeStateChange,
                 onPress = compactOnPress,

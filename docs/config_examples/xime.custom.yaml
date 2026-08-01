@@ -10,24 +10,30 @@
 #   注: Tab/Esc/Win 键为硬编码可见键（Tab 第二行最左、Esc 第二行最右、
 #       Win 第四行 Ctrl 右侧），不依赖此配置；如需在任意键上滑/下滑发送 Tab，
 #       可按下方 shift 键写法配置。
+#   注: shift_swipe_up — Shift 激活时上滑输入第二套字符，扩展可输入符号
+#       （如 []{} 普通上滑无法输入）。内置默认覆盖全部字母键：
+#       第一行 !@#$%^&*()  第二行 []{}|\<>=
+#       第三行 _+;:'".  可按需用 shift_swipe_up: "[" 覆盖（也支持对象格式）。
 keyboard:
   qwerty:
     keys:
       # ── 第一行：常用符号 ──
       # 下标全体左移一位对齐标准键盘（Esc 键为硬编码键，上滑 ~ 下滑 `）：
       # q=1/!、w=2/@、e=3/# ... o=9/(、p=0/)，1 与 ! 在同一键上
-      q: { tap: "q", swipe_up: "1", swipe_down: { label: "!", value: "!" }, long_press: { display: "bubble", values: ["q", "Q"] } }
-      w: { tap: "w", swipe_up: "2", swipe_down: { label: "@", value: "@" }, long_press: { display: "bubble", values: ["w", "W"] } }
-      e: { tap: "e", swipe_up: "3", swipe_down: { label: "#", value: "#" }, long_press: { display: "bubble", values: ["e", "E", "è", "é", "ê", "ë"] } }
-      r: { tap: "r", swipe_up: "4", swipe_down: { label: "$", value: "$" }, long_press: { display: "bubble", values: ["r", "R"] } }
-      t: { tap: "t", swipe_up: "5", swipe_down: { label: "%", value: "%" }, long_press: { display: "bubble", values: ["t", "T"] } }
-      y: { tap: "y", swipe_up: "6", swipe_down: { label: "^", value: "^" }, long_press: { display: "bubble", values: ["y", "Y", "ÿ"] } }
-      u: { tap: "u", swipe_up: "7", swipe_down: { label: "&", value: "&" }, long_press: { display: "bubble", values: ["u", "U", "ù", "ú", "û", "ü"] } }
-      i: { tap: "i", swipe_up: "8", swipe_down: { label: "*", value: "*" }, long_press: { display: "bubble", values: ["i", "I", "ì", "í", "î", "ï"] } }
-      o: { tap: "o", swipe_up: "9", swipe_down: { label: "(", value: "(" }, long_press: { display: "bubble", values: ["o", "O", "ò", "ó", "ô", "õ", "ö", "ø"] } }
-      p: { tap: "p", swipe_up: "0", swipe_down: { label: ")", value: ")" }, long_press: { display: "bubble", values: ["p", "P"] } }
+      # shift_swipe_up：Shift 激活时上滑输入第二套字符（默认值，可覆盖）
+      q: { tap: "q", swipe_up: "1", shift_swipe_up: "!", swipe_down: { label: "!", value: "!" }, long_press: { display: "bubble", values: ["q", "Q"] } }
+      w: { tap: "w", swipe_up: "2", shift_swipe_up: "@", swipe_down: { label: "@", value: "@" }, long_press: { display: "bubble", values: ["w", "W"] } }
+      e: { tap: "e", swipe_up: "3", shift_swipe_up: "#", swipe_down: { label: "#", value: "#" }, long_press: { display: "bubble", values: ["e", "E", "è", "é", "ê", "ë"] } }
+      r: { tap: "r", swipe_up: "4", shift_swipe_up: "$", swipe_down: { label: "$", value: "$" }, long_press: { display: "bubble", values: ["r", "R"] } }
+      t: { tap: "t", swipe_up: "5", shift_swipe_up: "%", swipe_down: { label: "%", value: "%" }, long_press: { display: "bubble", values: ["t", "T"] } }
+      y: { tap: "y", swipe_up: "6", shift_swipe_up: "^", swipe_down: { label: "^", value: "^" }, long_press: { display: "bubble", values: ["y", "Y", "ÿ"] } }
+      u: { tap: "u", swipe_up: "7", shift_swipe_up: "&", swipe_down: { label: "&", value: "&" }, long_press: { display: "bubble", values: ["u", "U", "ù", "ú", "û", "ü"] } }
+      i: { tap: "i", swipe_up: "8", shift_swipe_up: "*", swipe_down: { label: "*", value: "*" }, long_press: { display: "bubble", values: ["i", "I", "ì", "í", "î", "ï"] } }
+      o: { tap: "o", swipe_up: "9", shift_swipe_up: "(", swipe_down: { label: "(", value: "(" }, long_press: { display: "bubble", values: ["o", "O", "ò", "ó", "ô", "õ", "ö", "ø"] } }
+      p: { tap: "p", swipe_up: "0", shift_swipe_up: ")", swipe_down: { label: ")", value: ")" }, long_press: { display: "bubble", values: ["p", "P"] } }
 
       # ── 第二行：编辑快捷键 + 符号 ──
+      # shift_swipe_up 未配置时使用内置默认（a:[ s:] d:{ f:} g:| h:\ j:< k:> l:=）
       a: { tap: "a", swipe_up: ")", swipe_down: { label: "全选", send: "Control+a" }, long_press: { display: "bubble", values: ["a", "A", "à", "á", "â", "ã", "ä", "å", "æ"] } }
       s: { tap: "s", swipe_up: "_", swipe_down: { label: "剪切", send: "Control+x" }, long_press: { display: "bubble", values: ["s", "S", "ß"] } }
       d: { tap: "d", swipe_up: "-", swipe_down: { label: "复制", send: "Control+c" }, long_press: { display: "bubble", values: ["d", "D"] } }
@@ -39,6 +45,7 @@ keyboard:
       l: { tap: "l", swipe_up: "<", swipe_down: { label: "Del", send: "Delete" }, long_press: { display: "bubble", values: ["l", "L"] } }
 
       # ── 第三行：导航键 + 符号 ──
+      # shift_swipe_up 默认：z:_ x:+ c:; v:: b:' n:" m:.
       z: { tap: "z", swipe_up: "|", swipe_down: { label: "↑", send: "Up" }, long_press: { display: "bubble", values: ["z", "Z"] } }
       x: { tap: "x", swipe_up: "\\", swipe_down: { label: "↓", send: "Down" }, long_press: { display: "bubble", values: ["x", "X"] } }
       c: { tap: "c", swipe_up: "?", swipe_down: { label: "←", send: "Left" }, long_press: { display: "bubble", values: ["c", "C", "ç"] } }

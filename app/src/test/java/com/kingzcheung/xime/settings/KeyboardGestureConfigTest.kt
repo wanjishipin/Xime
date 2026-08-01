@@ -56,6 +56,21 @@ class KeyboardGestureConfigTest {
     }
 
     @Test
+    fun `shift_swipe_up 字符串简写与对象格式解析`() {
+        val keys = parseKeys("""
+            q: { tap: "q", swipe_up: "1", shift_swipe_up: "!" }
+            a: { tap: "a", shift_swipe_up: { label: "［", value: "[" } }
+        """.trimIndent())
+        val q = keys["q"]!!
+        assertEquals("!", q.shiftSwipeUp!!.label)
+        assertEquals("!", q.shiftSwipeUp!!.value)
+        assertEquals(GestureAction.COMMIT, q.shiftSwipeUp!!.action)
+        val a = keys["a"]!!
+        assertEquals("［", a.shiftSwipeUp!!.label)
+        assertEquals("[", a.shiftSwipeUp!!.value)
+    }
+
+    @Test
     fun `long_press 支持多值数组`() {
         val keys = parseKeys("""
             a:
@@ -433,6 +448,7 @@ class KeyboardGestureConfigTest {
     private fun parseKeyGestureConfig(map: com.charleskorn.kaml.YamlMap): KeyGestureConfig {
         var tap: GestureDef? = null
         var swipeUp: GestureDef? = null
+        var shiftSwipeUp: GestureDef? = null
         var swipeDown: GestureDef? = null
         var longPress: LongPressConfig? = null
         for ((kNode, vNode) in map.entries) {
@@ -440,11 +456,12 @@ class KeyboardGestureConfigTest {
             when (name) {
                 "tap" -> tap = parseGestureNode(vNode)
                 "swipe_up" -> swipeUp = parseGestureNode(vNode)
+                "shift_swipe_up" -> shiftSwipeUp = parseGestureNode(vNode)
                 "swipe_down" -> swipeDown = parseGestureNode(vNode)
                 "long_press" -> longPress = parseLongPress(vNode)
             }
         }
-        return KeyGestureConfig(tap = tap, swipeUp = swipeUp, swipeDown = swipeDown, longPress = longPress)
+        return KeyGestureConfig(tap = tap, swipeUp = swipeUp, shiftSwipeUp = shiftSwipeUp, swipeDown = swipeDown, longPress = longPress)
     }
 
     private fun parseLongPress(node: com.charleskorn.kaml.YamlNode): LongPressConfig? {
