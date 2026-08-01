@@ -7,8 +7,9 @@
 #   第二行 a-l swipe_up:   ) _ - + = ; : > <
 #   第三行 z-m swipe_up:   | \ ? / ' " ~
 #   逗号键: 点号在下，逗号在上（与默认相反）
-#   注: Tab 键和 Win 键为硬编码可见键（第三行 Shift 右侧 / 第四行 Ctrl 右侧），
-#       不依赖此配置；如需在任意键上滑/下滑发送 Tab，可按下方 shift 键写法配置。
+#   注: Tab/Esc/Win 键为硬编码可见键（Tab 第二行最左、Esc 第二行最右、
+#       Win 第四行 Ctrl 右侧），不依赖此配置；如需在任意键上滑/下滑发送 Tab，
+#       可按下方 shift 键写法配置。
 keyboard:
   qwerty:
     keys:

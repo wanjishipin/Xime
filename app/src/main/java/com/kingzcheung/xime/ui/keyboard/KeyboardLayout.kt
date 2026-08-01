@@ -337,36 +337,85 @@ fun KeyboardLayout(
                             )
                         }
                     } else {
-                        Box(modifier = Modifier.weight(1f)) {
-                            val row1 = keyRows.getOrElse(1) { listOf("a", "s", "d", "f", "g", "h", "j", "k", "l") }
-                            val row1Padding = if (row1.size > 9) Modifier else Modifier.padding(horizontal = 16.dp)
-                            KeyboardRowWithConfig(
-                                keys = row1,
-                                onKeyPress = onKeyPress,
-                                config = KeyboardRowConfig(
-                                    keyBackgroundColor = keyBackgroundColor,
-                                    keyTextColor = keyTextColor,
-                                    keyboardBackgroundColor = keyboardBackgroundColor,
-                                    shadowEnabled = shadowEnabled,
-                                    shadowElevation = shadowElevation,
-                                    shadowShapeRadius = shadowShapeRadius,
-                                ),
-                                isShifted = visualIsShifted,
-                                isAsciiMode = isAsciiMode,
-                                modifier = row1Padding,
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                                .fillMaxHeight(),
+                        ) {
+                            // Tab 键（点按发 Tab，长按发 Shift+Tab）；窄于字母以让字母行宽度一致
+                            KeyButton(
+                                text = "Tab",
+                                onClick = { onKeyPress("tab") },
+                                onLongClick = { onGestureAction?.invoke(GestureAction.SEND_KEY, "Shift+Tab") },
+                                backgroundColor = specialKeyBackgroundColor,
+                                textColor = specialKeyTextColor,
+                                modifier = Modifier
+                                    .weight(0.8f)
+                                    .fillMaxHeight(),
+                                onPress = { onKeyPressDown?.invoke("tab") },
+                                onRelease = { onKeyRelease?.invoke("tab") },
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                            )
+
+                            // 字母行去掉原 16dp 内边距，让字母宽度与其他行一致（Tab/Esc 已提供两侧留白）
+                            Box(modifier = Modifier.weight(10.0f).fillMaxHeight()) {
+                                val row1 = keyRows.getOrElse(1) { listOf("a", "s", "d", "f", "g", "h", "j", "k", "l") }
+                                KeyboardRowWithConfig(
+                                    keys = row1,
+                                    onKeyPress = onKeyPress,
+                                    config = KeyboardRowConfig(
+                                        keyBackgroundColor = keyBackgroundColor,
+                                        keyTextColor = keyTextColor,
+                                        keyboardBackgroundColor = keyboardBackgroundColor,
+                                        shadowEnabled = shadowEnabled,
+                                        shadowElevation = shadowElevation,
+                                        shadowShapeRadius = shadowShapeRadius,
+                                    ),
+                                    isShifted = visualIsShifted,
+                                    isAsciiMode = isAsciiMode,
+                                    onSwipeStateChange = { state, bounds ->
+                                        processSwipeState(
+                                            state,
+                                            bounds
+                                        )
+                                    },
+                                    onKeyPressDown = onKeyPressDown,
+                                    onKeyRelease = onKeyRelease,
+                                    swipeDownHintsEnabled = effectiveSwipeDownHintsEnabled,
+                                    swipeUpHintsEnabled = swipeUpHintsEnabled,
+                                    onCommitText = onCommitText,
+                                    onGestureAction = onGestureAction,
+                                    configVersion = cfgVer,
+                                )
+                            }
+
+                            // Esc 键（上滑 ~，下滑 `）；窄于字母以让字母行宽度一致
+                            SwipeableKeyButton(
+                                layoutMode = KeysConfigHelper.getButtonLayout(isAsciiMode),
+                                text = "Esc",
+                                onClick = { onKeyPress("escape") },
+                                backgroundColor = specialKeyBackgroundColor,
+                                textColor = specialKeyTextColor,
+                                modifier = Modifier
+                                    .weight(0.8f)
+                                    .fillMaxHeight(),
+                                swipeText = if (swipeUpHintsEnabled) "~" else null,
+                                swipeUpKeyLabel = if (swipeUpHintsEnabled) "~" else null,
+                                swipeDownText = if (swipeDownHintsEnabled) "`" else null,
+                                swipeDownKeyLabel = if (swipeDownHintsEnabled) "`" else null,
+                                onSwipe = { onKeyPress("~") },
+                                onSwipeDown = { onKeyPress("`") },
                                 onSwipeStateChange = { state, bounds ->
-                                    processSwipeState(
-                                        state,
-                                        bounds
-                                    )
+                                    processSwipeState(state, bounds)
                                 },
-                                onKeyPressDown = onKeyPressDown,
-                                onKeyRelease = onKeyRelease,
-                                swipeDownHintsEnabled = effectiveSwipeDownHintsEnabled,
-                                swipeUpHintsEnabled = swipeUpHintsEnabled,
-                                onCommitText = onCommitText,
-                                onGestureAction = onGestureAction,
-                                configVersion = cfgVer,
+                                onPress = { onKeyPressDown?.invoke("escape") },
+                                onRelease = { onKeyRelease?.invoke("escape") },
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
                             )
                         }
                     }
@@ -396,26 +445,8 @@ fun KeyboardLayout(
                                 iconColor = specialKeyTextColor,
                                 modifier = Modifier
                                     .padding(2.dp,4.dp)
-                                    .weight(1.0f)
+                                    .weight(1.5f)
                                     .fillMaxHeight(),
-                                shadowEnabled = shadowEnabled,
-                                shadowElevation = shadowElevation,
-                                shadowShapeRadius = shadowShapeRadius,
-                            )
-
-                            // Tab 键（长按发 Shift+Tab）；KeyButton 内部已含 LocalKeyVisualPadding，
-                            // 勿再叠加外层 padding，否则高度与同行按键不齐
-                            KeyButton(
-                                text = "Tab",
-                                onClick = { onKeyPress("tab") },
-                                onLongClick = { onGestureAction?.invoke(GestureAction.SEND_KEY, "Shift+Tab") },
-                                backgroundColor = specialKeyBackgroundColor,
-                                textColor = specialKeyTextColor,
-                                modifier = Modifier
-                                    .weight(1.0f)
-                                    .fillMaxHeight(),
-                                onPress = { onKeyPressDown?.invoke("tab") },
-                                onRelease = { onKeyRelease?.invoke("tab") },
                                 shadowEnabled = shadowEnabled,
                                 shadowElevation = shadowElevation,
                                 shadowShapeRadius = shadowShapeRadius,
@@ -423,7 +454,7 @@ fun KeyboardLayout(
 
                                 Row(
                                     modifier = Modifier
-                                        .weight(7f)
+                                        .weight(8f)
                                         .fillMaxHeight()
                                         .background(keyboardBackgroundColor),
                                 ) {
@@ -524,32 +555,6 @@ fun KeyboardLayout(
                                 }
                             }
 
-                            // Esc 键（上滑 ~，下滑 `）
-                            SwipeableKeyButton(
-                                layoutMode = KeysConfigHelper.getButtonLayout(isAsciiMode),
-                                text = "Esc",
-                                onClick = { onKeyPress("escape") },
-                                backgroundColor = specialKeyBackgroundColor,
-                                textColor = specialKeyTextColor,
-                                modifier = Modifier
-                                    .weight(1.0f)
-                                    .fillMaxHeight(),
-                                swipeText = if (swipeUpHintsEnabled) "~" else null,
-                                swipeUpKeyLabel = if (swipeUpHintsEnabled) "~" else null,
-                                swipeDownText = if (swipeDownHintsEnabled) "`" else null,
-                                swipeDownKeyLabel = if (swipeDownHintsEnabled) "`" else null,
-                                onSwipe = { onKeyPress("~") },
-                                onSwipeDown = { onKeyPress("`") },
-                                onSwipeStateChange = { state, bounds ->
-                                    processSwipeState(state, bounds)
-                                },
-                                onPress = { onKeyPressDown?.invoke("escape") },
-                                onRelease = { onKeyRelease?.invoke("escape") },
-                                shadowEnabled = shadowEnabled,
-                                shadowElevation = shadowElevation,
-                                shadowShapeRadius = shadowShapeRadius,
-                            )
-
                             SwipeableIconKeyButton(
                                 icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
                                 onClick = { onKeyPress("delete") },
@@ -557,7 +562,7 @@ fun KeyboardLayout(
                                 iconColor = specialKeyTextColor,
                                 modifier = Modifier
                                     .padding(2.dp,0.dp)
-                                    .weight(1.0f)
+                                    .weight(1.5f)
                                     .fillMaxHeight(),
                                 swipeText = "清空",
                                 onSwipe = { onKeyPress("clear_composition") },
