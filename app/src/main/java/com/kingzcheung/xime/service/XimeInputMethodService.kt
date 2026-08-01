@@ -2016,6 +2016,26 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                         }
                     }
                 }
+                "tab" -> {
+                    // Tab 键：若在 Rime 编码中先清空编码，再发送 Tab 键事件
+                    if (candState.isComposing || candState.inputText.isNotEmpty()) {
+                        rimeEngine.clearComposition()
+                        needsUIUpdate = true
+                    }
+                    withContext(Dispatchers.Main) {
+                        sendDownUpKeyEvents(KeyEvent.KEYCODE_TAB)
+                    }
+                }
+                "escape" -> {
+                    // Esc 键：清空编码后发送 Esc 键事件
+                    if (candState.isComposing || candState.inputText.isNotEmpty()) {
+                        rimeEngine.clearComposition()
+                        needsUIUpdate = true
+                    }
+                    withContext(Dispatchers.Main) {
+                        sendDownUpKeyEvents(KeyEvent.KEYCODE_ESCAPE)
+                    }
+                }
                 "word_separator" -> {
                     if (candState.isComposing || candState.inputText.isNotEmpty()) {
                         val result = rimeEngine.processKeyAndGetResult(0x27, 0)
@@ -2268,7 +2288,7 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
         // 在 RIME 真正 select/commit 之前，先同步通知 T9 控制器消费数字。
         // 控制器返回 true 表示输入序列已被该候选词完整消费，服务层应视为 full commit。
         val fullyConsumed = if (isT9) {
-            keyboardCallbacks?.onT9RightCandidateWillBeSelected?.invoke(candidatePinyin) ?: false
+            keyboardCallbacks?.onT9RightCandidateWillBeSelected?.invoke(candidatePinyin, selectedCandidate?.length ?: 0) ?: false
         } else {
             false
         }

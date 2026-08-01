@@ -55,6 +55,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.clipboard.ClipboardItem
+import com.kingzcheung.xime.ui.menubar.QuickSendTabContent
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
 import kotlin.math.max
 import kotlin.math.roundToInt

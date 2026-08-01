@@ -109,6 +109,7 @@ fun KeyboardLayout(
     val shiftMode by viewModel.shiftMode.collectAsStateWithLifecycle()
     val ctrlSticky by viewModel.ctrlSticky.collectAsStateWithLifecycle()
     val altSticky by viewModel.altSticky.collectAsStateWithLifecycle()
+    val winSticky by viewModel.winSticky.collectAsStateWithLifecycle()
 
     var visualIsShifted by remember { mutableStateOf(false) }
     LaunchedEffect(isShifted) {
@@ -395,8 +396,26 @@ fun KeyboardLayout(
                                 iconColor = specialKeyTextColor,
                                 modifier = Modifier
                                     .padding(2.dp,4.dp)
-                                    .weight(1.4f)
+                                    .weight(1.0f)
                                     .fillMaxHeight(),
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                            )
+
+                            // Tab 键（长按发 Shift+Tab）；KeyButton 内部已含 LocalKeyVisualPadding，
+                            // 勿再叠加外层 padding，否则高度与同行按键不齐
+                            KeyButton(
+                                text = "Tab",
+                                onClick = { onKeyPress("tab") },
+                                onLongClick = { onGestureAction?.invoke(GestureAction.SEND_KEY, "Shift+Tab") },
+                                backgroundColor = specialKeyBackgroundColor,
+                                textColor = specialKeyTextColor,
+                                modifier = Modifier
+                                    .weight(1.0f)
+                                    .fillMaxHeight(),
+                                onPress = { onKeyPressDown?.invoke("tab") },
+                                onRelease = { onKeyRelease?.invoke("tab") },
                                 shadowEnabled = shadowEnabled,
                                 shadowElevation = shadowElevation,
                                 shadowShapeRadius = shadowShapeRadius,
@@ -505,6 +524,32 @@ fun KeyboardLayout(
                                 }
                             }
 
+                            // Esc 键（上滑 ~，下滑 `）
+                            SwipeableKeyButton(
+                                layoutMode = KeysConfigHelper.getButtonLayout(isAsciiMode),
+                                text = "Esc",
+                                onClick = { onKeyPress("escape") },
+                                backgroundColor = specialKeyBackgroundColor,
+                                textColor = specialKeyTextColor,
+                                modifier = Modifier
+                                    .weight(1.0f)
+                                    .fillMaxHeight(),
+                                swipeText = if (swipeUpHintsEnabled) "~" else null,
+                                swipeUpKeyLabel = if (swipeUpHintsEnabled) "~" else null,
+                                swipeDownText = if (swipeDownHintsEnabled) "`" else null,
+                                swipeDownKeyLabel = if (swipeDownHintsEnabled) "`" else null,
+                                onSwipe = { onKeyPress("~") },
+                                onSwipeDown = { onKeyPress("`") },
+                                onSwipeStateChange = { state, bounds ->
+                                    processSwipeState(state, bounds)
+                                },
+                                onPress = { onKeyPressDown?.invoke("escape") },
+                                onRelease = { onKeyRelease?.invoke("escape") },
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                            )
+
                             SwipeableIconKeyButton(
                                 icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
                                 onClick = { onKeyPress("delete") },
@@ -512,7 +557,7 @@ fun KeyboardLayout(
                                 iconColor = specialKeyTextColor,
                                 modifier = Modifier
                                     .padding(2.dp,0.dp)
-                                    .weight(1.4f)
+                                    .weight(1.0f)
                                     .fillMaxHeight(),
                                 swipeText = "清空",
                                 onSwipe = { onKeyPress("clear_composition") },
@@ -560,7 +605,7 @@ fun KeyboardLayout(
                                 onClick = { onKeyPress("mode_change") },
                                 backgroundColor = specialKeyBackgroundColor,
                                 textColor = specialKeyTextColor,
-                                modifier = Modifier.weight(1.2f),
+                                modifier = Modifier.weight(1.0f),
                                 onPress = { onKeyPressDown?.invoke("mode_change") },
                                 onRelease = { onKeyRelease?.invoke("mode_change") },
                                 onLongPressSelect = { label -> onKeyPress(if (label == "number") "mode_change_number" else "mode_change_common_symbol") },
@@ -582,7 +627,20 @@ fun KeyboardLayout(
                                 onClick = { viewModel.toggleCtrl() },
                                 backgroundColor = specialKeyBackgroundColor,
                                 textColor = keyTextColor,
-                                modifier = Modifier.weight(0.7f),
+                                modifier = Modifier.weight(1.0f),
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                            )
+
+                            // Win 粘滞键（Ctrl 右侧，组成 Ctrl+Win 修饰键群组）
+                            StickyModifierButton(
+                                text = "Win",
+                                isActive = winSticky,
+                                onClick = { viewModel.toggleWin() },
+                                backgroundColor = specialKeyBackgroundColor,
+                                textColor = keyTextColor,
+                                modifier = Modifier.weight(1.0f),
                                 shadowEnabled = shadowEnabled,
                                 shadowElevation = shadowElevation,
                                 shadowShapeRadius = shadowShapeRadius,
@@ -657,7 +715,7 @@ fun KeyboardLayout(
                                     onClick = k2OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     iconColor = keyTextColor,
-                                    modifier = Modifier.weight(0.8f),
+                                    modifier = Modifier.weight(1.0f),
                                     onPress = { onKeyPressDown?.invoke(k2TapValue) },
                                     onRelease = { onKeyRelease?.invoke(k2TapValue) },
                                     onLongClick = callbacks.onSwitchKeyboard,
@@ -672,7 +730,7 @@ fun KeyboardLayout(
                                     onClick = k2OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     textColor = keyTextColor,
-                                    modifier = Modifier.weight(0.8f),
+                                    modifier = Modifier.weight(1.0f),
                                     swipeText = k2SwipeUpLabel,
                                     swipeDownText = k2SwipeDownBubbleText,
                                     swipeDownKeyLabel = if ((k2SwipeDownDisplay == DisplayMode.KEY || k2SwipeDownDisplay == DisplayMode.BOTH)) k2SwipeDownLabel else null,
@@ -702,7 +760,7 @@ fun KeyboardLayout(
                             shadowEnabled = shadowEnabled,
                             shadowElevation = shadowElevation,
                             shadowShapeRadius = shadowShapeRadius,
-                            modifier = Modifier.weight(3f),
+                            modifier = Modifier.weight(2.5f),
                             onKeyPress = onKeyPress,
                             onKeyPressDown = onKeyPressDown,
                             onKeyRelease = onKeyRelease,
@@ -830,7 +888,7 @@ fun KeyboardLayout(
                                     onClick = k4OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     iconColor = keyTextColor,
-                                    modifier = Modifier.weight(0.8f),
+                                    modifier = Modifier.weight(1.0f),
                                     swipeText = if (swipeUpHintsEnabled && k4SwipeUpLabel.isNotEmpty()) k4SwipeUpLabel else null,
                                     swipeUpLabel = if (swipeUpHintsEnabled && k4SwipeUpLabel.isNotEmpty()) k4SwipeUpLabel else null,
                                     swipeDownLabel = if (swipeDownHintsEnabled && k4SwipeDownLabel != null) k4SwipeDownLabel else null,
@@ -853,7 +911,7 @@ fun KeyboardLayout(
                                     onClick = k4OnClick,
                                     backgroundColor = keyBackgroundColor,
                                     textColor = keyTextColor,
-                                    modifier = Modifier.weight(0.8f),
+                                    modifier = Modifier.weight(1.0f),
                                     swipeText = k4SwipeUpLabel.takeIf { it.isNotEmpty() },
                                     swipeDownText = if (swipeDownHintsEnabled && k4SwipeDownDisplay != DisplayMode.KEY) k4SwipeDownLabel else null,
                                     swipeDownKeyLabel = if (swipeDownHintsEnabled && (k4SwipeDownDisplay == DisplayMode.KEY || k4SwipeDownDisplay == DisplayMode.BOTH)) k4SwipeDownLabel else null,
@@ -872,26 +930,26 @@ fun KeyboardLayout(
                                 )
                             }
 
-                            // Alt 粘滞键（shift_l 右侧、回车左侧，与回车同色相邻）
+                            // Alt 粘滞键（语言键右侧、回车左侧，与回车同色相邻）
                             StickyModifierButton(
                                 text = "Alt",
                                 isActive = altSticky,
                                 onClick = { viewModel.toggleAlt() },
                                 backgroundColor = specialKeyBackgroundColor,
                                 textColor = keyTextColor,
-                                modifier = Modifier.weight(0.7f),
+                                modifier = Modifier.weight(1.0f),
                                 shadowEnabled = shadowEnabled,
                                 shadowElevation = shadowElevation,
                                 shadowShapeRadius = shadowShapeRadius,
                             )
 
-                            // 回车 — 硬编码
+                            // 回车 — 硬编码（宽键 2 倍宽，与左簇对称）
                             KeyButton(
                                 text = enterKeyText,
                                 onClick = { onKeyPress("enter") },
                                 backgroundColor = specialKeyBackgroundColor,
                                 textColor = specialKeyTextColor,
-                                modifier = Modifier.weight(1.2f),
+                                modifier = Modifier.weight(2.0f),
                                 onPress = { onKeyPressDown?.invoke("enter") },
                                 onRelease = { onKeyRelease?.invoke("enter") },
                                 shadowEnabled = shadowEnabled,
@@ -2351,9 +2409,21 @@ private fun StickyModifierButton(
     shadowShapeRadius: Dp = 8.dp,
 ) {
     var isPressed by remember { mutableStateOf(false) }
-    val shadowShape = remember(shadowShapeRadius) { RoundedCornerShape(shadowShapeRadius) }
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius) {
-        if (shadowEnabled) Modifier.shadow(shadowElevation, shadowShape) else Modifier
+    val density = LocalDensity.current
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
+        if (shadowEnabled) {
+            val offsetPx = with(density) { shadowElevation.toPx() }
+            val cornerPx = with(density) { shadowShapeRadius.toPx() }
+            val color = crispShadowColor(backgroundColor)
+            Modifier.drawBehind {
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(0f, offsetPx),
+                    size = size,
+                    cornerRadius = CornerRadius(cornerPx)
+                )
+            }
+        } else Modifier
     }
 
     fun darkenColor(color: Color, factor: Float = 0.15f): Color {
@@ -2380,7 +2450,7 @@ private fun StickyModifierButton(
             }
             .padding(horizontal = 2.dp, vertical = 4.25.dp)
             .then(shadowModifier)
-            .clip(shadowShape)
+            .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
             .background(
                 when {
                     isPressed -> darkenColor(backgroundColor, 0.1f)

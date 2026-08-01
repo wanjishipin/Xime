@@ -73,7 +73,8 @@ import com.kingzcheung.xime.keyboard.Keycode
 import com.kingzcheung.xime.rime.T9InputController
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.settings.SettingsPreferences
-import com.kingzcheung.xime.ui.settings.SchemaListView
+import com.kingzcheung.xime.ui.menubar.SchemaListView
+import com.kingzcheung.xime.ui.menubar.ToolbarCustomizeView
 import com.kingzcheung.xime.ui.theme.KeyboardThemes
 import com.kingzcheung.xime.viewmodel.KeyboardUiState
 import com.kingzcheung.xime.viewmodel.KeyboardViewModel
@@ -97,6 +98,7 @@ fun KeyboardView(
     val viewState by viewModel.viewState.collectAsStateWithLifecycle()
     val ctrlSticky by viewModel.ctrlSticky.collectAsStateWithLifecycle()
     val altSticky by viewModel.altSticky.collectAsStateWithLifecycle()
+    val winSticky by viewModel.winSticky.collectAsStateWithLifecycle()
     val isClipboardSearching by viewModel.isClipboardSearching.collectAsStateWithLifecycle()
     val clipboardSearchQuery by viewModel.clipboardSearchQuery.collectAsStateWithLifecycle()
     val isKeyboardPinned by viewModel.isKeyboardPinned.collectAsStateWithLifecycle()
@@ -138,9 +140,9 @@ fun KeyboardView(
     }
 
     SideEffect {
-        callbacks.onT9RightCandidateWillBeSelected = { pinyin ->
+        callbacks.onT9RightCandidateWillBeSelected = { pinyin, _ ->
             t9Controller.onRightCandidateSelected(pinyin)
-            t9Controller.inputBuffer.isEmpty()
+            t9Controller.inputBuffer.isEmpty
         }
     }
 
@@ -368,6 +370,7 @@ fun KeyboardView(
                         ToolbarButton.PIN -> ({ viewModel.togglePin() })
                         ToolbarButton.HANDWRITING_LOOKUP -> ({ isHandwritingLookup = !isHandwritingLookup })
                         ToolbarButton.TRANSCRIPTION -> ({ viewModel.showOverlay(OverlayRoute.Transcription) })
+                        ToolbarButton.EDIT -> ({ viewModel.showOverlay(OverlayRoute.Clipboard(1)) })
                         ToolbarButton.VOICE_INPUT -> ({ callbacks.onVoiceInput?.invoke() })
                     }
                     ToolbarAction(button, onClick, isActive = button == ToolbarButton.PIN && isKeyboardPinned)
@@ -583,8 +586,8 @@ fun KeyboardView(
                                             return@KeyPress
                                         }
                                     }
-                                    // 粘滞修饰键：Ctrl/Alt 激活时，字母键发送组合键
-                                    val sendExpr = buildStickySendExpr(key, ctrlSticky, altSticky, isShifted)
+                                    // 粘滞修饰键：Ctrl/Alt/Win 激活时，字母键发送组合键
+                                    val sendExpr = buildStickySendExpr(key, ctrlSticky, altSticky, winSticky, isShifted)
                                     if (sendExpr != null) {
                                         callbacks.onGestureAction?.invoke(GestureAction.SEND_KEY, sendExpr)
                                         viewModel.onCharacterTyped()
@@ -1077,6 +1080,7 @@ fun KeyboardView(
                         bottomPaddingDp = state.keyboardBottomPaddingDp,
                         modifier = Modifier.fillMaxWidth().fillMaxHeight()
                     )
+                    is OverlayRoute.Edit -> {}
                 }
                 else -> {}
             }
@@ -1089,12 +1093,13 @@ fun KeyboardView(
 /**
  * 根据粘滞修饰键状态构建 send 表达式。
  *
- * 当 Ctrl 或 Alt 粘滞激活时，字母键不直接输入字符，而是发送组合键
- *（如 "Control+c"）。Shift 粘滞或大写锁定时也附加 Shift 修饰键。
+ * 当 Ctrl/Alt/Win 粘滞激活时，字母键不直接输入字符，而是发送组合键
+ *（如 "Control+c"、"Meta+e"）。Shift 粘滞或大写锁定时也附加 Shift 修饰键。
  *
  * @param key 按下的键名（如 "a"、"z"）
  * @param ctrlSticky Ctrl 粘滞是否激活
  * @param altSticky Alt 粘滞是否激活
+ * @param winSticky Win（Meta）粘滞是否激活
  * @param isShifted Shift 是否激活
  * @return send 表达式（如 "Control+Shift+c"），无修饰键时返回 null
  */
@@ -1102,15 +1107,17 @@ private fun buildStickySendExpr(
     key: String,
     ctrlSticky: Boolean,
     altSticky: Boolean,
+    winSticky: Boolean,
     isShifted: Boolean,
 ): String? {
-    if (!ctrlSticky && !altSticky && !isShifted) return null
+    if (!ctrlSticky && !altSticky && !winSticky && !isShifted) return null
     val keyLower = key.lowercase()
     // 仅对单个字母键应用组合键，非字母键走普通输入
     if (keyLower.length != 1 || !keyLower[0].isLetter()) return null
     val parts = mutableListOf<String>()
     if (ctrlSticky) parts += "Control"
     if (altSticky) parts += "Alt"
+    if (winSticky) parts += "Meta"
     if (isShifted) parts += "Shift"
     parts += keyLower
     return parts.joinToString("+")
