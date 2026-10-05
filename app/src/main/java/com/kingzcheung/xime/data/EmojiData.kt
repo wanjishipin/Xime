@@ -1,8 +1,7 @@
 package com.kingzcheung.xime.data
 
-import com.kingzcheung.xime.plugin.core.api.CategoryLayoutConfig
-import com.kingzcheung.xime.plugin.core.api.EmojiItem
 import com.kingzcheung.xime.plugin.core.api.PluginIcon
+import com.kingzcheung.xime.plugin.core.api.PluginResultItem
 
 data class EmojiCategory(
     val name: String,
@@ -11,8 +10,10 @@ data class EmojiCategory(
     val emojis: List<String>,
     val isPlugin: Boolean = false,
     val pluginId: String? = null,
-    val emojiItems: List<EmojiItem>? = null,
-    val layoutConfig: CategoryLayoutConfig? = null
+    val emojiItems: List<PluginResultItem>? = null,
+    /** 插件分类网格布局（manifest.capabilities.emoji 声明，缺省用宿主默认）。 */
+    val layoutColumns: Int = 8,
+    val layoutItemHeightDp: Int = 40
 )
 
 object EmojiData {

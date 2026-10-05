@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
@@ -32,8 +31,11 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -174,8 +176,8 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         },
@@ -188,8 +190,7 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                verticalArrangement = Arrangement.spacedBy(1.dp)
+                modifier = Modifier.fillMaxSize().padding(innerPadding)
             ) {
                 items(entries, key = { currentDir.absolutePath + "/" + it.name }) { entry ->
                     FileEntryRow(
@@ -204,15 +205,15 @@ fun RimeFileBrowserContent(onBack: () -> Unit) {
                             }
                         },
                         onDelete = {
-                            if (entry.isDirectory) {
-                                showDeleteDialog = entry.file
-                            } else {
-                                showDeleteDialog = entry.file
-                            }
+                            showDeleteDialog = entry.file
                         },
                         onShare = {
                             RimeExportManager.shareSingleFile(context, entry.file)
                         }
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 72.dp),
+                        color = MaterialTheme.colorScheme.outlineVariant
                     )
                 }
             }
@@ -444,8 +445,8 @@ private fun YamlEditor(file: File, onDeleted: () -> Unit, onBack: () -> Unit) {
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -454,7 +455,7 @@ private fun YamlEditor(file: File, onDeleted: () -> Unit, onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.1f))
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
         ) {
             AndroidView(
                 factory = { ctx ->
@@ -491,42 +492,47 @@ private fun YamlEditor(file: File, onDeleted: () -> Unit, onBack: () -> Unit) {
 
 private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FileEntryRow(entry: FileEntry, onView: () -> Unit, onDelete: () -> Unit, onShare: () -> Unit = {}) {
-    Row(
+    ListItem(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onView)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Box(
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(
-                    if (entry.isDirectory) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                    else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                ),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = if (entry.isDirectory) Icons.Default.Folder else Icons.Default.Description,
-                contentDescription = null,
-                tint = if (entry.isDirectory) MaterialTheme.colorScheme.primary
-                       else MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.size(22.dp)
-            )
-        }
-        Spacer(Modifier.width(16.dp))
-        Column(modifier = Modifier.weight(1f)) {
+            .clickable(onClick = onView),
+        colors = ListItemDefaults.colors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        leadingContent = {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(
+                        if (entry.isDirectory) MaterialTheme.colorScheme.primaryContainer
+                        else MaterialTheme.colorScheme.secondaryContainer
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = if (entry.isDirectory) Icons.Default.Folder else Icons.Default.Description,
+                    contentDescription = null,
+                    tint = if (entry.isDirectory) MaterialTheme.colorScheme.onPrimaryContainer
+                           else MaterialTheme.colorScheme.onSecondaryContainer,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        },
+        headlineContent = {
             Text(
                 text = entry.name,
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
+        },
+        supportingContent = {
             Row {
                 if (!entry.isDirectory && entry.size > 0) {
                     Text(
@@ -542,26 +548,28 @@ private fun FileEntryRow(entry: FileEntry, onView: () -> Unit, onDelete: () -> U
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        }
-        if (!entry.isDirectory) {
-            IconButton(onClick = onShare, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    Icons.Default.Share,
-                    contentDescription = "分享",
-                    tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
-                    modifier = Modifier.size(20.dp)
-                )
+        },
+        trailingContent = {
+            if (!entry.isDirectory) {
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    IconButton(onClick = onShare) {
+                        Icon(
+                            Icons.Default.Share,
+                            contentDescription = "分享",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(onClick = onDelete) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "删除",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
             }
-            IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    Icons.Default.Delete,
-                    contentDescription = "删除",
-                    tint = MaterialTheme.colorScheme.error.copy(alpha = 0.6f),
-                    modifier = Modifier.size(20.dp)
-                )
-            }
         }
-    }
+    )
 }
 
 private fun formatSize(bytes: Long): String {

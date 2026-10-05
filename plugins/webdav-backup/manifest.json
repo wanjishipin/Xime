@@ -1,0 +1,44 @@
+// =============================================
+// Xime JS 插件元数据（宿主用宽松 JSON 解析：支持 // 注释与尾逗号）
+// =============================================
+{
+  // 插件唯一标识
+  "id": "com.kingzcheung.xime.plugin.webdav_backup",
+
+  // 插件名称与描述
+  "name": "WebDAV 云备份",
+  "icon": "☁️",
+  "description": "通过 WebDAV 将输入方案、自造词、插件与设置备份到云端（已测试坚果云），支持备份列表、恢复与删除。",
+
+  // 插件版本（字符串）
+  "version": "2.0.0",
+
+  // 插件分类：backup 备份（单选激活）
+  "type": "backup",
+  "activation": "single",
+
+  // 入口脚本
+  "entry": "main.js",
+
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": ["android"],
+
+  // 宿主最低版本要求（backup capability 与云备份设置页自 2.8.0 起提供）
+  "minHostVersion": "3.0.0",
+
+  // 能力声明
+  "capabilities": {
+    "backup": {
+      "protocols": [
+        "webdav"   // 备份包 PUT/GET/PROPFIND/DELETE，宿主打包、插件只传输
+      ]
+    }
+  },
+
+  // 网络访问声明：服务器地址由用户配置，域名不固定。
+  // allowCustomHosts: 接受用户填写的服务器地址域名，经配置后自动授权联网
+  "network": {
+    "hosts": [],
+    "allowCustomHosts": true
+  }
+}

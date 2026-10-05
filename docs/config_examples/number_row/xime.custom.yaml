@@ -1,0 +1,63 @@
+metadata:
+  app_name: Xime
+  app_version: ">=3.0.0"
+  platform: android
+  config_version: 1
+  generator: "Xime Config Generator" # 暂时无用
+  modified_time: "2026-09-24"
+
+# ── 5 行键盘示例：在标准 4 行布局上方再加一行数字 ──
+# 说明：
+#   - layout.rows 支持最多 5 行；本示例 = 标准 4 行 + 顶部数字行。
+#   - rows 为「整段覆盖」：写了 rows 就需给出完整 5 行（含功能键那一行）。
+#   - keys 为「按键级覆盖」：未写的按键沿用内置默认（含 shift / delete / space 等）。
+#   - 数字键 id 为 "1" ~ "0"，需写在对应 section（qwerty / qwerty_en）下。
+#   - 数字行是普通按键行（非功能键），点按直接上屏，长按可配符号。
+keyboard:
+  key:
+    corner_radius: 8
+    spacing_x: 2
+    spacing_y: 2
+  # ── 中文键盘 ──
+  qwerty:
+    layout:
+      rows:
+        - ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+        - [q, w, e, r, t, y, u, i, o, p]
+        - [a, s, d, f, g, h, j, k, l]
+        - [shift, z, x, c, v, b, n, m, delete]
+        - [mode_change, comma, space, earth, enter]
+    keys:
+      # 数字行：点按上屏数字，长按弹出对应符号
+      "1": { tap: "1", long_press: { display: "bubble", values: ["1", "!"] } }
+      "2": { tap: "2", long_press: { display: "bubble", values: ["2", "@"] } }
+      "3": { tap: "3", long_press: { display: "bubble", values: ["3", "#"] } }
+      "4": { tap: "4", long_press: { display: "bubble", values: ["4", "$"] } }
+      "5": { tap: "5", long_press: { display: "bubble", values: ["5", "%"] } }
+      "6": { tap: "6", long_press: { display: "bubble", values: ["6", "^"] } }
+      "7": { tap: "7", long_press: { display: "bubble", values: ["7", "&"] } }
+      "8": { tap: "8", long_press: { display: "bubble", values: ["8", "*"] } }
+      "9": { tap: "9", long_press: { display: "bubble", values: ["9", "("] } }
+      "0": { tap: "0", long_press: { display: "bubble", values: ["0", ")"] } }
+
+  # ── 英文键盘 ──
+  qwerty_en:
+    layout:
+      rows:
+        - ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"]
+        - [q, w, e, r, t, y, u, i, o, p]
+        - [a, s, d, f, g, h, j, k, l]
+        - [shift, z, x, c, v, b, n, m, delete]
+        - [mode_change, comma, space, earth, enter]
+    keys:
+      # 数字行：点按直接上屏
+      "1": { tap: "1" }
+      "2": { tap: "2" }
+      "3": { tap: "3" }
+      "4": { tap: "4" }
+      "5": { tap: "5" }
+      "6": { tap: "6" }
+      "7": { tap: "7" }
+      "8": { tap: "8" }
+      "9": { tap: "9" }
+      "0": { tap: "0" }

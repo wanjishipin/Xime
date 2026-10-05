@@ -1,10 +1,6 @@
 package com.kingzcheung.xime.ui.keyboard
 
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -26,6 +22,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,7 +42,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
 import com.kingzcheung.xime.speech.RecognitionState
 import com.kingzcheung.xime.ui.theme.KeyboardThemes
-import kotlin.math.sqrt
 
 @Composable
 fun VoiceKeyboardLayout(
@@ -62,7 +58,8 @@ fun VoiceKeyboardLayout(
     pluginName: String = "",
     recognitionState: RecognitionState = RecognitionState.IDLE,
     recognizedText: String = "",
-    amplitude: Float = 0f
+    amplitude: Float = 0f,
+    spectrum: FloatArray = FloatArray(16)
 ) {
     val accentColor = KeyboardThemes.getAccentColor(themeId, isDarkTheme)
     val inactiveColor = if (isDarkTheme) Color.Gray.copy(alpha = 0.5f) else Color.White.copy(alpha = 0.9f)
@@ -70,17 +67,17 @@ fun VoiceKeyboardLayout(
     
     Column(
         modifier = modifier
-            .fillMaxSize()
-            .background(keyboardBackgroundColor),
+            .fillMaxSize(),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(top = 16.dp),
+                .padding(top = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            // 垂直居中：矮屏/大字缩放导致空间不足时内容对称分布，避免贴顶溢出被下方按钮行盖住（"文字只显示上半部分"）
+            verticalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterVertically)
         ) {
             if (pluginName.isNotEmpty()) {
                 Text(
@@ -128,7 +125,7 @@ fun VoiceKeyboardLayout(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 20.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -176,7 +173,8 @@ fun VoiceKeyboardLayout(
                         .padding(horizontal = 16.dp, vertical = 8.dp),
                     isActive = recognitionState == RecognitionState.LISTENING || 
                                recognitionState == RecognitionState.PROCESSING,
-                    amplitude = amplitude
+                    amplitude = amplitude,
+                    spectrum = spectrum
                 )
             }
             
@@ -206,7 +204,7 @@ fun VoiceKeyboardLayout(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(80.dp),
+                .height(64.dp),
             contentAlignment = Alignment.Center
         ) {
             Canvas(
@@ -264,109 +262,38 @@ fun VoiceKeyboardLayout(
 fun AudioSpectrumAnimation(
     modifier: Modifier = Modifier,
     isActive: Boolean = true,
-    amplitude: Float = 0f
+    amplitude: Float = 0f,
+    spectrum: FloatArray = FloatArray(16),
+    barWidthFactor: Float = 2.2f,
+    barCount: Int = 9,
+    spacingRatio: Float = 0.6f,
+    heightScale: Float = 0.85f,
 ) {
     if (!isActive) {
         Canvas(modifier = modifier) {}
         return
     }
 
-    val infiniteTransition = rememberInfiniteTransition(label = "spectrum")
-    
-    val barCount = 9
-    
-    val anim1 by infiniteTransition.animateFloat(
-        initialValue = 0.3f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(150, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "anim1"
-    )
-    
-    val anim2 by infiniteTransition.animateFloat(
-        initialValue = 0.25f,
-        targetValue = 0.55f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(180, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "anim2"
-    )
-    
-    val anim3 by infiniteTransition.animateFloat(
-        initialValue = 0.4f,
-        targetValue = 0.7f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(120, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "anim3"
-    )
-    
-    val anim4 by infiniteTransition.animateFloat(
-        initialValue = 0.5f,
-        targetValue = 0.85f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(100, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "anim4"
-    )
-    
-    val anim5 by infiniteTransition.animateFloat(
-        initialValue = 0.45f,
-        targetValue = 0.75f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(130, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "anim5"
-    )
-    
-    val anim6 by infiniteTransition.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.65f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(160, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "anim6"
-    )
-    
-    val anim7 by infiniteTransition.animateFloat(
-        initialValue = 0.2f,
-        targetValue = 0.5f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(200, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "anim7"
-    )
-    
-    val anim8 by infiniteTransition.animateFloat(
-        initialValue = 0.15f,
-        targetValue = 0.4f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(220, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "anim8"
-    )
-    
-    val anim9 by infiniteTransition.animateFloat(
-        initialValue = 0.1f,
-        targetValue = 0.35f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(250, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "anim9"
-    )
-    
-    val anims = listOf(anim1, anim2, anim3, anim4, anim5, anim6, anim7, anim8, anim9)
-    
+    val amplitudeValue = amplitude.coerceIn(0f, 1f)
+
+    // 每根条的目标高度：优先真实频谱频段值，无频谱时退化为整体振幅
+    val barTargets = remember(spectrum, amplitudeValue, barCount) {
+        FloatArray(barCount) { index ->
+            if (spectrum.isNotEmpty()) {
+                spectrum[index % spectrum.size]
+            } else {
+                amplitudeValue
+            }
+        }
+    }
+    val animatedValues = barTargets.mapIndexed { index, target ->
+        animateFloatAsState(
+            targetValue = target,
+            animationSpec = tween(durationMillis = 120),
+            label = "spectrumBar$index"
+        )
+    }
+
     val colors = listOf(
         Color(0xFFFF6B6B),
         Color(0xFFFF8E72),
@@ -378,28 +305,22 @@ fun AudioSpectrumAnimation(
         Color(0xFF54A0FF),
         Color(0xFF5F27CD),
     )
-    
-    val amplitudeValue = amplitude.coerceIn(0f, 1f)
-    
+
     Canvas(modifier = modifier) {
-        val barWidth = size.width / (barCount * 2.2f)
-        val spacing = barWidth * 0.6f
+        val barWidth = size.width / (barCount * barWidthFactor)
+        val spacing = barWidth * spacingRatio
         val maxHeight = size.height
-        
-        anims.forEachIndexed { index, animValue ->
-            val baseHeight = animValue
-            
-            val barHeight = maxHeight * (
-                (baseHeight * 0.4f + amplitudeValue * 0.6f).coerceIn(0.1f, 0.95f)
-            )
-            
+
+        repeat(barCount) { index ->
+            val barHeight = maxHeight * animatedValues[index].value.coerceIn(0.05f, 0.98f) * heightScale
+
             val totalWidth = barCount * barWidth + (barCount - 1) * spacing
             val startX = (size.width - totalWidth) / 2f
             val x = startX + index * (barWidth + spacing)
             val y = (maxHeight - barHeight) / 2f
-            
+
             val barAlpha = 0.5f + amplitudeValue * 0.5f
-            
+
             drawRoundRect(
                 color = colors[index % colors.size].copy(alpha = barAlpha),
                 topLeft = Offset(x, y),

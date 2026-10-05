@@ -55,12 +55,6 @@
             </intent-filter>
         </activity>
         
-        <!-- 插件 Activity 代理 -->
-        <activity
-            android:name=".ui.HostProxyActivity"
-            android:exported="true"
-            android:theme="@style/Theme.Xime" />
-        
         <!-- 输入法服务 -->
         <service
             android:name=".service.XimeInputMethodService"
@@ -85,12 +79,6 @@
                 android:resource="@xml/filepaths" />
         </provider>
         
-        <!-- 插件 ContentProvider 代理 -->
-        <provider
-            android:name=".provider.HostProvider"
-            android:authorities="${applicationId}.plugin.proxy"
-            android:exported="true" />
-
         <!-- 通过 Android Storage Access Framework 提供 filesDir 的读写访问。 -->
         <provider
             android:name=".provider.PrivateFilesProvider"
@@ -103,6 +91,28 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </provider>
+
+        <!-- AI 模型推理服务（独立进程，crash 不影响 IME） -->
+        <service
+            android:name=".service.InferenceService"
+            android:exported="false"
+            android:process=":inference" />
+        
+        <!-- 离线语音识别服务（独立进程，模型推理不占用输入法进程内存） -->
+        <service
+            android:name=".service.AsrInferenceService"
+            android:exported="false"
+            android:process=":asr" />
+
+        <!-- xipm dev 插件热安装入口（debug/release 通用，由"插件开发模式"开关门禁）：
+             exported=true 供 adb shell am start 拉起（Android 15 起 shell 无法启动非导出组件）；
+             组件本身无界面、装完即 finish，release 下开关关闭时不读 path、不安装 -->
+        <activity
+            android:name=".plugin.DevPluginInstallActivity"
+            android:excludeFromRecents="true"
+            android:exported="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
     </application>
 

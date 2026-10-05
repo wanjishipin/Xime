@@ -73,7 +73,7 @@ class SpeechRecognitionManagerIntegrationTest {
             onResult = { resultReceived = true },
             onPartialResult = { },
             onStateChange = { stateChanged = true },
-            onError = { errorReceived = true }
+            onError = { _, _ -> errorReceived = true }
         )
 
         // Then: Callbacks are registered (can't verify directly, but no crash)
@@ -86,7 +86,7 @@ class SpeechRecognitionManagerIntegrationTest {
         manager.setCallbacks(
             onResult = { },
             onStateChange = { },
-            onError = { }
+            onError = { _, _ -> }
         )
 
         // When: Release is called
@@ -102,7 +102,7 @@ class SpeechRecognitionManagerIntegrationTest {
         manager.setCallbacks(
             onResult = { },
             onStateChange = { },
-            onError = { }
+            onError = { _, _ -> }
         )
 
         // When: Start is called multiple times rapidly

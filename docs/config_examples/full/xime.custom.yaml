@@ -122,7 +122,8 @@ keyboard:
       rows:
         - [q, w, e, r, t, y, u, i, o, p]
         - [a, s, d, f, g, h, j, k, l]
-        - [z, x, c, v, b, n, m]
+        - [shift, z, x, c, v, b, n, m, delete]
+        - [mode_change, comma, space, earth, enter]
     keys:
       # ── 第一行 ──
       # long_press 顺序：小写 → 大写 → 带变音符号的相似字母
@@ -170,7 +171,8 @@ keyboard:
       rows:
         - [q, w, e, r, t, y, u, i, o, p]
         - [a, s, d, f, g, h, j, k, l]
-        - [z, x, c, v, b, n, m]
+        - [shift, z, x, c, v, b, n, m, delete]
+        - [mode_change, comma, space, earth, enter]
     keys:
       # ── 第一行 ──
       q: { tap: "q", swipe_up: "1", long_press: { display: "bubble", values: ["q", "Q"] } }
@@ -202,6 +204,32 @@ keyboard:
       n: { tap: "n", swipe_up: "%", long_press: { display: "bubble", values: ["n", "N"] } }
       m: { tap: "m", swipe_up: "#", long_press: { display: "bubble", values: ["m", "M"] } }
       # 逗号键
-      "'": { tap: { label: ",", value: "," }, swipe_up: { label: ".", value: "." } }
+      comma: { tap: { label: ",", value: "," }, swipe_up: { label: ".", value: "." } }
       # 中/英切换键，英文键盘下显示"中"
       earth: { tap: { label: "中", action: "toggle_ascii" } }
+
+  # ── 九键（T9）键盘手势 ──
+  # 键 id 为数字字符串 "1"~"9"；tap/长按选字母为九键核心交互，不在配置范围。
+  # 内置默认：上滑直接输入键面数字（显式 display: "key"，仅键面提示、无滑动气泡；
+  # 想要滑动气泡显式写 display: "both"）。下滑内置不绑定动作，可在 xime.custom.yaml
+  # 按键级自行配置（段首/复制/剪贴板面板等）。覆盖时只需写要改的键：
+  t9:
+    keys:
+      # 示例：给 8 下滑绑定"撤销"
+      "8": { swipe_up: { value: "8", display: "key" }, swipe_down: { label: "撤销", action: "undo", display: "key" } }
+      # 示例：给 9 下滑绑定打开剪贴板面板，并示范滑动气泡（display: "both"）
+      "9": { swipe_up: { value: "9", display: "key" }, swipe_down: { label: "剪贴板", action: "switch_route", value: "clipboard", display: "both" } }
+
+  # ── 笔画键盘手势 ──
+  # 键 id 为键面标签（一/丨/丿/丶/乛、*、分词、，、英）。
+  # 内置默认：上滑输入对应数字，全部显式配 display: "key"（仅键面提示、无滑动气泡；
+  # 数字提示由键面右上角角标承担）。想要拖动气泡显式写 display: "both"：
+  stroke:
+    # 左侧快捷符号列（同路径覆盖整个列表，超过 3 个时滚动显示）
+    side_symbols:
+      - "。"
+      - "？"
+      - "！"
+      - "~"
+    keys:
+      "一": { swipe_up: { value: "1", display: "key" }, swipe_down: { label: "全选", action: "select_all", display: "key" } }

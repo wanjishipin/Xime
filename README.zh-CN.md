@@ -8,7 +8,12 @@
   <a href="README.md">English</a> · <a href="README.zh-TW.md">繁體中文</a>
 </p>
 
-[Xime 输入法 (Windows 版)](https://github.com/ximeiorg/winxime) | [Xime 输入法 (Linux 版)](https://github.com/ximeiorg/xime-wayland) | [联想词预测模型](https://github.com/ximeiorg/predictive-text) | [手写输入法模型](https://github.com/ximeiorg/ochwpro)
+[<img src="https://f-droid.org/badge/get-it-on.png"
+    alt="Get it on F-Droid"
+    height="80">](https://f-droid.org/packages/com.kingzcheung.xime)
+
+
+[Xime 输入法 (Windows 版)](https://github.com/ximeiorg/XimeYao) | [Xime 输入法 (Linux 版)](https://github.com/ximeiorg/XimeChe) | [联想词预测模型](https://github.com/ximeiorg/predictive-text) | [手写输入法模型](https://github.com/ximeiorg/ochwpro)
 
 一款基于 <a href="https://rime.im/">Rime</a> 引擎构建的 Android 五笔/拼音输入法，专注于简洁高效的中文输入体验。
 
@@ -17,6 +22,7 @@
 ---
 
 > 本输入法支持五笔/拼音输入，只是本人以五笔为主，拼音为辅，因此资源会倾向于五笔为主。
+如果你是拼音用户，默认的拼音不是很强大，你可以到扩展市场里下载如`凇雾拼音` 之类的方案。
 
 <table align="center">
   <tr>
@@ -41,7 +47,7 @@
     <td><img src="docs/Screenshot/theme_light.jpg" width="180"><br><p align="center">主题设置（亮色）</p></td>
     <td><img src="docs/Screenshot/theme_dark.jpg" width="180"><br><p align="center">主题设置（暗色）</p></td>
     <td><img src="docs/Screenshot/plugin_light.jpg" width="180"><br><p align="center">插件管理</p></td>
-    <td><img src="docs/Screenshot/方案市场.jpg" width="180"><br><p align="center">方案市场</p></td>
+    <td><img src="docs/Screenshot/扩展商店.png" width="180"><br><p align="center">扩展商店</p></td>
   </tr>
 </table>
 
@@ -51,19 +57,20 @@
 - **Rime 引擎** - 使用成熟稳定的 Rime 输入法引擎，精准可靠的中文输入体验
 - **丰富键盘布局** - QWERTY 全键盘、T9 九宫格拼音、九宫格笔画、手写、数字（含计算器）
 - **悬浮键盘** - 悬浮卡片样式，支持拖拽移动、半透明圆角设计
-- **语音转文本** - 支持阿里百炼 FunAsr（在线）和 sherpa-onnx（本地离线）双引擎
-- **AI 智能增强** - 基于 Transformer 的联想词预测和标点预测，输入更高效
+- **语音转文本** - 本地离线语音识别（内置流式 zipformer2 引擎），也支持在线 ASR 插件（FunAsr、Volc 等）
+- **AI 智能增强** - 基于 Transformer 的联想词预测，输入更高效
 - **简洁界面** - Material Design 3 风格，支持浅色/深色主题及多种配色方案
 - **键盘调节** - 支持键盘高度调整和位置移动
 - **工具栏定制** - 可自定义工具栏按钮布局和功能
 - **按键反馈** - 可调节音效和振动强度
 - **滑动手势** - 光标移动、删除、符号输入等滑动手势操作
 - **剪贴板管理** - 剪贴板历史记录，支持快捷发送和置顶
+- **剪贴板同步** - 通过插件与远端设备双向同步剪贴板（WebDAV、ximed 等）
 - **候选词编码提示** - 候选词显示五笔编码，辅助学习
 - **字根显示** - 下滑按钮显示五笔字根，方便健忘用户
 - **实体键盘支持** - 连接物理/蓝牙键盘时显示浮动候选栏
 - **WebDAV 同步** - 通过 WebDAV 备份和恢复方案与配置
-- **表情插件** - 支持扩展表情插件（颜文字、表情包等）
+- **插件市场** - 通过内置扩展商店安装可扩展 Lua 插件（表情、剪贴板同步、在线 ASR 等）
 
 ## 系统要求
 
@@ -81,9 +88,16 @@
 
 ### 插件下载（可选）
 
-插件为独立 APK，安装后可在主应用中启用：
-- **meme-bunny**: 恶搞兔表情包插件（提供8个表情）
+插件为 Lua 脚本插件（.xipk 格式），可在主应用"设置 > 扩展商店"中安装和启用：
 - **kaomoji**: 颜文字插件（提供精选颜文字）
+- **meme-bunny**: 恶搞兔表情包插件（提供8个表情）
+- **xime-fluent-emoji**: Fluent UI 3D 风格表情插件（222 个精选 3D 表情，9 大分类）
+- **funasr-asr**: 阿里百炼 FunAsr 在线语音识别
+- **volc-asr**: 火山引擎在线语音识别
+- **webdav-clipboard-sync**: 基于 WebDAV 的剪贴板同步
+- **ximed-clipboard-sync**: 基于 ximed 服务的剪贴板同步
+
+更多插件请查看 [插件中心列表](https://ime.ximei.me/plugin-list.html)，或直接到手机应用的"设置 > 扩展商店"中浏览安装。
 
 ### 从 Release 下载
 
@@ -107,6 +121,11 @@
 
 详细使用说明请查看 [使用文档](https://ime.ximei.me)。
 
+- [常见问题 FAQ](https://ime.ximei.me/faq.html)
+- [Rime 方案列表](https://ime.ximei.me/rime-list.html)
+- [插件列表](https://ime.ximei.me/plugin-list.html)
+- [AI 模型列表](https://ime.ximei.me/model-list.html)
+
 ## 构建
 
 ```bash
@@ -119,44 +138,6 @@ git submodule update --init --recursive
 # 构建 Release APK
 ./gradlew assembleRelease
 ```
-
-### 本地语音识别构建
-
-项目支持本地离线语音识别（基于 sherpa-onnx）。首次构建时会自动下载并编译 JNI 库。
-
-如果自动构建失败，可手动执行：
-
-```bash
-# 手动构建 sherpa-onnx JNI 库
-./build-sherpa-onnx.sh
-```
-
-构建完成后，会在 `app/src/main/jniLibs/` 生成 `libsherpa-onnx-jni.so`。
-
-本地 ASR 模型可在应用内设置页面下载。
-
-### AI 模型下载
-
-#### 智能联想词模型
-
-- **项目地址**: https://github.com/ximeiorg/predictive-text
-- **模型下载**: https://www.modelscope.cn/models/bikeand/predictive-text-small
-- **模型文件**: `model_int8_dynamic.onnx` (约 17MB)
-- **词表文件**: `vocab.json`
-- **存放位置**: `filesDir/` 目录（即应用私有目录根目录）
-- **功能**: 基于 Transformer 的中文联想词预测，提供智能候选词推荐
-
-#### 标点预测模型
-
-- **项目地址**: https://github.com/ximeiorg/srf-punctuation
-- **在线演示**: https://srf-punctuation.ximei.me/
-- **模型下载**: https://www.modelscope.cn/models/bikeand/srf-punctuation
-- **模型文件**: `punctuation_int8.onnx` (约 2.2MB)
-- **词表文件**: `vocab.json`
-- **存放位置**: `filesDir/punctuation_models/` 目录
-- **功能**: 基于 Transformer 的中文标点预测，语音识别后自动添加标点
-
-**注意**: 所有模型均可直接在应用内"设置 > 智能联想/语音识别"页面下载，无需手动放置。
 
 ## 技术栈
 
@@ -180,18 +161,12 @@ git submodule update --init --recursive
 - [Rime](https://rime.im/) - 中州韵输入法引擎
 - [Trime](https://github.com/osfans/trime) - 同文输入法，配置参考
 - [fcitx5-android](https://github.com/fcitx5-android/fcitx5-android) - 键盘布局参考
-- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) - 本地语音转文本模型支持
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=ximeiorg/Xime&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&legend=top-left" />
- </picture>
-</a>
+- [onnxruntime](https://github.com/microsoft/onnxruntime) - 联想词预测与语音识别的 ONNX 推理引擎
 
 ## 许可证
 
 GPLv3 License
+
+Copyright © 2026 Kingz Cheung
+
+"Xime" 名称、Logo 及其他品牌资产**不在** GPLv3 开源授权范围内，详见 [TRADEMARKS.md](TRADEMARKS.md)。

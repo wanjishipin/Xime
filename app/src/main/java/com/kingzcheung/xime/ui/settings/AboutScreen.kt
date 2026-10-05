@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PrivacyTip
 import androidx.compose.material.icons.twotone.BugReport
@@ -32,6 +33,7 @@ import androidx.compose.material.icons.twotone.Code
 import androidx.compose.material.icons.twotone.Description
 import androidx.compose.material.icons.twotone.PersonOutline
 import androidx.compose.material.icons.twotone.PrivacyTip
+import androidx.compose.material.icons.twotone.Storage
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,18 +42,26 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.BuildConfig
+import com.kingzcheung.xime.settings.SettingsPreferences
+import com.kingzcheung.xime.util.FileLogger
 
 data class LicenseItem(
     val name: String,
@@ -63,7 +73,6 @@ object AppInfo {
     val versionName: String = BuildConfig.VERSION_NAME
     val versionCode: Int = BuildConfig.VERSION_CODE
     val gitHash: String = BuildConfig.GIT_HASH
-    val buildTime: String = BuildConfig.BUILD_TIME
     
     val androidVersion: String = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT})"
     val deviceModel: String = "${Build.MANUFACTURER} ${Build.MODEL}"
@@ -128,12 +137,34 @@ fun AboutContent(
     onBack: () -> Unit,
     onNavigateToPrivacy: () -> Unit,
     onNavigateToLicenses: () -> Unit,
-    onNavigateToLogViewer: () -> Unit = {}
+    onNavigateToLogViewer: () -> Unit = {},
+    onNavigateToDeveloper: () -> Unit = {},
+    onNavigateToStorageSpace: () -> Unit = {},
 ) {
     val uriHandler = LocalUriHandler.current
+    val context = LocalContext.current
+    var verboseLoggingEnabled by remember {
+        mutableStateOf(SettingsPreferences.isVerboseLoggingEnabled(context))
+    }
+    // 彩蛋入口：1.5 秒内连点"设备信息"卡片 7 次解锁"开发者选项"（平时隐藏，
+    // 页内收纳手写数据采集 / 插件开发模式等开发者功能）
+    var captureTapCount by remember { mutableStateOf(0) }
+    var lastCaptureTapMs by remember { mutableStateOf(0L) }
+    var devUnlocked by rememberSaveable { mutableStateOf(false) }
+    fun onDeviceInfoTapped() {
+        val now = System.currentTimeMillis()
+        if (now - lastCaptureTapMs > 1500L) captureTapCount = 0
+        lastCaptureTapMs = now
+        captureTapCount++
+        if (captureTapCount >= 7) {
+            captureTapCount = 0
+            devUnlocked = true
+            android.widget.Toast.makeText(context, "已解锁开发者入口", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
     
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = { Text("关于") },
@@ -146,8 +177,8 @@ fun AboutContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -192,11 +223,6 @@ fun AboutContent(
                         )
                         Text(
                             text = "构建: ${AppInfo.gitHash}",
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "构建时间: ${AppInfo.buildTime}",
                             fontSize = 12.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -514,6 +540,50 @@ fun AboutContent(
                             title = "日志查看器",
                             onClick = onNavigateToLogViewer
                         )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 72.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+                        SettingsItem(
+                            icon = Icons.TwoTone.Storage,
+                            title = "存储空间",
+                            onClick = onNavigateToStorageSpace
+                        )
+                        if (devUnlocked) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 72.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                            SettingsItem(
+                                icon = Icons.Default.Code,
+                                title = "开发者选项",
+                                onClick = onNavigateToDeveloper
+                            )
+                        }
+                        if (BuildConfig.DEBUG) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = 72.dp),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                            )
+                            SettingsItem(
+                                icon = Icons.TwoTone.BugReport,
+                                title = "调试日志",
+                                onClick = {},
+                                trailing = {
+                                    Switch(
+                                        checked = verboseLoggingEnabled,
+                                        onCheckedChange = { enabled ->
+                                            verboseLoggingEnabled = enabled
+                                            SettingsPreferences.setVerboseLoggingEnabled(context, enabled)
+                                            FileLogger.setVerboseLoggingEnabled(enabled)
+                                        }
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -528,6 +598,7 @@ fun AboutContent(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .clickable { onDeviceInfoTapped() }
                             .padding(16.dp)
                     ) {
                         Text(
@@ -546,10 +617,11 @@ fun AboutContent(
 }
 
 @Composable
-private fun SettingsItem(
+internal fun SettingsItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     title: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    trailing: (@Composable () -> Unit)? = null
 ) {
     Row(
         modifier = Modifier
@@ -569,11 +641,15 @@ private fun SettingsItem(
             fontSize = 16.sp,
             modifier = Modifier.weight(1f)
         )
-        Icon(
-            imageVector = Icons.Default.ChevronRight,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (trailing != null) {
+            trailing()
+        } else {
+            Icon(
+                imageVector = Icons.Default.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -604,7 +680,7 @@ fun PrivacyPolicyContent(
     onBack: () -> Unit
 ) {
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = { Text("隐私策略") },
@@ -617,8 +693,8 @@ fun PrivacyPolicyContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
@@ -714,7 +790,7 @@ fun LicensesContent(
     val uriHandler = LocalUriHandler.current
     
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = { Text("开源许可证") },
@@ -727,8 +803,8 @@ fun LicensesContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }

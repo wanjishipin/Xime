@@ -102,4 +102,45 @@ class SchemaManagerImportTest {
             SchemaManager.findSchemaBaseDir(listOf("cangjie5.schema.yaml", "cangjie5.dict.yaml")),
         )
     }
+
+    // ── shouldTrackImportedFile：单文件直接导入是否受清单追踪（冲突检测 + 可卸载） ──
+
+    @Test
+    fun `tracks ordinary schema, dict and data files`() {
+        assertTrue(SchemaManager.shouldTrackImportedFile("cangjie5.schema.yaml"))
+        assertTrue(SchemaManager.shouldTrackImportedFile("cangjie5.dict.yaml"))
+        assertTrue(SchemaManager.shouldTrackImportedFile("essay.txt"))
+        assertTrue(SchemaManager.shouldTrackImportedFile("lua/t9_preedit.lua"))
+    }
+
+    @Test
+    fun `does not track user data files`() {
+        assertFalse(SchemaManager.shouldTrackImportedFile("custom_phrase.txt"))
+        assertFalse(SchemaManager.shouldTrackImportedFile("wubi86.custom.yaml"))
+        assertFalse(SchemaManager.shouldTrackImportedFile("xime.custom.yaml"))
+        assertFalse(SchemaManager.shouldTrackImportedFile("installation.yaml"))
+    }
+
+    @Test
+    fun `does not track system files and manifest metadata`() {
+        assertFalse(SchemaManager.shouldTrackImportedFile("default.yaml"))
+        assertFalse(SchemaManager.shouldTrackImportedFile("xime.yaml"))
+        assertFalse(SchemaManager.shouldTrackImportedFile("build/cangjie5.prism.bin"))
+        assertFalse(SchemaManager.shouldTrackImportedFile(".registry.json"))
+        assertFalse(SchemaManager.shouldTrackImportedFile(".manifests/pkg.json"))
+    }
+
+    @Test
+    fun `does not track traversal paths`() {
+        assertFalse(SchemaManager.shouldTrackImportedFile("../escape.txt"))
+        assertFalse(SchemaManager.shouldTrackImportedFile("sub/../../escape.txt"))
+    }
+
+    // ── manifestPackageIdFor：manifests 文件名不能含路径分隔符 ──
+
+    @Test
+    fun `manifest package id flattens path separators`() {
+        assertEquals("lua_t9_preedit.lua", SchemaManager.manifestPackageIdFor("lua/t9_preedit.lua"))
+        assertEquals("essay.txt", SchemaManager.manifestPackageIdFor("essay.txt"))
+    }
 }

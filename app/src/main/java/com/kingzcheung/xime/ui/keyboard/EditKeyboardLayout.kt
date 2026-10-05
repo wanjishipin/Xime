@@ -1,13 +1,14 @@
 package com.kingzcheung.xime.ui.keyboard
 
-import android.content.res.Configuration
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -18,14 +19,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,24 +31,23 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.sqrt
-
-private val keyShape = RoundedCornerShape(8.dp)
 
 private data class Quadrant(
     val label: String,
@@ -72,20 +69,33 @@ fun EditKeyboardLayout(
     backgroundColor: Color,
     textColor: Color,
     accentColor: Color,
+    keyBgColor: Color,
     bottomPaddingDp: Int = 0,
+    /** 与主键盘一致的主题按键圆角（LocalKeyCornerRadius），供复用的 KeyButton 读取 */
+    keyCornerRadius: Dp = 8.dp,
+    shadowEnabled: Boolean = true,
+    shadowElevation: Dp = 1.dp,
+    shadowShapeRadius: Dp = 8.dp,
     modifier: Modifier = Modifier
 ) {
-    val isDarkTheme = textColor == Color(0xFFE8EAED)
-    val keyBg = if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6)
+    val keyBg = keyBgColor
     var isSelecting by remember { mutableStateOf(false) }
-    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val sideGap = if (isLandscape) 50.dp else 8.dp
 
     fun arrowAction(base: String): String = if (isSelecting) "select_$base" else base
 
+    // 布局按父容器真实宽度自适应（悬浮卡片/键盘收窄/分屏的容器宽 ≠ 屏幕宽），
+    // 不再读屏幕方向：宽容器（横屏全屏）用大边距与两列布局，其余按竖屏形态
+    BoxWithConstraints(modifier = modifier) {
+        val isWide = maxWidth >= WIDE_CONTAINER_WIDTH
+        val sideGap = if (isWide) 50.dp else 8.dp
+
+    CompositionLocalProvider(
+        LocalKeyCornerRadius provides keyCornerRadius,
+        LocalKeyVisualPadding provides PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+    ) {
     Column(
-        modifier = modifier
-            .fillMaxWidth()
+        modifier = Modifier
+            .fillMaxSize()
             .background(backgroundColor)
     ) {
         Box(
@@ -126,10 +136,13 @@ fun EditKeyboardLayout(
                     "复制" to "copy", "粘贴" to "paste",
                     "全选" to "select_all", "剪切" to "cut"
                 ),
-                columns = if (isLandscape) 2 else 1,
+                columns = if (isWide) 2 else 1,
                 onAction = onAction,
                 keyBg = keyBg,
                 textColor = textColor,
+                shadowEnabled = shadowEnabled,
+                shadowElevation = shadowElevation,
+                shadowShapeRadius = shadowShapeRadius,
                 modifier = Modifier.weight(1f)
             )
 
@@ -139,7 +152,7 @@ fun EditKeyboardLayout(
                     .fillMaxHeight(),
                 contentAlignment = Alignment.Center
             ) {
-                val circleModifier = if (isLandscape) {
+                val circleModifier = if (isWide) {
                     Modifier.fillMaxHeight(1f).aspectRatio(1f)
                 } else {
                     Modifier.fillMaxWidth(0.85f).aspectRatio(1f)
@@ -156,6 +169,8 @@ fun EditKeyboardLayout(
                     textColor = textColor,
                     accentColor = accentColor,
                     backgroundColor = backgroundColor,
+                    shadowEnabled = shadowEnabled,
+                    shadowElevation = shadowElevation,
                     modifier = circleModifier
                 )
             }
@@ -165,22 +180,22 @@ fun EditKeyboardLayout(
                     "段首" to "home", "段尾" to "end",
                     "删除" to "delete", "回车" to "enter"
                 ),
-                columns = if (isLandscape) 2 else 1,
+                columns = if (isWide) 2 else 1,
                 onAction = onAction,
                 keyBg = keyBg,
                 textColor = textColor,
+                shadowEnabled = shadowEnabled,
+                shadowElevation = shadowElevation,
+                shadowShapeRadius = shadowShapeRadius,
                 modifier = Modifier.weight(1f)
             )
         }
 
         Spacer(
-            modifier = Modifier.height(
-                maxOf(
-                    bottomPaddingDp.dp,
-                    with(LocalDensity.current) { WindowInsets.navigationBars.getBottom(this).toDp() }
-                )
-            )
+            modifier = Modifier.height(bottomPaddingDp.dp)
         )
+    }
+    }
     }
 }
 
@@ -193,15 +208,33 @@ private fun CircularDPad(
     textColor: Color,
     accentColor: Color,
     backgroundColor: Color,
+    shadowEnabled: Boolean = true,
+    shadowElevation: Dp = 1.dp,
     modifier: Modifier = Modifier
 ) {
     val outerFraction = 0.92f
     val innerFraction = 0.38f
 
     var pressedAction by remember { mutableStateOf<String?>(null) }
+    val density = LocalDensity.current
+    val shadowModifier = remember(shadowEnabled, shadowElevation, density, keyBg) {
+        if (shadowEnabled) {
+            val offsetPx = with(density) { shadowElevation.toPx() }
+            val color = crispShadowColor(keyBg)
+            Modifier.drawBehind {
+                // 底部投影：与各键盘按键的 crisp 阴影同风格（圆形）
+                drawCircle(
+                    color = color,
+                    radius = size.minDimension / 2f,
+                    center = Offset(size.width / 2f, size.height / 2f + offsetPx)
+                )
+            }
+        } else Modifier
+    }
     Box(
         modifier = modifier
             .aspectRatio(1f)
+            .then(shadowModifier)
             .clip(CircleShape)
             .background(keyBg)
             .pointerInput(isSelecting) {
@@ -276,6 +309,21 @@ private fun CircularDPad(
                 )
             }
 
+            // 四象限分隔槽：沿对角线方向（象限边界）用键盘背景色画圆头细线，
+            // 把上/下/左/右四个方向区隔开，与其他键盘的键间距观感对齐
+            val dividerWidth = 2.dp.toPx()
+            for (deg in listOf(45f, 135f, 225f, 315f)) {
+                val rad = Math.toRadians(deg.toDouble()).toFloat()
+                val startR = innerR * 1.06f
+                drawLine(
+                    color = backgroundColor,
+                    start = Offset(cx + startR * cos(rad), cy + startR * sin(rad)),
+                    end = Offset(cx + outerR * cos(rad), cy + outerR * sin(rad)),
+                    strokeWidth = dividerWidth,
+                    cap = StrokeCap.Round
+                )
+            }
+
             drawCircle(color = backgroundColor, radius = innerR)
 
             val centerR = innerR * 0.82f
@@ -310,8 +358,10 @@ private fun CircularDPad(
                 )
             }
 
+            // 箭头与按键文字同源（主题 keyTextColor），但 28sp 大字形全不透明时显得过黑，
+            // 降一档不透明度柔和处理；深浅主题均随主题色
             directionLabelPaint.textSize = 28.sp.toPx()
-            directionLabelPaint.color = textColor.toArgb()
+            directionLabelPaint.color = textColor.copy(alpha = 0.72f).toArgb()
             val labelR = (innerR + outerR) / 2f
             for (q in quadrants) {
                 val midDeg = Math.toRadians((q.startAngle + 45f).toDouble()).toFloat()
@@ -335,13 +385,13 @@ private fun CircularDPad(
 private val directionLabelPaint = android.graphics.Paint().apply {
     isAntiAlias = true
     textAlign = android.graphics.Paint.Align.CENTER
-    typeface = android.graphics.Typeface.DEFAULT_BOLD
+    typeface = AppFonts.keyFontTypeface
 }
 
 private val centerLabelPaint = android.graphics.Paint().apply {
     isAntiAlias = true
     textAlign = android.graphics.Paint.Align.CENTER
-    typeface = android.graphics.Typeface.DEFAULT_BOLD
+    typeface = AppFonts.keyFontTypeface
 }
 
 @Composable
@@ -351,54 +401,41 @@ private fun SideButtonGrid(
     onAction: (String) -> Unit,
     keyBg: Color,
     textColor: Color,
+    shadowEnabled: Boolean = true,
+    shadowElevation: Dp = 1.dp,
+    shadowShapeRadius: Dp = 8.dp,
     modifier: Modifier = Modifier
 ) {
     val rows = items.chunked(columns)
     Column(
         modifier = modifier
             .fillMaxHeight()
-            .padding(4.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp)
+            .padding(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
         rows.forEach { row ->
             Row(
                 modifier = Modifier.weight(1f),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 row.forEach { (label, action) ->
-                    SideButton(label, { onAction(action) }, keyBg, textColor, Modifier.weight(1f).fillMaxHeight())
+                    KeyButton(
+                        text = label,
+                        onClick = { onAction(action) },
+                        backgroundColor = keyBg,
+                        textColor = textColor,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                        fontSize = 14.sp,
+                        shadowEnabled = shadowEnabled,
+                        shadowElevation = shadowElevation,
+                        shadowShapeRadius = shadowShapeRadius,
+                    )
                 }
                 repeat(columns - row.size) {
                     Spacer(modifier = Modifier.weight(1f))
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun SideButton(
-    label: String,
-    onClick: () -> Unit,
-    keyBg: Color,
-    textColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(keyShape)
-            .background(keyBg)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = label,
-            color = textColor,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-            maxLines = 1
-        )
     }
 }
 

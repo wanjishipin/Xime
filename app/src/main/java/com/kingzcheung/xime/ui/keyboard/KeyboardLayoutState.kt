@@ -1,5 +1,7 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import com.kingzcheung.xime.settings.KeysConfigHelper
+
 /**
  * 键盘布局状态 — 取代 [KeyboardMode] 枚举，
  * 将「当前显示哪个键盘布局」编码为单一 sealed class，
@@ -91,20 +93,30 @@ fun initialKeyboardLayoutState(
     schemaId: String = "",
 ): KeyboardLayoutState = when {
     isT9Schema(schemaId) && !isAsciiMode -> KeyboardLayoutState.T9Pinyin
-    schemaId == "stroke" && !isAsciiMode -> KeyboardLayoutState.Stroke
+    isStrokeSchema(schemaId) && !isAsciiMode -> KeyboardLayoutState.Stroke
     isAsciiMode -> KeyboardLayoutState.English
-    schemaId == "stroke" -> KeyboardLayoutState.Stroke
+    isStrokeSchema(schemaId) -> KeyboardLayoutState.Stroke
     isT9Schema(schemaId) -> KeyboardLayoutState.T9Pinyin
     else -> KeyboardLayoutState.Chinese
 }
 
 /**
- * 判断是否为九键（T9）方案。
- *
- * 支持精确匹配已知方案 ID，以及关键词匹配（schemaId 或方案名称包含 "t9"）。
+ * 判断是否为九键（T9）方案：仅认 keyboard.t9.schemas 绑定声明
+ * （xime.yaml / xime.custom.yaml），未声明的方案一律全键盘。
  */
-fun isT9Schema(schemaId: String, name: String = ""): Boolean {
-    val knownT9SchemaIds = setOf("t9_pinyin", "t9", "wanxiang_t9")
-    if (schemaId in knownT9SchemaIds) return true
-    return schemaId.lowercase().contains("t9") || name.lowercase().contains("t9")
-}
+fun isT9Schema(schemaId: String): Boolean =
+    KeysConfigHelper.boundSectionForSchema(schemaId) == "t9"
+
+/**
+ * 判断是否为笔画方案：仅认 keyboard.stroke.schemas 绑定声明，
+ * 未声明的方案一律全键盘。
+ */
+fun isStrokeSchema(schemaId: String): Boolean =
+    KeysConfigHelper.boundSectionForSchema(schemaId) == "stroke"
+
+/**
+ * 判断是否为手写方案：仅认 keyboard.handwriting.schemas 绑定声明，
+ * 未声明的方案一律全键盘（手写方案不经过 rime 引擎）。
+ */
+fun isHandwritingSchema(schemaId: String): Boolean =
+    KeysConfigHelper.boundSectionForSchema(schemaId) == "handwriting"

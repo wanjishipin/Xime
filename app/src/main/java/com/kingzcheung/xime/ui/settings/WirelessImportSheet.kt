@@ -88,7 +88,7 @@ fun WirelessImportSheet(
             onDismiss()
         },
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.background
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier
@@ -150,7 +150,7 @@ fun WirelessImportSheet(
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = "拖拽 .schema.yaml / .dict.yaml 到页面上传",
+                    text = "拖拽输入方案或插件文件到页面上传",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     textAlign = TextAlign.Center

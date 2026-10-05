@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.wanjishipin.xime.plugin.kaomoji"
+    android:versionCode="6"
+    android:versionName="2.0.0" >
+
+    <uses-sdk
+        android:minSdkVersion="28"
+        android:targetSdkVersion="35" />
+
+    <application
+        android:allowBackup="false"
+        android:debuggable="true"
+        android:extractNativeLibs="false"
+        android:label="@string/app_name"
+        android:supportsRtl="true" >
+        <activity
+            android:name="com.kingzcheung.xime.plugin.kaomoji.PluginDeclaration"
+            android:exported="true" >
+            <intent-filter>
+                <action android:name="com.wanjishipin.xime.plugin.EXTENSION" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <meta-data
+            android:name="plugin.entryClass"
+            android:value="com.kingzcheung.xime.plugin.kaomoji.KaomojiPlugin" />
+        <meta-data
+            android:name="plugin.description"
+            android:value="提供精选日式颜文字表情" />
+        <meta-data
+            android:name="plugin.type"
+            android:value="emoji" />
+    </application>
+
+</manifest>

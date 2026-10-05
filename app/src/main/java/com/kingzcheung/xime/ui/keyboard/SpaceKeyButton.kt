@@ -124,7 +124,8 @@ fun SpaceKeyButton(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Center,
-                maxLines = 1
+                maxLines = 1,
+                fontFamily = AppFonts.keyFontFamily
             )
             
             Text(
@@ -136,7 +137,8 @@ fun SpaceKeyButton(
                 maxLines = 1,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
-                    .padding(start = 6.dp, bottom = 2.dp)
+                    .padding(start = 6.dp, bottom = 2.dp),
+                fontFamily = AppFonts.keyFontFamily
             )
         }
     }

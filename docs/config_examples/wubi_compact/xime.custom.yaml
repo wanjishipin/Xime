@@ -1,4 +1,4 @@
-﻿metadata:
+metadata:
   app_name: Xime
   app_version: ">=2.4.2"
   platform: android
@@ -15,42 +15,6 @@ xime_index:
     - "https://fastly.jsdelivr.net/gh/ximeiorg/xime-index@master/"
     - "https://index.ximei.me/"
     - "https://raw.githubusercontent.com/ximeiorg/xime-index/refs/heads/main/"
-
-style:
-  color_scheme: lavender_purple
-
-color_schemes:
-  lavender_purple:
-    name: "薰衣草紫"
-    primary_color: 0x8F73E2
-  
-  ocean_blue:
-    name: "海洋蔚蓝"
-    primary_color: 0x1A73E8
-  
-  forest_green:
-    name: "森林翠绿"
-    primary_color: 0x2E7D32
-  
-  sunset_orange:
-    name: "落日橙光"
-    primary_color: 0xE65100
-  
-  coral_red:
-    name: "珊瑚绯红"
-    primary_color: 0xC62828
-  
-  slate_gray:
-    name: "沉稳石墨"
-    primary_color: 0x424242
-  
-  rose_pink:
-    name: "浪漫玫瑰"
-    primary_color: 0xAD1457
-  
-  teal_cyan:
-    name: "青碧如水"
-    primary_color: 0x00796B
 
 # ── 26 键全键盘手势配置 ──
 # 每个按键可定义 4 个手势：
@@ -74,33 +38,7 @@ color_schemes:
 #   # 也支持字符串简写：
 #   long_press: { display: "bubble", values: ["q", "Q"] }
 keyboard:
-  # ── 键盘颜色配置（可选，不设置则使用内置默认值）──
-  # keyboard_bg_color        - 键盘背景色（亮色）
-  # keyboard_bg_color_dark   - 键盘背景色（暗色）
-  # key_bg_color             - 按键背景色（亮色）
-  # key_bg_color_dark        - 按键背景色（暗色）
-  # special_key_bg_color     - 特殊按键背景色（亮色）
-  # special_key_bg_color_dark- 特殊按键背景色（暗色）
-  # candidate_bar_bg_color   - 候选栏背景色（亮色）
-  # candidate_bar_bg_color_dark- 候选栏背景色（暗色）
-  # key_text_color           - 按键文字颜色（亮色）
-  # key_text_color_dark      - 按键文字颜色（暗色）
-  # candidate_text_color     - 候选文字颜色（亮色）
-  # candidate_text_color_dark- 候选文字颜色（暗色）
-  colors:
-    keyboard_bg_color: 0xE3E4E8
-    keyboard_bg_color_dark: 0x202020
-    key_bg_color: 0xFFFFFF
-    key_bg_color_dark: 0x4A4A4A
-    # special_key_bg_color: 0x9fef86 #不设置时默认取主题色
-    # special_key_bg_color_dark: 0x4A4A4A #不设置时默认取主题色
-    candidate_bar_bg_color: 0xE3E4E8
-    candidate_bar_bg_color_dark: 0x202020
-    key_text_color: 0x202124
-    key_text_color_dark: 0xE8EAED
-    candidate_text_color: 0x202124
-    candidate_text_color_dark: 0xE8EAED
-  
+
   # ── 按键配置（可选，不设置则使用默认值）──
   # corner_radius:      按键圆角半径（dp，默认 8）
   key:
@@ -150,9 +88,10 @@ keyboard:
       n: { tap: "n", swipe_up: { label: "％", value: "%" }, swipe_down: { label: "已己巳心忄羽乙𠃜", action: "none", display: "key" }, long_press: { display: "bubble", values: ["n", "N", "ñ"] } }
       m: { tap: "m", swipe_up: { label: "＃", value: "#" }, swipe_down: { label: "山由贝冂冎几", action: "none", display: "key" }, long_press: { display: "bubble", values: ["m", "M"] } }
       #  逗号键，label 为中文显示，value 为英文显示+提交值
-      "'": { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [ ",","."] }}
+      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [ ",","."] }}
       # 中/英切换键，label 为按键显示文字
-      earth: { tap: { label: "英", action: "toggle_ascii" } }
+      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
+    
    
   # 英文键盘布局
   qwerty_en:
@@ -188,6 +127,6 @@ keyboard:
       n: { tap: "n", swipe_up: "%", long_press: { display: "bubble", values: ["n", "N"] } }
       m: { tap: "m", swipe_up: "#", long_press: { display: "bubble", values: ["m", "M"] } }
       #  逗号键，label 为中文显示，value 为英文显示+提交值
-      "'": { tap: { label: ",", value: "," }, swipe_up: { label: ".", value: "." } }
+      comma: { tap: { label: ".", value: "." }, swipe_up: { label: ",", value: "," } }
       # 中/英切换键，label 为按键显示文字
-      earth: { tap: { label: "中", action: "toggle_ascii" } }
+      earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }

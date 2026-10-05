@@ -1,0 +1,30 @@
+// =============================================
+// 插件清单（宽松 JSON：支持 // 注释与尾逗号）
+// =============================================
+{
+  // 插件唯一标识（反域名命名空间；仅字母/数字/下划线/连字符，点号分段）
+  "id": "com.example.{{PACKAGE}}",
+
+  "name": "{{NAME}}",
+  "description": "TODO: 插件描述",
+  "version": "0.1.0",
+
+  // 插件类型：tool / emoji / speech / clipboard_sync / backup
+  "type": "{{TYPE}}",
+
+  // 入口脚本（编译产物，固定 main.js）
+  "entry": "main.js",
+
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": ["android"],
+
+  // 宿主最低版本（v3 起为 async/await 服务模型）
+  "minHostVersion": "3.0.0"
+
+  // 网络访问声明（需要联网时取消注释）：
+  // "network": { "hosts": ["api.example.com"], "allowCustomHosts": false }
+
+  // 能力声明（按类型按需声明）：
+  // "toolbarButtons": [{ "id": "com.example.{{PACKAGE}}:open", "label": "{{NAME}}", "action": "open_panel" }],
+  // "capabilities": { "tool": { "display": "passive" } }
+}

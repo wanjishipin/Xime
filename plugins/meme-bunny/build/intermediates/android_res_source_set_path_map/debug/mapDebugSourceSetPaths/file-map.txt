@@ -1,0 +1,8 @@
+com.kingzcheung.xime.plugin.emoji.meme-bunny-pngs-0 /data/data/com.termux/files/home/Xime/plugins/meme-bunny/build/generated/res/pngs/debug
+com.kingzcheung.xime.plugin.emoji.meme-bunny-resValues-1 /data/data/com.termux/files/home/Xime/plugins/meme-bunny/build/generated/res/resValues/debug
+com.kingzcheung.xime.plugin.emoji.meme-bunny-updated_navigation_xml-2 /data/data/com.termux/files/home/Xime/plugins/meme-bunny/build/generated/updated_navigation_xml/debug
+com.kingzcheung.xime.plugin.emoji.meme-bunny-packageDebugResources-3 /data/data/com.termux/files/home/Xime/plugins/meme-bunny/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.kingzcheung.xime.plugin.emoji.meme-bunny-packageDebugResources-4 /data/data/com.termux/files/home/Xime/plugins/meme-bunny/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.kingzcheung.xime.plugin.emoji.meme-bunny-debug-5 /data/data/com.termux/files/home/Xime/plugins/meme-bunny/build/intermediates/merged_res/debug/mergeDebugResources
+com.kingzcheung.xime.plugin.emoji.meme-bunny-debug-6 /data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/debug/res
+com.kingzcheung.xime.plugin.emoji.meme-bunny-main-7 /data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/res

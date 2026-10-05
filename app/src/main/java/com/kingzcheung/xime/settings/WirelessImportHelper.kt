@@ -7,6 +7,7 @@ import android.net.wifi.WifiManager
 import android.util.Log
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.qrcode.QRCodeWriter
+import com.kingzcheung.xime.plugin.core.runtime.PluginManager
 import io.ktor.http.ContentType
 import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
@@ -21,12 +22,31 @@ import kotlinx.coroutines.channels.Channel
 import java.io.File
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 
 data class UploadResult(
     val fileName: String,
     val success: Boolean,
     val error: String? = null
 )
+
+@Serializable
+data class FileNode(
+    val name: String,
+    val path: String,
+    val isDir: Boolean,
+    val size: Long = 0,
+    val mtime: Long = 0,
+    val children: List<FileNode>? = null,
+)
+
+private val FileTreeSerializer = kotlinx.serialization.serializer<FileNode>()
+
+/** 共享 Json 实例，用于解析 delete 请求体。 */
+private val configJson: Json = Json { ignoreUnknownKeys = true }
 
 class WirelessImportHelper(private val context: Context) {
     private var server: EmbeddedServer<*, *>? = null
@@ -71,10 +91,77 @@ class WirelessImportHelper(private val context: Context) {
         val ip = getLocalIpAddress() ?: return null
         val url = "http://$ip:$port"
 
-        server = embeddedServer(CIO, port = port) {
+        // watchPaths 置空：ktor 的 stop() 会无条件 cleanupWatcher()，访问 lazy watcher 会在
+        // Android 上凭空创建再销毁一个平台 WatchService（自动重载并未启用），其 finalizer
+        // 随 GC 抛 ClosedWatchServiceException 刷日志；置空后该路径完全不触发。
+        server = embeddedServer(CIO, port = port, watchPaths = emptyList()) {
             routing {
+                // React 前端：index.html 与静态资源打包在 assets/www/
                 get("/") {
-                    call.respondText(HTML_PAGE, ContentType.Text.Html)
+                    serveAsset(call, "www/index.html")
+                }
+                get("/assets/{file...}") {
+                    val file = call.parameters.getAll("file")?.joinToString("/")
+                    if (file.isNullOrBlank() || file.contains("..")) {
+                        call.respond(HttpStatusCode.NotFound)
+                        return@get
+                    }
+                    serveAsset(call, "www/assets/$file")
+                }
+                // 返回 app 数据目录树（filesDir 下递归），供前端右侧展示
+                get("/tree") {
+                    val root = context.filesDir
+                    if (root == null) {
+                        call.respond(HttpStatusCode.InternalServerError)
+                    } else {
+                        val json = Json.encodeToString(FileTreeSerializer, buildNode(root))
+                        call.respondText(json, ContentType.Application.Json)
+                    }
+                }
+                // 读取文本文件内容（前端查看文件用）
+                get("/read") {
+                    val path = call.request.queryParameters["path"]
+                    val f = safeResolve(path)
+                    if (f == null || !f.isFile) {
+                        call.respondText("""{"error":"File not found"}""",
+                            ContentType.Application.Json, HttpStatusCode.NotFound)
+                    } else {
+                        val text = f.readBytes().toString(Charsets.UTF_8)
+                        call.respondText(text, ContentType.Text.Plain, HttpStatusCode.OK)
+                    }
+                }
+                // 下载文件（流式，避免大文件 OOM）
+                get("/download") {
+                    val path = call.request.queryParameters["path"]
+                    val f = safeResolve(path)
+                    if (f == null || !f.isFile) {
+                        call.respondText("""{"error":"File not found"}""",
+                            ContentType.Application.Json, HttpStatusCode.NotFound)
+                    } else {
+                        call.response.header(
+                            io.ktor.http.HttpHeaders.ContentDisposition,
+                            "attachment; filename=\"${f.name}\""
+                        )
+                        call.respondFile(f)
+                    }
+                }
+                // 删除文件或空目录
+                post("/delete") {
+                    val path = call.receiveText()
+                    val p = try {
+                        configJson.parseToJsonElement(path).jsonObject["path"]?.jsonPrimitive?.content
+                    } catch (_: Exception) { null }
+                    val f = safeResolve(p)
+                    if (f == null) {
+                        call.respondText("""{"success":false,"error":"Not found"}""",
+                            ContentType.Application.Json, HttpStatusCode.NotFound)
+                    } else {
+                        val ok = if (f.isDirectory) f.listFiles()?.isEmpty() == true && f.delete()
+                                 else f.delete()
+                        call.respondText(
+                            if (ok) """{"success":true}""" else """{"success":false,"error":"Delete failed"}""",
+                            ContentType.Application.Json)
+                    }
                 }
                 post("/upload") {
                     val rimeDir = File(context.filesDir, "rime")
@@ -133,22 +220,50 @@ class WirelessImportHelper(private val context: Context) {
                                 val contentLen = partEnd - contentStart
 
                 when {
+                    ImportManager.isPluginFile(name) ||
                     name.endsWith(".zip", ignoreCase = true) ||
                     name.endsWith(".tar.gz", ignoreCase = true) ||
                     name.endsWith(".tgz", ignoreCase = true) ||
-                    name.endsWith(".yaml") || name.endsWith(".schema.yaml") || name.endsWith(".dict.yaml") -> {
-                        // 先读到内存再调用统一 saveImportedFile（因 raf 需 seek 回内容起始）
-                        raf.seek(contentStart)
-                        val buf = ByteArray(contentLen.toInt())
-                        raf.readFully(buf)
-                        val result = SchemaManager.saveImportedFile(
-                            context, name, buf.inputStream(), autoEnable = false
-                        )
-                        saved = result.success
-                        _uploadResults.trySend(
-                            if (result.success) UploadResult(fileName = name, success = true)
-                            else UploadResult(fileName = name, success = false, error = "保存失败")
-                        )
+                    name.endsWith(".yaml") || name.endsWith(".schema.yaml") || name.endsWith(".dict.yaml") ||
+                    name.endsWith(".jpg", ignoreCase = true) || name.endsWith(".jpeg", ignoreCase = true) ||
+                    name.endsWith(".png", ignoreCase = true) ||
+                    name.endsWith(".ttf", ignoreCase = true) || name.endsWith(".otf", ignoreCase = true) ||
+                    name.endsWith(".woff", ignoreCase = true) || name.endsWith(".woff2", ignoreCase = true) -> {
+                        // 经临时文件传递给 ImportManager，避免大文件 ByteArray OOM
+                        val partFile = File.createTempFile("part_", "_$name", context.cacheDir)
+                        try {
+                            partFile.outputStream().use { out ->
+                                raf.channel.transferTo(contentStart, contentLen, out.channel)
+                            }
+                            when (val result = ImportManager.importFile(
+                                context, name, partFile, autoEnable = false
+                            )) {
+                                is ImportManager.ImportResult.Plugin -> {
+                                    PluginManager.loadEnabledPlugins()
+                                    saved = true
+                                    _uploadResults.trySend(UploadResult(fileName = name, success = true))
+                                }
+                                is ImportManager.ImportResult.Content -> {
+                                    saved = result.success
+                                    _uploadResults.trySend(
+                                        if (result.success) UploadResult(fileName = name, success = true)
+                                        else UploadResult(
+                                            fileName = name, success = false,
+                                            error = if (result.conflicts.isNotEmpty())
+                                                "${result.conflicts.first().fileName} 与已安装内容不同，已取消"
+                                            else "保存失败"
+                                        )
+                                    )
+                                }
+                                else -> {
+                                    _uploadResults.trySend(
+                                        UploadResult(fileName = name, success = false, error = "不支持的文件类型")
+                                    )
+                                }
+                            }
+                        } finally {
+                            partFile.delete()
+                        }
                     }
                     else -> {
                         _uploadResults.trySend(UploadResult(fileName = name, success = false, error = "不支持的文件类型"))
@@ -161,7 +276,7 @@ class WirelessImportHelper(private val context: Context) {
                         if (saved) {
                             call.respondText("""{"success":true,"file":"$lastName"}""", ContentType.Application.Json)
                         } else {
-                            call.respondText("""{"success":false,"error":"No valid file (supported: .yaml, .zip, .tar.gz)"}""",
+                            call.respondText("""{"success":false,"error":"No valid file (supported: .yaml, .zip, .tar.gz, .jpg/.png, .ttf/.otf/.woff/.woff2)"}""",
                                 ContentType.Application.Json, HttpStatusCode.BadRequest)
                         }
                     } finally {
@@ -179,6 +294,64 @@ class WirelessImportHelper(private val context: Context) {
         server?.stop(1000, 2000)
         server = null
         Log.i(TAG, "Server stopped")
+    }
+    /** 从 app assets 读取静态文件并响应，避免把前端源码硬编码进 Kotlin。 */
+    private suspend fun serveAsset(call: ApplicationCall, assetPath: String) {
+        val mime = when {
+            assetPath.endsWith(".html") -> ContentType.Text.Html
+            assetPath.endsWith(".js") -> ContentType.Text.JavaScript
+            assetPath.endsWith(".css") -> ContentType.Text.CSS
+            else -> ContentType.Application.OctetStream
+        }
+        val bytes = try {
+            context.assets.open(assetPath).use { it.readBytes() }
+        } catch (e: java.io.IOException) {
+            call.respond(HttpStatusCode.NotFound)
+            return
+        }
+        call.respondBytes(bytes, mime)
+    }
+
+    /** 解析前端传来的路径（filesDir 的绝对路径或其相对路径），阻止目录穿越（..）。 */
+    private fun safeResolve(rawPath: String?): File? {
+        if (rawPath.isNullOrBlank()) return null
+        val root = context.filesDir ?: return null
+        val normalized = rawPath.replace('\\', '/')
+        val candidate = File(normalized).canonicalFile
+        val rootCanonical = root.canonicalFile
+        return if (candidate.canonicalPath.startsWith(rootCanonical.canonicalPath)) {
+            candidate
+        } else {
+            // 回退：按相对 filesDir 解析
+            val rel = normalized.trimStart('/')
+            if (rel.split('/').any { it == ".." }) return null
+            val c2 = File(root, rel).canonicalFile
+            if (c2.canonicalPath.startsWith(rootCanonical.canonicalPath)) c2 else null
+        }
+    }
+
+    /** 递归构建数据目录树。 */
+    private fun buildNode(file: File): FileNode {        if (!file.isDirectory) {
+            return FileNode(
+                name = file.name,
+                path = file.path,
+                isDir = false,
+                size = file.length(),
+                mtime = file.lastModified(),
+            )
+        }
+        val children = file.listFiles()
+            ?.sortedWith(compareBy({ !it.isDirectory }, { it.name.lowercase() }))
+            ?.map { buildNode(it) }
+            .orEmpty()
+        return FileNode(
+            name = file.name,
+            path = file.path,
+            isDir = true,
+            size = children.sumOf { it.size },
+            mtime = file.lastModified(),
+            children = children,
+        )
     }
 
     val isRunning: Boolean get() = server != null
@@ -248,69 +421,5 @@ class WirelessImportHelper(private val context: Context) {
 
     companion object {
         private const val TAG = "WirelessImport"
-
-        private val HTML_PAGE = """<!DOCTYPE html>
-<html lang=zh>
-<head>
-<meta charset=utf-8>
-<meta name=viewport content='width=device-width,initial-scale=1'>
-<title>Xime 输入法 - 导入方案</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,sans-serif;background:#f5f5f7;display:flex;justify-content:center;padding:40px 16px}
-.card{background:#fff;border-radius:16px;padding:32px;width:100%;max-width:500px;box-shadow:0 2px 12px rgba(0,0,0,.08)}
-h1{font-size:22px;margin-bottom:8px;color:#1d1d1f}
-p{color:#666;margin-bottom:24px;font-size:14px}
-.drop-zone{border:2px dashed #c7c7cc;border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s}
-.drop-zone.dragover{border-color:#007aff;background:#e8f0fe}
-.drop-zone.has-file{border-color:#34c759;background:#e8f8ed}
-.drop-zone-icon{font-size:40px;margin-bottom:12px;color:#8e8e93}
-.drop-zone-text{color:#8e8e93;font-size:14px}
-.drop-zone-hint{color:#c7c7cc;font-size:12px;margin-top:8px}
-button{background:#007aff;color:#fff;border:none;border-radius:10px;padding:12px 24px;font-size:16px;cursor:pointer;width:100%;margin-top:16px}
-button:disabled{background:#c7c7cc;cursor:default}
-.file-list{margin-top:16px}
-.file-item{display:flex;justify-content:space-between;align-items:center;padding:8px 12px;background:#f5f5f7;border-radius:8px;margin-top:8px;font-size:13px;position:relative;overflow:hidden}
-.file-item .bar{position:absolute;left:0;top:0;height:100%;background:#b3d9ff;transition:width .2s;z-index:0}
-.file-item .z{position:relative;z-index:1;display:flex;justify-content:space-between;align-items:center;width:100%}
-.file-item .name{color:#1d1d1f}
-.file-item .s{font-size:12px;white-space:nowrap;margin-left:8px}
-.file-item .s.ok{color:#34c759}
-.file-item .s.fail{color:#ff3b30}
-.status-msg{margin-top:16px;padding:12px;border-radius:8px;text-align:center;font-size:14px;display:none}
-.status-msg.success{display:block;background:#e8f8ed;color:#34c759}
-.status-msg.error{display:block;background:#ffe8e8;color:#ff3b30}
-</style>
-</head>
-<body>
-<div class=card>
-<h1>导入输入方案</h1>
-<p>将方案压缩包或者 xime.custom.yaml 拖拽到下方，或点击选择</p>
-<div class=drop-zone id=dz onclick="document.getElementById('fi').click()">
-<div class=drop-zone-icon>&#128196;</div>
-<div class=drop-zone-text>拖拽文件到此处</div>
-<div class=drop-zone-hint>支持 xime.custom.yaml / .zip / .tar.gz</div>
-<div style='color:#8e8e93;font-size:12px;margin-top:12px;padding:10px;background:#f5f5f7;border-radius:8px;line-height:1.5'>💡 多文件或复杂目录结构，请打包为 .zip 或 .tar.gz 上传</div>
-</div>
-<input type=file id=fi accept='.yaml,.zip,.tar.gz,.tgz,.gram' multiple style='display:none'>
-<div id=fl></div>
-<button id=ub disabled onclick=up()>上传</button>
-<div id=sm></div>
-</div>
-<script>
-var dz=document.getElementById('dz'),fi=document.getElementById('fi'),fl=document.getElementById('fl'),ub=document.getElementById('ub'),sm=document.getElementById('sm'),fs=[]
-function ok(n){return n.endsWith('.schema.yaml')||n.endsWith('.dict.yaml')||n.endsWith('.yaml')||n.endsWith('.zip')||n.endsWith('.tar.gz')||n.endsWith('.tgz')}
-function r(){var h='';for(var i=0;i<fs.length;i++){h+='<div class=file-item><div class=bar id=b'+i+' style=width:0%></div><div class=z><span class=name>'+fs[i].name+'</span><span class=s id=s'+i+'>待上传</span></div></div>'}fl.innerHTML=h;ub.disabled=fs.length===0;dz.className='drop-zone'+(fs.length?' has-file':'')}
-dz.ondragover=function(e){e.preventDefault();dz.classList.add('dragover')}
-dz.ondragleave=function(){dz.classList.remove('dragover')}
-dz.ondrop=function(e){e.preventDefault();dz.classList.remove('dragover');add(Array.from(e.dataTransfer.files))}
-fi.onchange=function(){add(Array.from(fi.files))}
-function add(list){for(var i=0;i<list.length;i++){var f=list[i];if(ok(f.name)){var d=false;for(var j=0;j<fs.length;j++){if(fs[j].name===f.name){d=true;break}}if(!d)fs.push(f)}else{alert('不支持的类型: '+f.name)}}r()}
-function p(i,pct){var e=document.getElementById('b'+i);if(e){e.style.width=Math.min(pct,100)+'%'}var t=document.getElementById('s'+i);if(t){if(pct<100&&pct>=0){t.innerHTML='上传中 '+pct+'%'}else if(pct>=100){t.className='s ok';t.innerHTML='已完成'}}}
-function up(){if(fs.length===0)return;ub.disabled=true;ub.innerHTML='上传中...';sm.innerHTML='';sm.className='';var ok=0,fail=0,n=fs.length;function d(){if(ok+fail===n){sm.innerHTML=ok+'/'+n+' 个成功'+(fail?'，'+fail+' 个失败':'')+'，请在手机上部署';sm.className='status-msg'+(fail?' error':' success');if(fail===0)fs=[];r();ub.disabled=false;ub.innerHTML='上传'}}
-for(var i=0;i<fs.length;i++){(function(idx){var fd=new FormData();fd.append('file',fs[idx]);var x=new XMLHttpRequest();x.open('POST','/upload',true);x.upload.onprogress=function(e){if(e.lengthComputable)p(idx,Math.round(e.loaded/e.total*100))};x.onload=function(){try{var j=JSON.parse(x.responseText);if(j.success){ok++;p(idx,100)}else{fail++;p(idx,100)}}catch(e){fail++;p(idx,100)};d()};x.onerror=function(){fail++;p(idx,100);d()};p(idx,0);x.send(fd)})(i)}}
-</script>
-</body>
-</html>"""
     }
 }

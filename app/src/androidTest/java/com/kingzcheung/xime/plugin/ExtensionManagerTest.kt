@@ -2,7 +2,7 @@ package com.kingzcheung.xime.plugin
 
 import android.content.Context
 import androidx.test.platform.app.InstrumentationRegistry
-import com.kingzcheung.xime.ui.keyboard.EmojiData
+import com.kingzcheung.xime.data.EmojiData
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After

@@ -2,12 +2,12 @@ package com.kingzcheung.xime.ui.keyboard
 
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -28,6 +28,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -40,13 +41,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,9 +52,9 @@ import coil.request.ImageRequest
 import com.kingzcheung.xime.clipboard.ClipboardManager
 import com.kingzcheung.xime.data.EmojiCategory
 import com.kingzcheung.xime.data.EmojiData
+import com.kingzcheung.xime.data.RecentUsageStore
 import com.kingzcheung.xime.plugin.ExtensionManager
-import com.kingzcheung.xime.plugin.core.api.CategoryLayoutConfig
-import com.kingzcheung.xime.plugin.core.api.EmojiItem
+import com.kingzcheung.xime.plugin.core.api.PluginResultItem
 import com.kingzcheung.xime.plugin.core.api.PluginIcon
 
 @Composable
@@ -69,12 +66,19 @@ fun EmojiKeyboardLayout(
     textColor: Color,
     accentColor: Color,
     bottomPaddingDp: Int = 0,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** 分类 tab 切换的振动钩子（emoji 点击/删除经 onEmojiSelect 由调用方统一振动）。 */
+    onHapticFeedback: (() -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val clipboardManager = remember { ClipboardManager.getInstance(context) }
 
-    val isDarkTheme = textColor == Color(0xFFE8EAED)
+    // 图标按钮容器色：surface 与 primary 的混合色调（带种子色但不过于强烈）
+    val iconButtonContainer = androidx.compose.ui.graphics.lerp(
+        MaterialTheme.colorScheme.surface,
+        MaterialTheme.colorScheme.primary,
+        0.15f
+    )
 
     var selectedTopTabIndex by remember { mutableStateOf(0) }
     var selectedSubCategoryIndex by remember { mutableStateOf(0) }
@@ -83,6 +87,17 @@ fun EmojiKeyboardLayout(
     val pluginCategories = allCategories.filter { it.isPlugin }
     val builtinCategories = allCategories.filter { !it.isPlugin }
 
+    // 最近使用（LRU）：惰性排序——面板打开期间点按任何 emoji 只持久化使用记录，
+    // 不重排当前 UI（最近使用页位置稳定，便于连续输入）；面板关闭后组合状态丢弃，
+    // 下次打开重新读取持久化结果，即为最新顺序。
+    val recentEmojis = remember {
+        RecentUsageStore.get(context, RecentUsageStore.KEY_RECENT_EMOJIS)
+    }
+    val recentCategory = EmojiCategory(name = "最近使用", icon = "🕘", emojis = recentEmojis)
+    val displayBuiltinCategories = remember(builtinCategories) {
+        listOf(recentCategory) + builtinCategories
+    }
+
     // 按 pluginId 分组插件子分类（用于顶层 tab 和底部子分类 tab）
     val pluginGroupEntries = remember(pluginCategories) {
         pluginCategories.groupBy { it.pluginId ?: it.name }.entries.toList()
@@ -90,7 +105,7 @@ fun EmojiKeyboardLayout(
 
     // 当前顶层 tab 对应的子分类列表
     val currentSubCategories = if (selectedTopTabIndex == 0) {
-        builtinCategories
+        displayBuiltinCategories
     } else {
         val groupIdx = selectedTopTabIndex - 1
         if (groupIdx < pluginGroupEntries.size) pluginGroupEntries[groupIdx].value
@@ -99,36 +114,24 @@ fun EmojiKeyboardLayout(
 
     // 所有页面的扁平索引（用于动画过渡）
     val currentPageIndex = if (selectedTopTabIndex == 0) {
-        selectedSubCategoryIndex.coerceIn(0, maxOf(0, builtinCategories.lastIndex))
+        selectedSubCategoryIndex.coerceIn(0, maxOf(0, displayBuiltinCategories.lastIndex))
     } else {
         val groupIdx = selectedTopTabIndex - 1
-        val startPage = builtinCategories.size + pluginGroupEntries.take(groupIdx).sumOf { it.value.size }
+        val startPage = displayBuiltinCategories.size + pluginGroupEntries.take(groupIdx).sumOf { it.value.size }
         val groupSize = if (groupIdx < pluginGroupEntries.size) pluginGroupEntries[groupIdx].value.lastIndex else 0
         startPage + selectedSubCategoryIndex.coerceIn(0, maxOf(0, groupSize))
     }
-    val totalPages = builtinCategories.size + pluginCategories.size
+    val totalPages = displayBuiltinCategories.size + pluginCategories.size
 
-    val configuration = LocalConfiguration.current
-    val isLandscape =
-        configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    val emojiColumns = if (isLandscape) 15 else 8
-
-    // 当前显示的类别
-    val currentCategory =
-        if (selectedTopTabIndex == 0) {
-            if (builtinCategories.isNotEmpty()) builtinCategories[selectedSubCategoryIndex.coerceIn(0, builtinCategories.lastIndex)]
-            else EmojiData.categories.first()
-        } else {
-            val groupIdx = selectedTopTabIndex - 1
-            if (pluginGroupEntries.isNotEmpty() && groupIdx < pluginGroupEntries.size) {
-                val subCats = pluginGroupEntries[groupIdx].value
-                subCats[selectedSubCategoryIndex.coerceIn(0, subCats.lastIndex)]
-            } else EmojiData.categories.first()
-        }
+    // 布局按父容器真实宽度自适应（悬浮卡片/键盘收窄/分屏的容器宽 ≠ 屏幕宽），
+    // 不再读屏幕方向：宽容器（横屏全屏）用大边距与更多列，其余按竖屏形态
+    BoxWithConstraints(modifier = modifier) {
+        val isWide = maxWidth >= WIDE_CONTAINER_WIDTH
+        val emojiColumns = gridColumnCount(maxWidth, targetCellWidth = 50.dp, minColumns = 8, maxColumns = 15)
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
+        modifier = Modifier
+            .fillMaxSize()
             .background(backgroundColor)
     ) {
         // 导航区：返回按钮 + 顶层 Tab（Emoji / 插件）
@@ -136,7 +139,7 @@ fun EmojiKeyboardLayout(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
-                .padding(start = if (isLandscape) 50.dp else 8.dp, end = if (isLandscape) 50.dp else 8.dp),
+                .padding(start = if (isWide) 50.dp else 8.dp, end = if (isWide) 50.dp else 8.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Row(
@@ -148,8 +151,8 @@ fun EmojiKeyboardLayout(
                     modifier = Modifier
                         .size(28.dp)
                         .clip(CircleShape)
-                        .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
-                        .clickable { onBack() },
+                        .background(iconButtonContainer)
+                        .tolerantClick { onBack() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -167,7 +170,7 @@ fun EmojiKeyboardLayout(
                     modifier = Modifier
                         .height(28.dp)
                         .clip(RoundedCornerShape(13.dp))
-                        .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                        .background(iconButtonContainer)
                         .padding(2.dp)
                 ) {
                     Row(
@@ -183,7 +186,8 @@ fun EmojiKeyboardLayout(
                                     if (selectedTopTabIndex == 0) accentColor.copy(0.4f)
                                     else Color.Transparent
                                 )
-                                .clickable {
+                                .tolerantClick {
+                                    onHapticFeedback?.invoke()
                                     selectedTopTabIndex = 0
                                     selectedSubCategoryIndex = 0
                                 }
@@ -208,7 +212,8 @@ fun EmojiKeyboardLayout(
                                         if (selectedTopTabIndex == index + 1) accentColor.copy(0.4f)
                                         else Color.Transparent
                                     )
-                                    .clickable {
+                                    .tolerantClick {
+                                        onHapticFeedback?.invoke()
                                         selectedTopTabIndex = index + 1
                                         selectedSubCategoryIndex = 0
                                     }
@@ -254,7 +259,7 @@ fun EmojiKeyboardLayout(
         LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
             val page = pagerState.currentPage
             if (!pagerState.isScrollInProgress && page != currentPageIndex) {
-                if (page < builtinCategories.size) {
+                if (page < displayBuiltinCategories.size) {
                     selectedTopTabIndex = 0
                     selectedSubCategoryIndex = page
                 } else {
@@ -277,28 +282,38 @@ fun EmojiKeyboardLayout(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .padding(horizontal = if (isLandscape) 50.dp else 4.dp)
+                .padding(horizontal = if (isWide) 50.dp else 4.dp)
                 .padding(bottom = 4.dp)
         ) { pageIndex ->
-            val category = if (pageIndex < builtinCategories.size) {
-                builtinCategories[pageIndex]
+            val category = if (pageIndex < displayBuiltinCategories.size) {
+                displayBuiltinCategories[pageIndex]
             } else {
-                pluginCategories[pageIndex - builtinCategories.size]
+                pluginCategories[pageIndex - displayBuiltinCategories.size]
             }
 
-            val emojiColumns = if (isLandscape) 15 else 8
             if (category.isPlugin && category.emojiItems != null) {
-                val config = category.layoutConfig
-                val defaultCols = if (category.emojiItems.any { it.imageUrl != null }) 6 else emojiColumns
-                val columns = config?.columns ?: defaultCols
-                val itemHeightDp = config?.itemHeightDp
-                    ?: (if (category.emojiItems.any { it.imageUrl != null }) 60 else 40)
+                val hasImages = category.emojiItems.any { it.imageUrl != null }
+                val defaultCols = if (hasImages) 6 else emojiColumns
+                val columns = if (category.layoutColumns > 0) category.layoutColumns else defaultCols
+                val itemHeightDp = if (category.layoutItemHeightDp > 0) category.layoutItemHeightDp
+                    else (if (hasImages) 60 else 40)
 
+                // 行分组缓存：chunked 每次重组重算会产生大量临时列表，
+                // remember 后仅在数据/列数变化时重建
+                val emojiRows = remember(category.emojiItems, columns) {
+                    category.emojiItems.chunked(columns)
+                }
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    // 图片表情行间距与列间距(6dp)对齐；文本表情保持紧凑 2dp
+                    verticalArrangement = Arrangement.spacedBy(if (hasImages) 6.dp else 2.dp)
                 ) {
-                    items(category.emojiItems.chunked(columns)) { rowItems ->
+                    items(
+                        items = emojiRows,
+                        // 稳定 key 提升滚动复用率（id 在单分类内唯一）
+                        key = { row -> row.firstOrNull()?.id ?: row.hashCode() },
+                        contentType = { if (hasImages) "emoji-image-row" else "emoji-text-row" }
+                    ) { rowItems ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
@@ -317,7 +332,7 @@ fun EmojiKeyboardLayout(
                                             val success =
                                                 clipboardManager.copyImageToSystemClipboard(
                                                     imageUrl,
-                                                    item.displayText
+                                                    item.text
                                                 )
                                             if (success) {
                                                 Toast.makeText(
@@ -333,7 +348,7 @@ fun EmojiKeyboardLayout(
                                                 ).show()
                                             }
                                         } else {
-                                            onEmojiSelect(item.insertText)
+                                            onEmojiSelect(item.insertText ?: item.text)
                                         }
                                     },
                                     modifier = Modifier.weight(1f)
@@ -346,6 +361,18 @@ fun EmojiKeyboardLayout(
                             }
                         }
                     }
+                }
+            } else if (category.emojis.isEmpty()) {
+                // 最近使用为空时的占位提示
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "暂无最近使用",
+                        color = textColor.copy(alpha = 0.5f),
+                        fontSize = 14.sp
+                    )
                 }
             } else {
                 LazyColumn(
@@ -360,7 +387,15 @@ fun EmojiKeyboardLayout(
                             rowEmojis.forEach { emoji ->
                                 EmojiButton(
                                     emoji = emoji,
-                                    onClick = { onEmojiSelect(emoji) },
+                                    onClick = {
+                                        // 惰性排序：任何页（含最近使用页）点按都只持久化使用记录、
+                                        // 不重排当前 UI（最近使用页位置稳定，便于连续输入）；
+                                        // 面板关闭后下次打开重新读取 store，即为最新顺序。
+                                        RecentUsageStore.record(
+                                            context, RecentUsageStore.KEY_RECENT_EMOJIS, emoji
+                                        )
+                                        onEmojiSelect(emoji)
+                                    },
                                     modifier = Modifier.weight(1f)
                                 )
                             }
@@ -378,7 +413,7 @@ fun EmojiKeyboardLayout(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(44.dp)
-                .padding(horizontal = if (isLandscape) 50.dp else 4.dp, vertical = 0.dp),
+                .padding(horizontal = if (isWide) 50.dp else 4.dp, vertical = 0.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -397,7 +432,10 @@ fun EmojiKeyboardLayout(
                                 icon = category.name,
                                 pluginIcon = null,
                                 isSelected = index == selectedSubCategoryIndex,
-                                onClick = { selectedSubCategoryIndex = index },
+                                onClick = {
+                                    onHapticFeedback?.invoke()
+                                    selectedSubCategoryIndex = index
+                                },
                                 backgroundColor = backgroundColor,
                                 textColor = textColor,
                                 selectedBackgroundColor = accentColor,
@@ -408,7 +446,10 @@ fun EmojiKeyboardLayout(
                                 icon = category.icon,
                                 pluginIcon = category.pluginIcon,
                                 isSelected = index == selectedSubCategoryIndex,
-                                onClick = { selectedSubCategoryIndex = index },
+                                onClick = {
+                                    onHapticFeedback?.invoke()
+                                    selectedSubCategoryIndex = index
+                                },
                                 backgroundColor = backgroundColor,
                                 textColor = textColor,
                                 selectedBackgroundColor = accentColor,
@@ -432,7 +473,8 @@ fun EmojiKeyboardLayout(
         }
 
         // 底部留空
-        Spacer(modifier = Modifier.height(if (isLandscape) 15.dp else maxOf(bottomPaddingDp.dp, with(LocalDensity.current) { WindowInsets.navigationBars.getBottom(this).toDp() })))
+        Spacer(modifier = Modifier.height(if (isWide) 15.dp else bottomPaddingDp.dp))
+    }
     }
 }
 
@@ -459,7 +501,7 @@ fun EmojiCategoryTab(
                 else backgroundColor
             )
             .padding(horizontal = 5.dp)
-            .clickable(onClick = onClick),
+            .tolerantClick(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         if (pluginIcon?.assetName != null) {
@@ -494,7 +536,7 @@ fun EmojiButton(
         modifier = modifier
             .aspectRatio(1f)
             .clip(RoundedCornerShape(4.dp))
-            .clickable(onClick = onClick),
+            .tolerantClick(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Text(
@@ -507,7 +549,7 @@ fun EmojiButton(
 
 @Composable
 fun PluginEmojiButton(
-    emojiItem: EmojiItem,
+    emojiItem: PluginResultItem,
     onClick: () -> Unit,
     defaultHeightDp: Int = 40,
     backgroundColor: Color = Color.Unspecified,
@@ -515,10 +557,6 @@ fun PluginEmojiButton(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val config = emojiItem.displayConfig
-    val heightDp = config?.heightDp ?: defaultHeightDp
-    val aspectRatio = config?.aspectRatio
-
     val isLightTheme =
         (backgroundColor.red + backgroundColor.green + backgroundColor.blue) / 3f > 0.5f
     val buttonBackgroundColor = if (isLightTheme) Color.White.copy(alpha = 0.8f)
@@ -527,17 +565,14 @@ fun PluginEmojiButton(
 
     Box(
         modifier = modifier
-            .height(heightDp.dp)
+            .height(defaultHeightDp.dp)
             .then(
-                if (emojiItem.imageUrl != null && aspectRatio != null) Modifier.aspectRatio(
-                    aspectRatio
-                )
-                else if (emojiItem.imageUrl != null) Modifier.aspectRatio(1f)
+                if (emojiItem.imageUrl != null) Modifier.aspectRatio(1f)
                 else Modifier.fillMaxWidth()
             )
             .clip(RoundedCornerShape(4.dp))
             .background(buttonBackgroundColor)
-            .clickable(onClick = onClick)
+            .tolerantClick(onClick = onClick)
             .padding(horizontal = 4.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center
     ) {
@@ -545,9 +580,10 @@ fun PluginEmojiButton(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(emojiItem.imageUrl)
-                    .crossfade(true)
+                    // 高频网格滚动场景：关闭渐显动画，降低加载突发期的重绘压力
+                    .crossfade(false)
                     .build(),
-                contentDescription = emojiItem.displayText,
+                contentDescription = emojiItem.text,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(2.dp),
@@ -555,7 +591,7 @@ fun PluginEmojiButton(
             )
         } else {
             Text(
-                text = emojiItem.displayText,
+                text = emojiItem.text,
                 fontSize = 12.sp,
                 color = contentColor,
                 textAlign = TextAlign.Center,

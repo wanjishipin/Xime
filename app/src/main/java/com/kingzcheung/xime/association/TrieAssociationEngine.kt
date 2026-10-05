@@ -35,7 +35,6 @@ class TrieAssociationEngine {
     
     suspend fun initialize(context: Context): Boolean = withContext(Dispatchers.IO) {
         if (isInitialized) {
-            Log.d(TAG, "Already initialized")
             return@withContext true
         }
         
@@ -104,8 +103,6 @@ class TrieAssociationEngine {
             
             nodes!![i] = TrieNodeData(children, childIndices, word, freq)
         }
-        
-        Log.d(TAG, "Loaded binary trie: $nodeCount nodes, ${bytes.size} bytes")
     }
     
     private fun buildTrieFromText(context: Context) {
@@ -167,8 +164,6 @@ class TrieAssociationEngine {
         nodes = Array(tempChildren.size) { i ->
             TrieNodeData(tempChildren[i], tempIndices[i], tempWords[i], tempFreqs[i])
         }
-        
-        Log.d(TAG, "Built trie from text: ${nodes!!.size} nodes")
     }
     
     suspend fun predict(prefix: String, topK: Int = 5): List<AssociationCandidate> = withContext(Dispatchers.Default) {
@@ -222,6 +217,5 @@ class TrieAssociationEngine {
     fun release() {
         nodes = null
         isInitialized = false
-        Log.d(TAG, "Trie engine released")
     }
 }

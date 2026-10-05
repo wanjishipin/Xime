@@ -1,0 +1,166 @@
+# 无气泡版（只保留长按气泡）—— 基于内置 xime.yaml 生成，复制为 rime 用户目录下的
+# xime.custom.yaml 即生效（应用内可经「Rime 文件浏览器」导入 / 编辑）。
+#
+# 关掉两类运行时气泡（都是每个键自己的 bubble 开关，默认 true）：
+#   · swipe_up / swipe_down 的 bubble: false —— 上滑、下滑不再弹内容气泡；
+#   · tap 的 bubble: false —— 按下键帽不再弹放大气泡（此前 tap 的 bubble 字段解析了但没生效，现已支持）。
+# 不写这个文件 = 原来的行为。
+#
+# 不动的部分：
+#   · 长按气泡（长按候选只有气泡形态，没有开关）；
+#   · 键面静态提示与手势动作（上滑数字、下滑字根提示照常触发生效）；
+#   · 下滑字根那类是 display: bubble + action: none 的纯提示，关气泡后不再显示，
+#     想挪到键面上就把它改成 display: key（键面最多显示 2 个字）。
+#
+# 注意：按键配置是「键级覆盖」——写了一个键就要把它的绑定写全，所以行很长；
+# 内容全部来自内置 xime.yaml，仅把 bubble 改成 false。内置改了手势后重新生成即可。
+# 未覆盖：合并键布局里内建未定义的 mode_change 键、九键数字键（数字键按压气泡本来就是关的）。
+
+keyboard:
+  # ── qwerty ──
+  qwerty:
+    keys:
+      q: { tap: { label: "q", value: "q", display: "both", bubble: false }, swipe_up: { label: "1", value: "1", display: "both", bubble: false }, swipe_down: { label: "金 钅𠂊勺㐅 犭𱼀", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["q", "Q"] } }
+      w: { tap: { label: "w", value: "w", display: "both", bubble: false }, swipe_up: { label: "2", value: "2", display: "both", bubble: false }, swipe_down: { label: "人亻八癶", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["w", "W"] } }
+      e: { tap: { label: "e", value: "e", display: "both", bubble: false }, swipe_up: { label: "3", value: "3", display: "both", bubble: false }, swipe_down: { label: "月⺼彡乃用爫彡𧘇豕", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["e", "E", "è", "é", "ê", "ë"] } }
+      r: { tap: { label: "r", value: "r", display: "both", bubble: false }, swipe_up: { label: "4", value: "4", display: "both", bubble: false }, swipe_down: { label: "白手龵扌斤𰀪𠂆", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["r", "R"] } }
+      t: { tap: { label: "t", value: "t", display: "both", bubble: false }, swipe_up: { label: "5", value: "5", display: "both", bubble: false }, swipe_down: { label: "禾竹丿𠂉彳夂攵", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["t", "T"] } }
+      y: { tap: { label: "y", value: "y", display: "both", bubble: false }, swipe_up: { label: "6", value: "6", display: "both", bubble: false }, swipe_down: { label: "言讠文方广亠丶乀", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["y", "Y", "ÿ"] } }
+      u: { tap: { label: "u", value: "u", display: "both", bubble: false }, swipe_up: { label: "7", value: "7", display: "both", bubble: false }, swipe_down: { label: "立六辛冫丬门疒丷䒑", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["u", "U", "ù", "ú", "û", "ü"] } }
+      i: { tap: { label: "i", value: "i", display: "both", bubble: false }, swipe_up: { label: "8", value: "8", display: "both", bubble: false }, swipe_down: { label: "水氵小氺头𭕄⺌", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["i", "I", "ì", "í", "î", "ï"] } }
+      o: { tap: { label: "o", value: "o", display: "both", bubble: false }, swipe_up: { label: "9", value: "9", display: "both", bubble: false }, swipe_down: { label: "火灬米", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["o", "O", "ò", "ó", "ô", "õ", "ö", "ø"] } }
+      p: { tap: { label: "p", value: "p", display: "both", bubble: false }, swipe_up: { label: "0", value: "0", display: "both", bubble: false }, swipe_down: { label: "之辶冖宀廴礻", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["p", "P"] } }
+      a: { tap: { label: "a", value: "a", display: "both", bubble: false }, swipe_up: { label: "～", value: "~", bubble: false }, swipe_down: { label: "工匚戈艹廿龷七弋戈", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["a", "A", "à", "á", "â", "ã", "ä", "å", "æ"] } }
+      s: { tap: { label: "s", value: "s", display: "both", bubble: false }, swipe_up: { label: "／", value: "/", bubble: false }, swipe_down: { label: "木丁西", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["s", "S", "ß"] } }
+      d: { tap: { label: "d", value: "d", display: "both", bubble: false }, swipe_up: { label: "：", value: ":", bubble: false }, swipe_down: { label: "大犬三古龵镸石厂丆", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["d", "D"] } }
+      f: { tap: { label: "f", value: "f", display: "both", bubble: false }, swipe_up: { label: "；", value: ";", bubble: false }, swipe_down: { label: "土士二干十寸雨", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["f", "F"] } }
+      g: { tap: { label: "g", value: "g", display: "both", bubble: false }, swipe_up: { label: "“", value: "“", bubble: false }, swipe_down: { label: "王龶五一戋", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["g", "G"] } }
+      h: { tap: { label: "h", value: "h", display: "both", bubble: false }, swipe_up: { label: "”", value: "”", bubble: false }, swipe_down: { label: "目丨卜⺊上止龰", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["h", "H"] } }
+      j: { tap: { label: "j", value: "j", display: "both", bubble: false }, swipe_up: { label: "－", value: "-", bubble: false }, swipe_down: { label: "日曰早廾刂虫丿Ⅱ", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["j", "J"] } }
+      k: { tap: { label: "k", value: "k", display: "both", bubble: false }, swipe_up: { label: "（", value: "(", bubble: false }, swipe_down: { label: "口Ⅲ川", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["k", "K"] } }
+      l: { tap: { label: "l", value: "l", display: "both", bubble: false }, swipe_up: { label: "）", value: ")", bubble: false }, swipe_down: { label: "田甲囗四罒车皿力", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["l", "L"] } }
+      z: { tap: { label: "z", value: "z", display: "both", bubble: false }, swipe_up: { label: "＊", value: "*", bubble: false }, swipe_down: { label: "", action: "none", display: "key", bubble: false }, long_press: { display: "bubble", values: ["z", "Z"] } }
+      x: { tap: { label: "x", value: "x", display: "both", bubble: false }, swipe_up: { label: "＠", value: "@", bubble: false }, swipe_down: { label: "弓匕纟幺弓𠤎", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["x", "X"] } }
+      c: { tap: { label: "c", value: "c", display: "both", bubble: false }, swipe_up: { label: "、", value: "、", bubble: false }, swipe_down: { label: "又巴马厶龴ス", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["c", "C", "ç"] } }
+      v: { tap: { label: "v", value: "v", display: "both", bubble: false }, swipe_up: { label: "？", value: "?", bubble: false }, swipe_down: { label: "女刀九臼巛彐", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["v", "V"] } }
+      b: { tap: { label: "b", value: "b", display: "both", bubble: false }, swipe_up: { label: "！", value: "!", bubble: false }, swipe_down: { label: "子耳了也阝卩㔾凵", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["b", "B"] } }
+      n: { tap: { label: "n", value: "n", display: "both", bubble: false }, swipe_up: { label: "％", value: "%", bubble: false }, swipe_down: { label: "已己巳心忄羽乙𠃜", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["n", "N", "ñ"] } }
+      m: { tap: { label: "m", value: "m", display: "both", bubble: false }, swipe_up: { label: "＃", value: "#", bubble: false }, swipe_down: { label: "山由贝冂冎几", action: "none", display: "bubble", bubble: false }, long_press: { display: "bubble", values: ["m", "M"] } }
+      delete: { width: 1.4, tap: { action: "delete", bubble: false }, long_press: { values: [{ action: "delete", repeat: true }] }, swipe_up: { action: "clear_all", label: "上滑清空", bubble: false }, swipe_down: { action: "undo_clear", label: "下滑撤回", bubble: false }, swipe_left: { action: "command", value: "clear_composition" }, swipe_right: { action: "command", value: "clear_composition" } }
+      mode_change: { width: 1.2, tap: { action: "command", value: "mode_change", bubble: false }, long_press: { display: "bubble", values: [{ label: "number", action: "command", value: "mode_change_number" }, { label: "common_symbol", action: "command", value: "mode_change_common_symbol" }] } }
+      comma: { tap: { label: "，", value: ",", bubble: false }, swipe_up: { label: "。", value: ".", bubble: false }, long_press: { display: "bubble", values: [",", "."] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii", bubble: false }, long_press: { display: "bubble", values: [{ label: "选择输入法", action: "command", value: "show_ime_picker" }] } }
+
+  # ── qwerty_en ──
+  qwerty_en:
+    keys:
+      q: { tap: { label: "q", value: "q", display: "both", bubble: false }, swipe_up: { label: "1", value: "1", display: "both", bubble: false }, long_press: { display: "bubble", values: ["q", "Q"] } }
+      w: { tap: { label: "w", value: "w", display: "both", bubble: false }, swipe_up: { label: "2", value: "2", display: "both", bubble: false }, long_press: { display: "bubble", values: ["w", "W"] } }
+      e: { tap: { label: "e", value: "e", display: "both", bubble: false }, swipe_up: { label: "3", value: "3", display: "both", bubble: false }, long_press: { display: "bubble", values: ["e", "E"] } }
+      r: { tap: { label: "r", value: "r", display: "both", bubble: false }, swipe_up: { label: "4", value: "4", display: "both", bubble: false }, long_press: { display: "bubble", values: ["r", "R"] } }
+      t: { tap: { label: "t", value: "t", display: "both", bubble: false }, swipe_up: { label: "5", value: "5", display: "both", bubble: false }, long_press: { display: "bubble", values: ["t", "T"] } }
+      y: { tap: { label: "y", value: "y", display: "both", bubble: false }, swipe_up: { label: "6", value: "6", display: "both", bubble: false }, long_press: { display: "bubble", values: ["y", "Y"] } }
+      u: { tap: { label: "u", value: "u", display: "both", bubble: false }, swipe_up: { label: "7", value: "7", display: "both", bubble: false }, long_press: { display: "bubble", values: ["u", "U"] } }
+      i: { tap: { label: "i", value: "i", display: "both", bubble: false }, swipe_up: { label: "8", value: "8", display: "both", bubble: false }, long_press: { display: "bubble", values: ["i", "I"] } }
+      o: { tap: { label: "o", value: "o", display: "both", bubble: false }, swipe_up: { label: "9", value: "9", display: "both", bubble: false }, long_press: { display: "bubble", values: ["o", "O"] } }
+      p: { tap: { label: "p", value: "p", display: "both", bubble: false }, swipe_up: { label: "0", value: "0", display: "both", bubble: false }, long_press: { display: "bubble", values: ["p", "P"] } }
+      a: { tap: { label: "a", value: "a", display: "both", bubble: false }, swipe_up: { label: "~", value: "~", display: "both", bubble: false }, long_press: { display: "bubble", values: ["a", "A"] } }
+      s: { tap: { label: "s", value: "s", display: "both", bubble: false }, swipe_up: { label: "/", value: "/", display: "both", bubble: false }, long_press: { display: "bubble", values: ["s", "S"] } }
+      d: { tap: { label: "d", value: "d", display: "both", bubble: false }, swipe_up: { label: ":", value: ":", display: "both", bubble: false }, long_press: { display: "bubble", values: ["d", "D"] } }
+      f: { tap: { label: "f", value: "f", display: "both", bubble: false }, swipe_up: { label: ";", value: ";", display: "both", bubble: false }, long_press: { display: "bubble", values: ["f", "F"] } }
+      g: { tap: { label: "g", value: "g", display: "both", bubble: false }, swipe_up: { label: "\"", value: "\"", display: "both", bubble: false }, long_press: { display: "bubble", values: ["g", "G"] } }
+      h: { tap: { label: "h", value: "h", display: "both", bubble: false }, swipe_up: { label: "\"", value: "\"", display: "both", bubble: false }, long_press: { display: "bubble", values: ["h", "H"] } }
+      j: { tap: { label: "j", value: "j", display: "both", bubble: false }, swipe_up: { label: "-", value: "-", display: "both", bubble: false }, long_press: { display: "bubble", values: ["j", "J"] } }
+      k: { tap: { label: "k", value: "k", display: "both", bubble: false }, swipe_up: { label: "(", value: "(", display: "both", bubble: false }, long_press: { display: "bubble", values: ["k", "K"] } }
+      l: { tap: { label: "l", value: "l", display: "both", bubble: false }, swipe_up: { label: ")", value: ")", display: "both", bubble: false }, long_press: { display: "bubble", values: ["l", "L"] } }
+      z: { tap: { label: "z", value: "z", display: "both", bubble: false }, swipe_up: { label: "*", value: "*", display: "both", bubble: false }, long_press: { display: "bubble", values: ["z", "Z"] } }
+      x: { tap: { label: "x", value: "x", display: "both", bubble: false }, swipe_up: { label: "@", value: "@", display: "both", bubble: false }, long_press: { display: "bubble", values: ["x", "X"] } }
+      c: { tap: { label: "c", value: "c", display: "both", bubble: false }, swipe_up: { label: "、", value: "、", display: "both", bubble: false }, long_press: { display: "bubble", values: ["c", "C"] } }
+      v: { tap: { label: "v", value: "v", display: "both", bubble: false }, swipe_up: { label: "?", value: "?", display: "both", bubble: false }, long_press: { display: "bubble", values: ["v", "V"] } }
+      b: { tap: { label: "b", value: "b", display: "both", bubble: false }, swipe_up: { label: "!", value: "!", display: "both", bubble: false }, long_press: { display: "bubble", values: ["b", "B"] } }
+      n: { tap: { label: "n", value: "n", display: "both", bubble: false }, swipe_up: { label: "%", value: "%", display: "both", bubble: false }, long_press: { display: "bubble", values: ["n", "N"] } }
+      m: { tap: { label: "m", value: "m", display: "both", bubble: false }, swipe_up: { label: "#", value: "#", display: "both", bubble: false }, long_press: { display: "bubble", values: ["m", "M"] } }
+      delete: { width: 1.4, tap: { action: "delete", bubble: false }, long_press: { values: [{ action: "delete", repeat: true }] }, swipe_up: { action: "clear_all", label: "上滑清空", bubble: false }, swipe_down: { action: "undo_clear", label: "下滑撤回", bubble: false }, swipe_left: { action: "command", value: "clear_composition" }, swipe_right: { action: "command", value: "clear_composition" } }
+      mode_change: { width: 1.2, tap: { action: "command", value: "mode_change", bubble: false }, long_press: { display: "bubble", values: [{ label: "number", action: "command", value: "mode_change_number" }, { label: "common_symbol", action: "command", value: "mode_change_common_symbol" }] } }
+      comma: { tap: { label: ".", value: ".", bubble: false }, swipe_up: { label: ",", value: ",", bubble: false } }
+      earth: { tap: { label: "@language", action: "toggle_ascii", bubble: false }, long_press: { display: "bubble", values: [{ label: "选择输入法", action: "command", value: "show_ime_picker" }] } }
+
+  # ── qwerty_14 ──
+  qwerty_14:
+    keys:
+      qw: { tap: { label: "qw", value: "q", bubble: false }, swipe_up: { label: "1", value: "1", display: "both", bubble: false }, long_press: { display: "bubble", values: ["q", "w", "Q", "W"] } }
+      er: { tap: { label: "er", value: "e", bubble: false }, swipe_up: { label: "2", value: "2", display: "both", bubble: false }, long_press: { display: "bubble", values: ["e", "r", "E", "R"] } }
+      ty: { tap: { label: "ty", value: "t", bubble: false }, swipe_up: { label: "3", value: "3", display: "both", bubble: false }, long_press: { display: "bubble", values: ["t", "y", "T", "Y"] } }
+      ui: { tap: { label: "ui", value: "u", bubble: false }, swipe_up: { label: "4", value: "4", display: "both", bubble: false }, long_press: { display: "bubble", values: ["u", "i", "U", "I"] } }
+      op: { tap: { label: "op", value: "o", bubble: false }, swipe_up: { label: "5", value: "5", display: "both", bubble: false }, long_press: { display: "bubble", values: ["o", "p", "O", "P"] } }
+      as: { tap: { label: "as", value: "a", bubble: false }, swipe_up: { label: "6", value: "6", display: "both", bubble: false }, long_press: { display: "bubble", values: ["a", "s", "A", "S"] } }
+      df: { tap: { label: "df", value: "d", bubble: false }, swipe_up: { label: "7", value: "7", display: "both", bubble: false }, long_press: { display: "bubble", values: ["d", "f", "D", "F"] } }
+      gh: { tap: { label: "gh", value: "g", bubble: false }, swipe_up: { label: "8", value: "8", display: "both", bubble: false }, long_press: { display: "bubble", values: ["g", "h", "G", "H"] } }
+      jk: { tap: { label: "jk", value: "j", bubble: false }, swipe_up: { label: "9", value: "9", display: "both", bubble: false }, long_press: { display: "bubble", values: ["j", "k", "J", "K"] } }
+      l: { tap: { label: "l", value: "l", bubble: false }, swipe_up: { label: "0", value: "0", display: "both", bubble: false }, long_press: { display: "bubble", values: ["l", "L"] } }
+      zx: { tap: { label: "zx", value: "z", bubble: false }, swipe_up: { label: "*", value: "*", display: "both", bubble: false }, long_press: { display: "bubble", values: ["z", "x", "Z", "X"] } }
+      cv: { tap: { label: "cv", value: "c", bubble: false }, swipe_up: { label: "、", value: "、", display: "both", bubble: false }, long_press: { display: "bubble", values: ["c", "v", "C", "V"] } }
+      bn: { tap: { label: "bn", value: "b", bubble: false }, swipe_up: { label: "!", value: "!", display: "both", bubble: false }, long_press: { display: "bubble", values: ["b", "n", "B", "N"] } }
+      m: { tap: { label: "m", value: "m", bubble: false }, swipe_up: { label: "#", value: "#", display: "both", bubble: false }, long_press: { display: "bubble", values: ["m", "M"] } }
+      comma: { tap: { label: "，", value: ",", bubble: false }, swipe_up: { label: "。", value: ".", bubble: false }, long_press: { display: "bubble", values: [",", "."] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii", bubble: false }, long_press: { display: "bubble", values: [{ label: "选择输入法", action: "command", value: "show_ime_picker" }] } }
+
+  # ── qwerty_17 ──
+  qwerty_17:
+    keys:
+      q: { tap: { label: "q", value: "q", bubble: false }, swipe_up: { label: "1", value: "1", display: "both", bubble: false }, long_press: { display: "bubble", values: ["q", "Q"] } }
+      we: { tap: { label: "we", value: "w", bubble: false }, swipe_up: { label: "2", value: "2", display: "both", bubble: false }, long_press: { display: "bubble", values: ["w", "e", "W", "E"] } }
+      rt: { tap: { label: "rt", value: "r", bubble: false }, swipe_up: { label: "3", value: "3", display: "both", bubble: false }, long_press: { display: "bubble", values: ["r", "t", "R", "T"] } }
+      yu: { tap: { label: "yu", value: "y", bubble: false }, swipe_up: { label: "4", value: "4", display: "both", bubble: false }, long_press: { display: "bubble", values: ["y", "u", "Y", "U"] } }
+      i: { tap: { label: "i", value: "i", bubble: false }, swipe_up: { label: "5", value: "5", display: "both", bubble: false }, long_press: { display: "bubble", values: ["i", "I"] } }
+      op: { tap: { label: "op", value: "o", bubble: false }, swipe_up: { label: "6", value: "6", display: "both", bubble: false }, long_press: { display: "bubble", values: ["o", "p", "O", "P"] } }
+      a: { tap: { label: "a", value: "a", bubble: false }, swipe_up: { label: "7", value: "7", display: "both", bubble: false }, long_press: { display: "bubble", values: ["a", "A"] } }
+      sd: { tap: { label: "sd", value: "s", bubble: false }, swipe_up: { label: "8", value: "8", display: "both", bubble: false }, long_press: { display: "bubble", values: ["s", "d", "S", "D"] } }
+      fg: { tap: { label: "fg", value: "f", bubble: false }, swipe_up: { label: "9", value: "9", display: "both", bubble: false }, long_press: { display: "bubble", values: ["f", "g", "F", "G"] } }
+      h: { tap: { label: "h", value: "h", bubble: false }, swipe_up: { label: "0", value: "0", display: "both", bubble: false }, long_press: { display: "bubble", values: ["h", "H"] } }
+      jk: { tap: { label: "jk", value: "j", bubble: false }, swipe_up: { label: "-", value: "-", display: "both", bubble: false }, long_press: { display: "bubble", values: ["j", "k", "J", "K"] } }
+      l: { tap: { label: "l", value: "l", bubble: false }, swipe_up: { label: ")", value: ")", display: "both", bubble: false }, long_press: { display: "bubble", values: ["l", "L"] } }
+      z: { tap: { label: "z", value: "z", bubble: false }, swipe_up: { label: "*", value: "*", display: "both", bubble: false }, long_press: { display: "bubble", values: ["z", "Z"] } }
+      xc: { tap: { label: "xc", value: "x", bubble: false }, swipe_up: { label: "@", value: "@", display: "both", bubble: false }, long_press: { display: "bubble", values: ["x", "c", "X", "C"] } }
+      v: { tap: { label: "v", value: "v", bubble: false }, swipe_up: { label: "?", value: "?", display: "both", bubble: false }, long_press: { display: "bubble", values: ["v", "V"] } }
+      bn: { tap: { label: "bn", value: "b", bubble: false }, swipe_up: { label: "!", value: "!", display: "both", bubble: false }, long_press: { display: "bubble", values: ["b", "n", "B", "N"] } }
+      m: { tap: { label: "m", value: "m", bubble: false }, swipe_up: { label: "#", value: "#", display: "both", bubble: false }, long_press: { display: "bubble", values: ["m", "M"] } }
+      comma: { tap: { label: "，", value: ",", bubble: false }, swipe_up: { label: "。", value: ".", bubble: false }, long_press: { display: "bubble", values: [",", "."] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii", bubble: false }, long_press: { display: "bubble", values: [{ label: "选择输入法", action: "command", value: "show_ime_picker" }] } }
+
+  # ── qwerty_18 ──
+  qwerty_18:
+    keys:
+      q: { tap: { label: "q", value: "q", bubble: false }, swipe_up: { label: "1", value: "1", display: "both", bubble: false }, long_press: { display: "bubble", values: ["q", "Q"] } }
+      we: { tap: { label: "we", value: "w", bubble: false }, swipe_up: { label: "2", value: "2", display: "both", bubble: false }, long_press: { display: "bubble", values: ["w", "e", "W", "E"] } }
+      rt: { tap: { label: "rt", value: "r", bubble: false }, swipe_up: { label: "3", value: "3", display: "both", bubble: false }, long_press: { display: "bubble", values: ["r", "t", "R", "T"] } }
+      y: { tap: { label: "y", value: "y", bubble: false }, swipe_up: { label: "4", value: "4", display: "both", bubble: false }, long_press: { display: "bubble", values: ["y", "Y"] } }
+      u: { tap: { label: "u", value: "u", bubble: false }, swipe_up: { label: "5", value: "5", display: "both", bubble: false }, long_press: { display: "bubble", values: ["u", "U"] } }
+      io: { tap: { label: "io", value: "i", bubble: false }, swipe_up: { label: "6", value: "6", display: "both", bubble: false }, long_press: { display: "bubble", values: ["i", "o", "I", "O"] } }
+      p: { tap: { label: "p", value: "p", bubble: false }, swipe_up: { label: "7", value: "7", display: "both", bubble: false }, long_press: { display: "bubble", values: ["p", "P"] } }
+      a: { tap: { label: "a", value: "a", bubble: false }, swipe_up: { label: "8", value: "8", display: "both", bubble: false }, long_press: { display: "bubble", values: ["a", "A"] } }
+      sd: { tap: { label: "sd", value: "s", bubble: false }, swipe_up: { label: "9", value: "9", display: "both", bubble: false }, long_press: { display: "bubble", values: ["s", "d", "S", "D"] } }
+      fg: { tap: { label: "fg", value: "f", bubble: false }, swipe_up: { label: "0", value: "0", display: "both", bubble: false }, long_press: { display: "bubble", values: ["f", "g", "F", "G"] } }
+      h: { tap: { label: "h", value: "h", bubble: false }, swipe_up: { label: "”", value: "”", display: "both", bubble: false }, long_press: { display: "bubble", values: ["h", "H"] } }
+      jk: { tap: { label: "jk", value: "j", bubble: false }, swipe_up: { label: "-", value: "-", display: "both", bubble: false }, long_press: { display: "bubble", values: ["j", "k", "J", "K"] } }
+      l: { tap: { label: "l", value: "l", bubble: false }, swipe_up: { label: ")", value: ")", display: "both", bubble: false }, long_press: { display: "bubble", values: ["l", "L"] } }
+      z: { tap: { label: "z", value: "z", bubble: false }, swipe_up: { label: "*", value: "*", display: "both", bubble: false }, long_press: { display: "bubble", values: ["z", "Z"] } }
+      xc: { tap: { label: "xc", value: "x", bubble: false }, swipe_up: { label: "@", value: "@", display: "both", bubble: false }, long_press: { display: "bubble", values: ["x", "c", "X", "C"] } }
+      v: { tap: { label: "v", value: "v", bubble: false }, swipe_up: { label: "?", value: "?", display: "both", bubble: false }, long_press: { display: "bubble", values: ["v", "V"] } }
+      bn: { tap: { label: "bn", value: "b", bubble: false }, swipe_up: { label: "!", value: "!", display: "both", bubble: false }, long_press: { display: "bubble", values: ["b", "n", "B", "N"] } }
+      m: { tap: { label: "m", value: "m", bubble: false }, swipe_up: { label: "#", value: "#", display: "both", bubble: false }, long_press: { display: "bubble", values: ["m", "M"] } }
+      comma: { tap: { label: "，", value: ",", bubble: false }, swipe_up: { label: "。", value: ".", bubble: false }, long_press: { display: "bubble", values: [",", "."] } }
+      earth: { tap: { label: "@language", action: "toggle_ascii", bubble: false }, long_press: { display: "bubble", values: [{ label: "选择输入法", action: "command", value: "show_ime_picker" }] } }
+
+  # ── stroke ──
+  stroke:
+    keys:
+      "一": { swipe_up: { value: "1", display: "key", bubble: false }, tap: { action: null, bubble: false } }
+      "丨": { swipe_up: { value: "2", display: "key", bubble: false }, tap: { action: null, bubble: false } }
+      "丿": { swipe_up: { value: "3", display: "key", bubble: false }, tap: { action: null, bubble: false } }
+      "丶": { swipe_up: { value: "4", display: "key", bubble: false }, tap: { action: null, bubble: false } }
+      "乛": { swipe_up: { value: "5", display: "key", bubble: false }, tap: { action: null, bubble: false } }
+      "*": { swipe_up: { value: "6", display: "key", bubble: false }, tap: { action: null, bubble: false } }
+      "分词": { swipe_up: { value: "7", display: "key", bubble: false }, tap: { action: null, bubble: false } }
+      "，": { swipe_up: { value: "8", display: "key", bubble: false }, tap: { action: null, bubble: false } }
+      "英": { swipe_up: { value: "9", display: "key", bubble: false }, tap: { action: null, bubble: false } }

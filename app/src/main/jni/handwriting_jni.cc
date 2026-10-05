@@ -14,6 +14,10 @@
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 
+// 每次推理的输出维度/候选数日志默认关闭（叠写一笔触发多次推理，正常时纯刷屏）；
+// 需要排查时在 CMakeLists 的目标上加 -DXIME_HW_VERBOSE 重新编译即可打开
+// #define XIME_HW_VERBOSE
+
 static OrtSession* g_hw_session = nullptr;
 static OrtAllocator* g_hw_allocator = nullptr;
 static std::mutex g_hw_mutex;
@@ -155,15 +159,6 @@ Java_com_kingzcheung_xime_handwriting_HandwritingNativeEngine_nativeInitialize(
         return JNI_FALSE;
     }
 
-    status = api->SetIntraOpNumThreads(session_options, 2);
-    if (status) {
-        LOGE("Failed to set intra op num threads: %s", api->GetErrorMessage(status));
-        api->ReleaseStatus(status);
-        api->ReleaseSessionOptions(session_options);
-        env->ReleaseStringUTFChars(model_path, modelPathStr);
-        return JNI_FALSE;
-    }
-
     status = api->DisableCpuMemArena(session_options);
     if (status) {
         LOGE("Failed to disable CPU mem arena: %s", api->GetErrorMessage(status));
@@ -172,6 +167,8 @@ Java_com_kingzcheung_xime_handwriting_HandwritingNativeEngine_nativeInitialize(
         env->ReleaseStringUTFChars(model_path, modelPathStr);
         return JNI_FALSE;
     }
+
+    OnnxTryEnableNnapi(session_options);
 
     status = api->CreateSession(ort_env, modelPathStr, session_options, &g_hw_session);
     api->ReleaseSessionOptions(session_options);
@@ -309,10 +306,12 @@ Java_com_kingzcheung_xime_handwriting_HandwritingNativeEngine_nativePredict(
         return nullptr;
     }
 
+#ifdef XIME_HW_VERBOSE
     LOGD("Output shape: [%ld]", (long)output_dims[0]);
     for (size_t i = 0; i < dims_count; i++) {
         LOGD("  dim[%zu] = %ld", i, (long)output_dims[i]);
     }
+#endif
 
     int64_t num_classes = output_dims[dims_count - 1];
 
@@ -370,7 +369,9 @@ Java_com_kingzcheung_xime_handwriting_HandwritingNativeEngine_nativePredict(
 
     api->ReleaseValue(output_tensor);
 
+#ifdef XIME_HW_VERBOSE
     LOGD("Predicted %lld candidates", (long long)k);
+#endif
     return result;
 }
 

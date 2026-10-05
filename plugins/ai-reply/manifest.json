@@ -1,0 +1,51 @@
+// =============================================
+// AI 智能回复插件元数据（QuickJS/TS 版；宽松 JSON：支持 // 注释与尾逗号）
+// =============================================
+{
+  // 插件唯一标识
+  "id": "com.kingzcheung.xime.plugin.ai_reply",
+
+  // 插件名称与描述
+  "name": "AI 智能回复",
+  "icon": "应",
+  "description": "根据对方消息生成 3~5 条回复候选，点选上屏。支持任意 OpenAI 兼容的 chat/completions 接口。",
+
+  // 插件版本
+  "version": "1.0.0",
+
+  // 插件分类：tool 工具类（多开）
+  "type": "tool",
+  "activation": "multi",
+
+  // 入口脚本（xime-plugin 编译产物）
+  "entry": "main.js",
+
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": ["android"],
+
+  // 宿主最低版本要求（工具栏按钮与工具面板契约）
+  "minHostVersion": "3.0.0",
+
+  // 工具栏入口：点击打开该插件的通用面板
+  "toolbarButtons": [
+    {
+      "id": "com.kingzcheung.xime.plugin.ai_reply:open",
+      "label": "AI 回复",
+      "action": "open_panel"
+    }
+  ],
+
+  // 网络访问：接受用户自定义服务器地址（baseUrl 域名自动获得联网授权）
+  "network": {
+    "allowCustomHosts": true
+  },
+
+  // 能力声明
+  "capabilities": {
+    "tool": {
+      // passive：宿主渲染全屏纯展示面板（InfoPanel，与表情/符号同级），
+      // ui 节点树承载"生成"入口，items 候选在面板内点选上屏（原 select 全屏结果页已并入）
+      "display": "passive"
+    }
+  }
+}

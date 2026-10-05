@@ -1,7 +1,6 @@
 package com.kingzcheung.xime.ui.keyboard
 
 import android.os.Build
-import android.util.Log
 import android.util.Size
 import android.view.inputmethod.InlineSuggestion
 import android.widget.inline.InlineContentView
@@ -12,20 +11,15 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import java.util.concurrent.Executors
-import java.util.function.Consumer
-
-private const val TAG = "InlineSuggestionView"
+import com.kingzcheung.xime.service.InlineSuggestionViews
 
 @Composable
 fun InlineSuggestionView(
@@ -42,28 +36,24 @@ fun InlineSuggestionView(
         val targetWidthPx = with(density) { maxWidth.toPx().toInt() }
         val targetHeightPx = with(density) { maxHeight.toPx().toInt() }
 
-        var inflatedView by remember { mutableStateOf<InlineContentView?>(null) }
-
-        androidx.compose.runtime.LaunchedEffect(suggestion, targetWidthPx, targetHeightPx) {
-            Log.d(TAG, "inflating suggestion at ${targetWidthPx}x${targetHeightPx}px")
-            val executor = Executors.newSingleThreadExecutor()
-            realSuggestion.inflate(
+        // InlineSuggestion#inflate 对同一对象只能调用一次（平台限制），
+        // 已 inflate 的结果由进程级缓存保存，避免重组/进出组合时重复 inflate 崩溃。
+        LaunchedEffect(realSuggestion) {
+            InlineSuggestionViews.inflate(
+                realSuggestion,
                 context,
                 Size(targetWidthPx, targetHeightPx),
-                executor,
-                Consumer { contentView ->
-                    Log.d(TAG, "inflate callback fired: $contentView")
-                    inflatedView = contentView
-                },
             )
         }
 
-        val view = inflatedView
+        val view = InlineSuggestionViews.views[realSuggestion]
         if (view != null) {
-            AndroidView(
-                factory = { view },
-                modifier = Modifier.matchParentSize(),
-            )
+            key(System.identityHashCode(realSuggestion)) {
+                AndroidView(
+                    factory = { view },
+                    modifier = Modifier.matchParentSize(),
+                )
+            }
         }
     }
 }

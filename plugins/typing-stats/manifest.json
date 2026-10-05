@@ -1,0 +1,41 @@
+// =============================================
+// 输入统计插件（演示下行事件：input_changed / text_committed）
+// =============================================
+{
+  "id": "com.kingzcheung.xime.plugin.typing_stats",
+
+  "name": "输入统计",
+  "icon": "统",
+  "description": "统计打字量（今日/累计字数、提交次数）。基于宿主下行事件，无网络访问。",
+
+  // 0.3.0：text_committed 事件契约扩展——payload 新增 is_paste（粘贴性质上屏标记），
+  // 本插件据此不计粘贴字数；依赖宿主 2.8.1 投递该字段，低于此版本禁用本插件。
+  "version": "1.0.0",
+
+  "type": "tool",
+  "activation": "multi",
+
+  "entry": "main.js",
+
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": ["android"],
+
+  "minHostVersion": "3.0.0",
+
+  // 工具栏入口
+  "toolbarButtons": [
+    {
+      "id": "com.kingzcheung.xime.plugin.typing_stats:open",
+      "label": "输入统计",
+      "action": "open_panel"
+    }
+  ],
+
+  // 无 network 声明：本插件不联网
+
+  // 能力声明：订阅下行事件（宿主仅对声明了事件的插件建立投递通道）
+  "capabilities": {
+    "tool": { "display": "passive" },
+    "events": ["input_changed", "text_committed"]
+  }
+}

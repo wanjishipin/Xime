@@ -1,16 +1,15 @@
 package com.kingzcheung.xime.plugin.core.runtime
 
 import android.app.Application
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import android.util.Log
 import com.kingzcheung.xime.plugin.core.api.IPluginEntryClass
+import com.kingzcheung.xime.plugin.core.config.NoopPluginConfigStore
+import com.kingzcheung.xime.plugin.core.config.PluginConfigStore
 import com.kingzcheung.xime.plugin.core.model.InitState
 import com.kingzcheung.xime.plugin.core.model.PluginFrameworkContext
 import com.kingzcheung.xime.plugin.core.model.PluginInfo
+import com.kingzcheung.xime.plugin.core.model.PluginSource
 import com.kingzcheung.xime.plugin.core.runtime.loader.LoadedPluginInfo
-import com.kingzcheung.xime.plugin.core.runtime.proxy.ProxyManager
 import com.kingzcheung.xime.plugin.core.security.crash.PluginCrashHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,6 +23,54 @@ import java.io.File
 object PluginManager {
 
     private const val TAG = "PluginManager"
+
+    fun interface PluginConfigStoreFactory {
+        fun create(application: Application, pluginId: String): PluginConfigStore
+    }
+
+    @Volatile
+    var configStoreFactory: PluginConfigStoreFactory =
+        PluginConfigStoreFactory { _, _ -> NoopPluginConfigStore }
+
+    /**
+     * 宿主 WebSocket 白名单 API 提供者（app 层注入，按插件创建以便做域名/授权校验）。
+     * 工厂参数为插件 id，宿主据此查询插件声明的域名与用户授权。
+     */
+    @Volatile
+    var wsHostApiFactory: ((pluginId: String) -> com.kingzcheung.xime.plugin.core.js.ws.WsHostApi)? = null
+
+    /**
+     * 宿主 HTTP 白名单 API 提供者（app 层注入，剪贴板同步等插件使用）。
+     * 工厂参数为插件 id，宿主据此校验域名白名单与用户授权。
+     */
+    @Volatile
+    var httpHostApiFactory: ((pluginId: String) -> com.kingzcheung.xime.plugin.core.js.http.HttpHostApi)? = null
+
+    /**
+     * 宿主 SSE 流式 HTTP 白名单 API 提供者（app 层注入，AI 长文本流式生成等插件使用）。
+     * 工厂参数为插件 id，宿主据此校验域名白名单与用户授权（同 httpHostApiFactory）。
+     */
+    @Volatile
+    var sseHostApiFactory: ((pluginId: String) -> com.kingzcheung.xime.plugin.core.js.http.SseHostApi)? = null
+
+    /** 宿主加密/编码原语提供者（S3 SigV4 签名等，app 层注入）。 */
+    @Volatile
+    var cryptoHostApiFactory: (() -> com.kingzcheung.xime.plugin.core.js.crypto.CryptoHostApi)? = null
+
+    /**
+     * 宿主快捷发送只读 API 提供者（app 层注入，读 ClipboardManager 内存缓存）。
+     * 仅当插件 manifest 声明 `capabilities.quick_send_read: true` 时，
+     * 生命周期管理器才会调用本工厂（未声明插件拿不到 host.quickSend）。
+     */
+    @Volatile
+    var quickSendHostApiFactory: ((pluginId: String) -> com.kingzcheung.xime.plugin.core.js.QuickSendHostApi)? = null
+
+    /**
+     * 宿主剪贴板只读 API 提供者（app 层注入，读系统剪贴板）。
+     * 仅当插件 manifest 声明 `capabilities.clipboard_read: true` 时注入。
+     */
+    @Volatile
+    var clipboardHostApiFactory: ((pluginId: String) -> com.kingzcheung.xime.plugin.core.js.ClipboardHostApi)? = null
 
     private var frameworkContext: PluginFrameworkContext? = null
     private val _loadedPluginsFlow = MutableStateFlow<Map<String, LoadedPluginInfo>>(emptyMap())
@@ -44,14 +91,6 @@ object PluginManager {
     val installerManager: com.kingzcheung.xime.plugin.core.runtime.installer.InstallerManager
         get() = requireContext().installerManager
 
-    val resourcesManager: com.kingzcheung.xime.plugin.core.runtime.resource.PluginResourcesManager
-        get() = requireContext().resourcesManager
-
-    val proxyManager: ProxyManager
-        get() = requireContext().proxyManager
-
-    internal fun getClassIndex(): Map<String, String> = requireContext().classIndex
-
     private val managerScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
 
     private fun requireContext(): PluginFrameworkContext {
@@ -62,7 +101,6 @@ object PluginManager {
     @Synchronized
     fun initialize(
         context: Application,
-        hostProviderAuthority: String? = null,
         onSetup: (suspend () -> Unit)? = null
     ) {
         if (frameworkContext != null && frameworkContext?.initState?.value != InitState.NOT_INITIALIZED) {
@@ -73,10 +111,6 @@ object PluginManager {
         Log.d(TAG, "Starting initialization...")
         PluginCrashHandler.initialize(context)
         frameworkContext = PluginFrameworkContext(context)
-        
-        hostProviderAuthority?.let {
-            requireContext().proxyManager.setHostProviderAuthority(it)
-        }
         
         requireContext().initState.value = InitState.INITIALIZING
 
@@ -127,20 +161,6 @@ object PluginManager {
         return result
     }
 
-    fun <T : Any> getInterface(interfaceClass: Class<T>, className: String): T? {
-        try {
-            val targetPluginId = requireContext().classIndex[className]
-            if (targetPluginId == null) return null
-
-            val loadedPlugin = requireContext().loadedPlugins[targetPluginId]
-            if (loadedPlugin == null) return null
-
-            return loadedPlugin.classLoader.getInterface(interfaceClass, className)
-        } catch (e: Exception) {
-            return null
-        }
-    }
-
     fun getPluginInstance(pluginId: String): IPluginEntryClass? {
         return requireContext().pluginInstances[pluginId]
     }
@@ -154,45 +174,68 @@ object PluginManager {
     }
 
     fun getAllInstallPlugins(): List<PluginInfo> {
-        return requireContext().xmlManager.getAllPlugins()
+        return requireContext().pluginRegistry.getAllPlugins()
     }
 
-    fun getPluginDependentsChain(pluginId: String): List<String> {
-        return requireContext().dependencyManager.findDependentsRecursive(pluginId)
+    /**
+     * 向所有运行实例广播下行事件。
+     * 实际投递取决于插件是否声明了对应 `capabilities.events`，未声明/未启用通道的实例静默跳过。
+     *
+     * @return 成功投递（进入通道）的实例数。
+     */
+    fun dispatchEvent(event: com.kingzcheung.xime.plugin.core.js.PluginEvent): Int {
+        val context = frameworkContext ?: return 0
+        var delivered = 0
+        for ((_, loaded) in context.loadedPlugins) {
+            val runtime = loaded.script ?: continue
+            if (runtime.dispatchEvent(event)) delivered++
+        }
+        return delivered
     }
 
-    fun getPluginDependenciesChain(pluginId: String): List<String> {
-        return requireContext().dependencyManager.findDependenciesRecursive(pluginId)
+    /** 判断插件是否兼容当前主应用版本（宿主侧读取自身版本）。 */
+    fun isPluginHostCompatible(plugin: PluginInfo): Boolean {
+        val hostVersion = com.kingzcheung.xime.plugin.core.util.VersionUtil.getHostVersionName(requireContext().application)
+        return com.kingzcheung.xime.plugin.core.util.VersionUtil.isHostSupported(
+            hostVersion ?: "", plugin.minHostVersion, plugin.maxHostVersion
+        )
     }
 
     suspend fun setPluginEnabled(pluginId: String, enabled: Boolean): Boolean {
         return try {
-            val pluginInfo = requireContext().xmlManager.getPluginById(pluginId) ?: return false
+            val pluginInfo = requireContext().pluginRegistry.getPluginById(pluginId) ?: return false
             if (pluginInfo.enabled == enabled) return true
             val updatedPluginInfo = pluginInfo.copy(enabled = enabled)
-            requireContext().xmlManager.updatePlugin(updatedPluginInfo)
-            requireContext().xmlManager.flushToDisk()
+            requireContext().pluginRegistry.updatePlugin(updatedPluginInfo)
+            requireContext().pluginRegistry.flushToDisk()
+            if (!enabled) {
+                // 禁用时同步卸载运行中实例，避免插件继续后台运行（网络会话/剪贴板监听）
+                unloadPlugin(pluginId)
+            }
             true
         } catch (e: Exception) {
             false
         }
     }
 
-    suspend fun installPluginFromAssets(assetsPath: String, forceOverwrite: Boolean = true): Boolean {
-        Log.d(TAG, "installPluginFromAssets: $assetsPath")
+    suspend fun installPluginFromAssets(
+        assetsPath: String,
+        forceOverwrite: Boolean = true,
+        onlyIfNewer: Boolean = false,
+    ): Boolean {
         return try {
             val context = requireContext().application
-            val pluginFile = File(context.cacheDir, "temp_plugin.apk")
+            val pluginFile = File(context.cacheDir, "temp_plugin.xipk")
             context.assets.open(assetsPath).use { input ->
                 pluginFile.outputStream().use { output ->
                     input.copyTo(output)
                 }
             }
-            val result = installerManager.installPlugin(pluginFile, forceOverwrite)
+            val result = installerManager.installPlugin(
+                pluginFile, forceOverwrite, onlyIfNewer = onlyIfNewer, source = PluginSource.ASSET
+            )
             pluginFile.delete()
-            val success = result is com.kingzcheung.xime.plugin.core.runtime.installer.InstallerManager.InstallResult.Success
-            Log.d(TAG, "installPluginFromAssets result: $success")
-            success
+            result is com.kingzcheung.xime.plugin.core.runtime.installer.InstallerManager.InstallResult.Success
         } catch (e: Exception) {
             Log.e(TAG, "installPluginFromAssets failed", e)
             false
@@ -209,12 +252,12 @@ object PluginManager {
             Log.d(TAG, "Found ${assetFiles.size} files in assets/$assetsDir: ${assetFiles.toList()}")
             
             for (fileName in assetFiles) {
-                if (fileName.endsWith(".apk")) {
+                if (fileName.endsWith(".xipk")) {
                     val assetPath = "$assetsDir/$fileName"
-                    Log.d(TAG, "Installing: $assetPath")
-                    if (installPluginFromAssets(assetPath, forceOverwrite = true)) {
+                    // 内置同步加版本守卫：不降级覆盖（保护 dev 热更新）
+                    if (installPluginFromAssets(assetPath, forceOverwrite = true, onlyIfNewer = true)) {
                         installedCount++
-                        Log.d(TAG, "Successfully installed: $fileName")
+                        Log.d(TAG, "Installed: $fileName")
                     } else {
                         Log.w(TAG, "Failed to install: $fileName")
                     }
@@ -226,62 +269,5 @@ object PluginManager {
 
         Log.d(TAG, "Total installed: $installedCount")
         return installedCount
-    }
-    
-    suspend fun scanAndInstallSystemPlugins(): Int {
-        Log.d(TAG, "scanAndInstallSystemPlugins")
-        
-        // 先清理已卸载的插件（APK 不存在）
-        cleanupUninstalledPlugins()
-        
-        return installerManager.scanAndInstallSystemPlugins()
-    }
-    
-    private suspend fun cleanupUninstalledPlugins() {
-        Log.d(TAG, "cleanupUninstalledPlugins")
-        val context = requireContext().application
-        val allPlugins = requireContext().xmlManager.getAllPlugins()
-        
-        // 获取系统中已安装的插件包名
-        val installedPackageNames = try {
-            val intent = android.content.Intent("com.wanjishipin.xime.plugin.EXTENSION")
-            val resolveInfos = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU) {
-                context.packageManager.queryIntentActivities(
-                    intent,
-                    android.content.pm.PackageManager.ResolveInfoFlags.of(0)
-                )
-            } else {
-                @Suppress("DEPRECATION")
-                context.packageManager.queryIntentActivities(intent, 0)
-            }
-            resolveInfos.map { it.activityInfo.packageName }.toSet()
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to query installed plugins", e)
-            emptySet()
-        }
-        
-        Log.d(TAG, "Installed plugin packages: $installedPackageNames")
-        
-        // 插件 ID 就是 packageName
-        for (plugin in allPlugins) {
-            // 如果插件 ID 不在已安装的包列表中，则移除
-            if (plugin.id !in installedPackageNames && plugin.id != context.packageName) {
-                Log.d(TAG, "Plugin app not installed, removing: ${plugin.id}")
-                requireContext().xmlManager.removePlugin(plugin.id)
-                requireContext().lifecycleManager.unloadPlugin(plugin.id)
-                
-                // 删除复制的文件
-                try {
-                    val pluginDir = File(plugin.path).parentFile
-                    if (pluginDir != null && pluginDir.exists()) {
-                        pluginDir.deleteRecursively()
-                        Log.d(TAG, "Deleted plugin directory: ${pluginDir.absolutePath}")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Failed to delete plugin directory", e)
-                }
-            }
-        }
-        requireContext().xmlManager.flushToDisk()
     }
 }

@@ -1,0 +1,8 @@
+com.kingzcheung.xime.plugin.kaomoji-pngs-0 /data/data/com.termux/files/home/Xime/plugins/kaomoji/build/generated/res/pngs/debug
+com.kingzcheung.xime.plugin.kaomoji-resValues-1 /data/data/com.termux/files/home/Xime/plugins/kaomoji/build/generated/res/resValues/debug
+com.kingzcheung.xime.plugin.kaomoji-updated_navigation_xml-2 /data/data/com.termux/files/home/Xime/plugins/kaomoji/build/generated/updated_navigation_xml/debug
+com.kingzcheung.xime.plugin.kaomoji-packageDebugResources-3 /data/data/com.termux/files/home/Xime/plugins/kaomoji/build/intermediates/incremental/debug/packageDebugResources/merged.dir
+com.kingzcheung.xime.plugin.kaomoji-packageDebugResources-4 /data/data/com.termux/files/home/Xime/plugins/kaomoji/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
+com.kingzcheung.xime.plugin.kaomoji-debug-5 /data/data/com.termux/files/home/Xime/plugins/kaomoji/build/intermediates/merged_res/debug/mergeDebugResources
+com.kingzcheung.xime.plugin.kaomoji-debug-6 /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/debug/res
+com.kingzcheung.xime.plugin.kaomoji-main-7 /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/res

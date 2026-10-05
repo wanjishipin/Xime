@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -27,8 +28,19 @@ import androidx.compose.ui.unit.dp
 
 import kotlin.math.roundToInt
 
-private const val DRAG_BAR_HEIGHT = 18
+private val DRAG_BAR_HEIGHT_DP = FloatingCardGeometry.DRAG_BAR_HEIGHT_DP
 
+/**
+ * 悬浮键盘卡片容器：卡片宽 = [FloatingCardGeometry.widthFraction] × 窗口宽，
+ * 高 = 父容器（服务层内容 Box）高，位置由 offsetX/offsetY 控制
+ * （offsetY = 卡片底边离窗口底边的距离）。
+ *
+ * [onDrag] 上报**原始屏幕位移**（dp，+x 向右、+y 向下），不做任何方向变换，
+ * 位置语义（offsetY 与屏幕 y 相反）由回调侧（ImeKeyboardCallbacks）决定——
+ * 与 KeyboardResizeOverlay 的手势约定一致。
+ *
+ * 卡片实测矩形（窗口坐标）经 [onCardPositioned] 回传，是触摸区与拖动钳制的唯一真源。
+ */
 @Composable
 fun FloatingKeyboardContainer(
     isFloatingMode: Boolean,
@@ -36,7 +48,6 @@ fun FloatingKeyboardContainer(
     fontScaleFactor: Float = scaleFactor,
     offsetX: Int,
     offsetY: Int,
-    minOffsetY: Int = 0,
     backgroundColor: Color = Color.Transparent,
     onDrag: (dx: Float, dy: Float) -> Unit,
     onDragEnd: () -> Unit,
@@ -49,7 +60,6 @@ fun FloatingKeyboardContainer(
     }
 
     val density = LocalDensity.current
-    val safeOffsetY = offsetY
 
     BoxWithConstraints(
         modifier = Modifier.fillMaxSize(),
@@ -60,13 +70,12 @@ fun FloatingKeyboardContainer(
             modifier = Modifier
                 .fillMaxWidth(scaleFactor)
                 .height(cardTotalHeight)
-                .offset(x = offsetX.dp, y = (-safeOffsetY).dp)
+                .offset(x = offsetX.dp, y = (-offsetY).dp)
                 .shadow(12.dp, RoundedCornerShape(16.dp))
                 .clip(RoundedCornerShape(16.dp))
                 .onGloballyPositioned { coords ->
                     val pos = coords.positionInWindow()
                     val size = coords.size
-                    android.util.Log.d("FloatingCard", "pos=(${pos.x.toInt()},${pos.y.toInt()}) size=(${size.width},${size.height}) maxH=$cardTotalHeight offsetY=$safeOffsetY")
                     onCardPositioned(
                         pos.x.roundToInt(),
                         pos.y.roundToInt(),
@@ -82,7 +91,7 @@ fun FloatingKeyboardContainer(
                         change.consume()
                         val dxDp = with(density) { dragAmount.x.toDp().value }
                         val dyDp = with(density) { dragAmount.y.toDp().value }
-                        onDrag(dxDp, -dyDp)
+                        onDrag(dxDp, dyDp)
                     },
                     onDragEnd = onDragEnd
                 )
@@ -107,22 +116,31 @@ private fun DragBar(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(DRAG_BAR_HEIGHT.dp)
+            .height(DRAG_BAR_HEIGHT_DP.dp)
             .background(backgroundColor)
             .pointerInput(Unit) {
                 detectDragGestures(
                     onDrag = onDrag,
-                    onDragEnd = onDragEnd
+                    onDragEnd = onDragEnd,
+                    // 手势被系统打断视同松手：保证"底部松手切换"的提示态被消费、光效不残留
+                    onDragCancel = onDragEnd,
                 )
             },
         contentAlignment = Alignment.Center
     ) {
+        // 白色握条垫深色胶囊衬底：浅色主题键盘上也可见（与 KeyboardResizeOverlay 的 GripPill 同款）
         Box(
             modifier = Modifier
-                .width(36.dp)
-                .height(5.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(Color.White.copy(alpha = 0.6f))
-        )
+                .background(Color.Black.copy(alpha = 0.32f), RoundedCornerShape(9.dp))
+                .padding(horizontal = 10.dp, vertical = 6.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(28.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color.White.copy(alpha = 0.95f))
+            )
+        }
     }
 }

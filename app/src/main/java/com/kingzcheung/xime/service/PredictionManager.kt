@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.kingzcheung.xime.association.AssociationManager
 import com.kingzcheung.xime.association.AssociationService
+import com.kingzcheung.xime.BuildConfig
 import com.kingzcheung.xime.plugin.ExtensionManager
 import com.kingzcheung.xime.settings.SettingsPreferences
 import com.kingzcheung.xime.util.FileLogger
@@ -25,10 +26,32 @@ class PredictionManager(
     
     private var _lastCommittedText = ""
     val lastCommittedText: String get() = _lastCommittedText
+
+    /**
+     * 预测请求代际号：退格/清空等改变上下文的操作调用 [invalidatePendingPredictions]，
+     * 使所有在途的异步预测结果失效。否则长按退格删除时，旧的联想结果会迟到并反复
+     * 回填 associationCandidates，候选栏在"显示联想词 ↔ 空"之间闪动（一闪一闪）。
+     */
+    private var requestEpoch = 0L
+
+    fun invalidatePendingPredictions() {
+        requestEpoch++
+    }
+
+    /**
+     * 单次联想抑制标志：联想候选上屏（点击/空格）前置位，使 commitText 触发的下一轮
+     * 自动推理被跳过并清空联想候选（候选栏干净），等待用户下一次真实输入。
+     * 连续联想模式不置位——commitText 的自动推理即为"一直上屏一直推理"。
+     */
+    @Volatile
+    private var suppressNextPrediction = false
+
+    fun suppressNextPredictionOnce() {
+        suppressNextPrediction = true
+    }
     
     fun appendCommittedText(text: String) {
         _lastCommittedText = (_lastCommittedText + text).takeLast(MAX_CONTEXT_LENGTH)
-        FileLogger.d(TAG, "Context updated: '$text' -> '$lastCommittedText' (len=${lastCommittedText.length})")
     }
     
     fun clearCommittedText() {
@@ -77,6 +100,13 @@ class PredictionManager(
     }
     
     fun getPrediction(contextText: String) {
+        // 单次联想：消费抑制标志——联想上屏引发的本轮推理不执行，回调空结果清空候选栏
+        if (suppressNextPrediction) {
+            suppressNextPrediction = false
+            onPredictionResult(emptyList())
+            return
+        }
+
         if (contextText.isEmpty()) {
             onPredictionResult(emptyList())
             return
@@ -87,33 +117,38 @@ class PredictionManager(
             return
         }
         
+        val epoch = requestEpoch
         serviceScope.launch {
             try {
                 if (!AssociationManager.isInitialized()) {
-                    Log.d(TAG, "AssociationManager not initialized, initializing...")
                     val initSuccess = withContext(Dispatchers.IO) {
                         AssociationManager.initialize(context)
                     }
                     if (!initSuccess) {
                         Log.e(TAG, "Failed to initialize AssociationManager")
                         withContext(Dispatchers.Main) {
-                            onPredictionResult(emptyList())
+                            if (epoch == requestEpoch) {
+                                onPredictionResult(emptyList())
+                            }
                         }
                         return@launch
                     }
                 }
                 
                 val candidates = AssociationManager.predict(contextText, MAX_ASSOCIATION_COUNT)
-                
-                Log.d(TAG, "Prediction candidates: ${candidates.map { it.text }}")
-                
+
                 withContext(Dispatchers.Main) {
-                    onPredictionResult(candidates.map { it.text })
+                    // 代际过期说明上下文已被退格/清空修改，丢弃过期结果避免候选栏闪动
+                    if (epoch == requestEpoch) {
+                        onPredictionResult(candidates.map { it.text })
+                    }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Prediction failed", e)
                 withContext(Dispatchers.Main) {
-                    onPredictionResult(emptyList())
+                    if (epoch == requestEpoch) {
+                        onPredictionResult(emptyList())
+                    }
                 }
             }
         }
@@ -143,7 +178,6 @@ class PredictionManager(
     suspend fun getChineseAssociations(text: String, limit: Int = MAX_ASSOCIATION_COUNT): List<String> {
         return try {
             if (!AssociationManager.isInitialized()) {
-                Log.d(TAG, "AssociationManager not initialized, initializing...")
                 AssociationManager.initialize(context)
             }
             

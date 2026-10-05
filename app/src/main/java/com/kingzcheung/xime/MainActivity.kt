@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowInsetsControllerCompat
 import com.kingzcheung.xime.rime.RimeConfigHelper
 import com.kingzcheung.xime.rime.RimeEngine
+import com.kingzcheung.xime.settings.ImportManager
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.settings.SchemaManager
 import com.kingzcheung.xime.settings.SettingsPreferences
@@ -46,11 +47,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.io.File
 
 class MainActivity : ComponentActivity() {
     
     companion object {
         private const val TAG = "MainActivity"
+
+        /** 构造跳转到指定插件网络授权页的 Intent（IME 等后台场景调用）。 */
+        fun buildPluginAuthIntent(context: android.content.Context, pluginId: String): Intent {
+            return Intent(context, MainActivity::class.java).apply {
+                putExtra("open_fragment", "plugins")
+                putExtra("open_plugin_id", pluginId)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -75,11 +87,9 @@ class MainActivity : ComponentActivity() {
         if (RimeEngine.isInitialized()) return
         prewarmScope.launch {
             try {
-                Log.d(TAG, "Pre-warming Rime engine...")
                 KeysConfigHelper.loadConfig(this@MainActivity)
                 val (userDataDir, sharedDataDir) = RimeConfigHelper.initializeRimeDataAsync(this@MainActivity)
                 RimeEngine.getInstance().initialize(userDataDir, sharedDataDir)
-                Log.d(TAG, "Rime engine pre-warmed successfully")
             } catch (e: Exception) {
                 Log.w(TAG, "Rime engine pre-warm failed, will init on demand", e)
             }
@@ -106,6 +116,7 @@ class MainActivity : ComponentActivity() {
         }
         
         val openFragment = intent?.getStringExtra("open_fragment")
+        val openPluginId = intent?.getStringExtra("open_plugin_id")
 
         setContent {
             val context = this
@@ -163,6 +174,7 @@ class MainActivity : ComponentActivity() {
                     } else {
                         SettingsScreen(
                             initialRoute = openFragment,
+                            initialPluginId = openPluginId,
                             onThemeChanged = {
                                 darkMode = SettingsPreferences.getDarkMode(context)
                                 keyboardTheme = SettingsPreferences.getKeyboardTheme(context)
@@ -195,8 +207,13 @@ class MainActivity : ComponentActivity() {
         when (intent.action) {
             Intent.ACTION_SEND -> {
                 val uri = intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)
+                val mime = intent.type
                 if (uri != null) {
-                    importSchema(uri)
+                    if (mime?.startsWith("image/") == true) {
+                        importThemeImage(uri, mime)
+                    } else {
+                        importSchema(uri)
+                    }
                 }
             }
             Intent.ACTION_SEND_MULTIPLE -> {
@@ -212,15 +229,102 @@ class MainActivity : ComponentActivity() {
     
     private fun importSchema(uri: android.net.Uri) {
         prewarmScope.launch {
-            val result = SchemaManager.importSchemaFile(this@MainActivity, uri)
-            launch(Dispatchers.Main) {
-                val msg = when {
-                    !result.success -> "方案导入失败"
-                    result.installedDirect -> "方案导入成功，已放入 rime 目录"
-                    else -> "方案导入成功，请到「输入方案」页面部署"
+            when (val result = ImportManager.import(this@MainActivity, uri)) {
+                is ImportManager.ImportResult.Content -> {
+                    launch(Dispatchers.Main) {
+                        val msg = when {
+                            !result.success -> "导入失败"
+                            result.installedDirect -> "导入成功，已放入 rime 目录"
+                            else -> "方案导入成功，请到「输入方案」页面部署"
+                        }
+                        Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                    }
                 }
-                Toast.makeText(this@MainActivity, msg, Toast.LENGTH_LONG).show()
+                is ImportManager.ImportResult.Plugin -> {
+                    com.kingzcheung.xime.plugin.core.runtime.PluginManager.loadEnabledPlugins()
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(
+                            this@MainActivity,
+                            "插件「${result.pluginInfo?.name}」安装成功",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+                is ImportManager.ImportResult.Failed -> {
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "导入失败：${result.reason}", Toast.LENGTH_LONG).show()
+                    }
+                }
+                is ImportManager.ImportResult.Unsupported -> {
+                    launch(Dispatchers.Main) {
+                        Toast.makeText(this@MainActivity, "不支持的文件类型", Toast.LENGTH_LONG).show()
+                    }
+                }
             }
         }
+    }
+
+    /** 分享图片到 Xime：保存到 rime/themes/ 并提示用户如何引用。 */
+    private fun importThemeImage(uri: android.net.Uri, mimeType: String) {
+        prewarmScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                val themesDir = File(SchemaManager.getRimeDir(this@MainActivity), "themes")
+                themesDir.mkdirs()
+                val ext = when (mimeType) {
+                    "image/png" -> "png"
+                    "image/webp" -> "webp"
+                    else -> "jpg"
+                }
+                val name = "custom_${System.currentTimeMillis()}.$ext"
+                val target = File(themesDir, name)
+                try {
+                    contentResolver.openInputStream(uri)?.use { input ->
+                        target.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    name
+                } catch (e: Exception) {
+                    Log.w(TAG, "importThemeImage failed", e)
+                    null
+                }
+            }
+            launch(Dispatchers.Main) {
+                if (result == null) {
+                    Toast.makeText(this@MainActivity, "背景图导入失败", Toast.LENGTH_LONG).show()
+                } else {
+                    copyThemeConfigTemplate(result)
+                    Toast.makeText(
+                        this@MainActivity,
+                        "背景图已导入 rime/themes/$result，配置模板已复制到剪贴板",
+                        Toast.LENGTH_LONG,
+                    ).show()
+                }
+            }
+        }
+    }
+
+    /** 生成可在 xime.custom.yaml 中使用的主题配置模板并复制到剪贴板。 */
+    private fun copyThemeConfigTemplate(fileName: String) {
+        val schemeId = fileName.substringBeforeLast('.')
+        val template = """
+            color_schemes:
+              $schemeId:
+                name: "自定义背景 ${schemeId.removePrefix("custom_")}"
+                keyboard_background:
+                  type: image
+                  src: "themes/$fileName"
+                  fit: cover
+                  overlay_alpha: 0.15
+                  overlay_alpha_dark: 0.30
+                key_bg_color: 0x8cffffff
+                key_bg_color_dark: 0x66000000
+                key_text_color: 0x232323
+                key_text_color_dark: 0xf2f2f2
+                candidate_text_color: 0x232323
+                candidate_text_color_dark: 0xf2f2f2
+                candidate_selected_text_color: 0xffffff
+                candidate_selected_text_color_dark: 0xffffff
+        """.trimIndent()
+        val clipboard = getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("xime theme", template))
     }
 }

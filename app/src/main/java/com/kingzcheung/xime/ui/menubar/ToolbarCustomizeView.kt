@@ -5,18 +5,18 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,47 +31,58 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.keyboard.ToolbarButton
+import com.kingzcheung.xime.keyboard.ToolbarButtonItem
+import com.kingzcheung.xime.ui.keyboard.ToolbarButtonIcon
+import com.kingzcheung.xime.ui.keyboard.WIDE_CONTAINER_WIDTH
 
 @Composable
 fun ToolbarCustomizeView(
     toolbarButtons: List<String>,
+    pluginButtons: List<ToolbarButtonItem.Plugin> = emptyList(),
     keyTextColor: Color,
     backgroundColor: Color,
     accentColor: Color,
+    keyBgColor: Color,
     onUpdateToolbarButtons: ((List<String>) -> Unit)?,
     onDismiss: () -> Unit,
     bottomPaddingDp: Int = 0,
     modifier: Modifier = Modifier
 ) {
-    val allButtons = ToolbarButton.entries.filter { button ->
+    val builtinButtons = ToolbarButton.entries.filter { button ->
         if (button == ToolbarButton.HANDWRITING_LOOKUP) {
-            val mf = java.io.File(LocalContext.current.filesDir, "ochwpro.onnx")
-            val cf = java.io.File(LocalContext.current.filesDir, "char_index.json")
-            mf.exists() && cf.exists()
+            com.kingzcheung.xime.handwriting.HandwritingEngine.hasModel(LocalContext.current)
         } else true
-    }
+    }.map { ToolbarButtonItem.Builtin(it) }
+    val allButtons = builtinButtons + pluginButtons
+    val itemById = remember(allButtons) { allButtons.associateBy { it.id } }
     val originalButtons = remember { toolbarButtons }
     var enabledIds by remember(toolbarButtons) { mutableStateOf(toolbarButtons.toSet()) }
 
-    fun toggleButton(button: ToolbarButton) {
-        enabledIds = if (button.id in enabledIds) enabledIds - button.id else enabledIds + button.id
+    fun toggleButton(item: ToolbarButtonItem) {
+        enabledIds = if (item.id in enabledIds) enabledIds - item.id else enabledIds + item.id
         val newList = toolbarButtons.toMutableList()
-        if (button.id in toolbarButtons) newList.remove(button.id) else newList.add(button.id)
+        if (item.id in toolbarButtons) newList.remove(item.id) else newList.add(item.id)
         onUpdateToolbarButtons?.invoke(newList)
     }
 
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-    val isDarkTheme = keyTextColor == Color(0xFFE8EAED)
+    // 图标按钮容器色：按键背景与强调色的混合色调（带主题色但不过于强烈）
+    val iconButtonContainer = androidx.compose.ui.graphics.lerp(
+        keyBgColor,
+        accentColor,
+        0.25f
+    )
+
+    // 布局按父容器真实宽度自适应（悬浮卡片/键盘收窄/分屏的容器宽 ≠ 屏幕宽），
+    // 不读屏幕方向：宽容器（横屏全屏）用大边距，其余按竖屏形态
+    BoxWithConstraints(modifier = modifier) {
+        val isWide = maxWidth >= WIDE_CONTAINER_WIDTH
 
     val itemsPerPage = 8
     val pages = allButtons.chunked(itemsPerPage).map { page ->
@@ -81,8 +91,8 @@ fun ToolbarCustomizeView(
     val pagerState = rememberPagerState(pageCount = { pages.size })
 
     Column(
-        modifier = modifier
-            .fillMaxWidth()
+        modifier = Modifier
+            .fillMaxSize()
             .background(backgroundColor),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -90,14 +100,14 @@ fun ToolbarCustomizeView(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
-                .padding(horizontal = if (isLandscape) 50.dp else 8.dp),
+                .padding(horizontal = if (isWide) 50.dp else 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                    .background(iconButtonContainer)
                     .clickable { onDismiss() },
                 contentAlignment = Alignment.Center
             ) {
@@ -118,7 +128,7 @@ fun ToolbarCustomizeView(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val previewButtons = toolbarButtons.mapNotNull { ToolbarButton.fromId(it) }
+                val previewButtons = toolbarButtons.mapNotNull { itemById[it] }
                 if (previewButtons.isNotEmpty()) {
                     previewButtons.forEach { button ->
                         Box(
@@ -126,14 +136,13 @@ fun ToolbarCustomizeView(
                                 .padding(horizontal = 3.dp)
                                 .size(28.dp)
                                 .clip(CircleShape)
-                                .background(if (isDarkTheme) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.1f)),
+                                .background(iconButtonContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = button.icon,
-                                contentDescription = null,
+                            ToolbarButtonIcon(
+                                item = button,
                                 tint = keyTextColor.copy(0.6f),
-                                modifier = Modifier.size(18.dp)
+                                modifier = Modifier.size(18.dp),
                             )
                         }
                     }
@@ -147,7 +156,7 @@ fun ToolbarCustomizeView(
                 .weight(1f)
                 .padding(horizontal = 16.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surface)
+                .background(keyBgColor)
                 .padding(16.dp,10.dp)
         ) {
             HorizontalPager(
@@ -187,11 +196,10 @@ fun ToolbarCustomizeView(
 
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        imageVector = button.icon,
-                                        contentDescription = button.label,
+                                    ToolbarButtonIcon(
+                                        item = button,
                                         tint = if (isEnabled) accentColor else keyTextColor.copy(alpha = 0.8f),
-                                        modifier = Modifier.size(22.dp)
+                                        modifier = Modifier.size(22.dp),
                                     )
                                 }
                                 Text(
@@ -230,6 +238,7 @@ fun ToolbarCustomizeView(
             }
         }
 
-        Spacer(modifier = Modifier.height(if (isLandscape) 15.dp else maxOf(bottomPaddingDp.dp, with(LocalDensity.current) { WindowInsets.navigationBars.getBottom(this).toDp() })))
+        Spacer(modifier = Modifier.height(if (isWide) 15.dp else bottomPaddingDp.dp))
+    }
     }
 }

@@ -1,0 +1,13 @@
+#Sun Jul 26 14:07:31 GMT 2026
+base.0=/data/data/com.termux/files/home/Xime/plugins/kaomoji/build/intermediates/dex/debug/mergeExtDexDebug/classes.dex
+base.1=/data/data/com.termux/files/home/Xime/plugins/kaomoji/build/intermediates/dex/debug/mergeProjectDexDebug/0/classes.dex
+base.2=/data/data/com.termux/files/home/Xime/plugins/kaomoji/build/intermediates/dex/debug/mergeProjectDexDebug/1/classes.dex
+base.3=/data/data/com.termux/files/home/Xime/plugins/kaomoji/build/intermediates/global_synthetics_dex/debug/mergeDebugGlobalSynthetics/classes.dex
+path.0=classes.dex
+path.1=0/classes.dex
+path.2=1/classes.dex
+path.3=classes.dex
+renamed.0=classes.dex
+renamed.1=classes2.dex
+renamed.2=classes3.dex
+renamed.3=classes4.dex

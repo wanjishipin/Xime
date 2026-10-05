@@ -1,32 +1,312 @@
 package com.kingzcheung.xime.plugin.core.runtime.installer
 
 import android.app.Application
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.content.pm.ProviderInfo as AndroidProviderInfo
-import android.os.Build
+import android.net.Uri
 import android.util.Log
+import com.kingzcheung.xime.plugin.core.model.PluginCapabilities
 import com.kingzcheung.xime.plugin.core.model.PluginInfo
-import com.kingzcheung.xime.plugin.core.model.ProviderInfo
+import com.kingzcheung.xime.plugin.core.model.PluginSource
+import com.kingzcheung.xime.plugin.core.model.PluginToolbarButton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import com.android.tools.smali.dexlib2.DexFileFactory
-import com.android.tools.smali.dexlib2.Opcodes
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.zip.ZipFile
 
+/** manifest.json 解析结果。 */
+internal sealed class PluginParseResult {
+    data class Success(val config: PluginConfig) : PluginParseResult()
+    data class Failure(val reason: String) : PluginParseResult()
+}
+
+internal data class PluginConfig(
+    val id: String,
+    val name: String,
+    val version: String,
+    val description: String,
+    val type: String,
+    val minHostVersion: String?,
+    val maxHostVersion: String?,
+    val entryScript: String?,
+    val declaredHosts: List<String> = emptyList(),
+    val allowCustomHosts: Boolean = false,
+    val toolbarButtons: List<PluginToolbarButton> = emptyList(),
+    val icon: String? = null,
+    val capabilities: com.kingzcheung.xime.plugin.core.model.PluginCapabilities? = null,
+    /** 生效的目标平台列表（manifest.platforms 归一化；缺省视为 android）。 */
+    val platforms: List<String> = listOf(com.kingzcheung.xime.plugin.core.model.PluginInfo.PLATFORM_ANDROID)
+)
+
+/** manifest.json 的类型化模型，由 kotlinx-serialization-json 解析（宽松模式）。 */
+@Serializable
+internal data class PluginManifest(
+    val id: String,
+    val name: String? = null,
+    val type: String = "unknown",
+    val entry: String = "main.js",
+    val version: String = "0.0.0",
+    val description: String? = null,
+    val minHostVersion: String? = null,
+    val maxHostVersion: String? = null,
+    val network: NetworkConfig? = null,
+    val toolbarButtons: List<ToolbarButtonConfig> = emptyList(),
+    /** 顶层 icon：文字（如 "译"）或 resources/ 下图片文件名。 */
+    val icon: String? = null,
+    val capabilities: CapabilitiesConfig? = null,
+    /** 目标平台声明（缺省/为空视为 android，由安装解析归一化）。 */
+    val platforms: List<String> = emptyList()
+)
+
+@Serializable
+internal data class NetworkConfig(
+    val hosts: List<String> = emptyList(),
+    val allowCustomHosts: Boolean = false
+)
+
+/** manifest.toolbarButtons 单条（类型化）。 */
+@Serializable
+internal data class ToolbarButtonConfig(
+    val id: String,
+    val label: String = "",
+    val icon: String? = null,
+    val action: String = "open_panel"
+)
+
+/** manifest.capabilities 能力声明（类型化）。 */
+@Serializable
+internal data class CapabilitiesConfig(
+    val emoji: EmojiCapabilitiesConfig? = null,
+    val speech: SpeechCapabilitiesConfig? = null,
+    val tool: ToolCapabilitiesConfig? = null,
+    @kotlinx.serialization.SerialName("clipboard_sync")
+    val clipboardSync: ClipboardSyncCapabilitiesConfig? = null,
+    @kotlinx.serialization.SerialName("backup")
+    val backup: BackupCapabilitiesConfig? = null,
+    /** 下行事件订阅（如 "input_changed"），小写 snake_case。 */
+    val events: List<String> = emptyList(),
+    /** 候选词变换能力（hotPath，硬超时 15ms）。 */
+    @kotlinx.serialization.SerialName("candidate_transform")
+    val candidateTransform: Boolean = false,
+    /** 快捷发送只读能力（注入 host.quickSend）。 */
+    @kotlinx.serialization.SerialName("quick_send_read")
+    val quickSendRead: Boolean = false,
+    /** 剪贴板只读能力（注入 host.clipboard）。 */
+    @kotlinx.serialization.SerialName("clipboard_read")
+    val clipboardRead: Boolean = false
+)
+
+@Serializable
+internal data class EmojiCapabilitiesConfig(
+    val supportsSearch: Boolean = false,
+    val columns: Int? = null,
+    val itemHeightDp: Int? = null
+)
+
+@Serializable
+internal data class SpeechCapabilitiesConfig(
+    val inputMode: String = "streaming",
+    val supportsPartialResults: Boolean = true,
+    val requiresNetwork: Boolean = true
+)
+
+@Serializable
+internal data class ToolCapabilitiesConfig(
+    val display: String? = null
+)
+
+@Serializable
+internal data class ClipboardSyncCapabilitiesConfig(
+    val protocols: List<String> = emptyList(),
+    /** 附件（图片 blob）传输支持；旧 manifest 无此键 → false（宿主按文本-only 插件处理）。 */
+    val attachments: Boolean = false
+)
+
+@Serializable
+internal data class BackupCapabilitiesConfig(
+    val protocols: List<String> = emptyList()
+)
+
+/** manifest 能力声明 → 类型化模型（未知字段静默忽略，非法枚举值按未声明处理）。 */
+private fun CapabilitiesConfig.toModel(): com.kingzcheung.xime.plugin.core.model.PluginCapabilities {
+    return com.kingzcheung.xime.plugin.core.model.PluginCapabilities(
+        emoji = emoji?.let {
+            com.kingzcheung.xime.plugin.core.model.PluginCapabilities.EmojiCapabilities(
+                supportsSearch = it.supportsSearch,
+                columns = it.columns?.takeIf { c -> c > 0 },
+                itemHeightDp = it.itemHeightDp?.takeIf { h -> h > 0 }
+            )
+        },
+        speech = speech?.let {
+            com.kingzcheung.xime.plugin.core.model.PluginCapabilities.SpeechCapabilities(
+                inputMode = it.inputMode,
+                supportsPartialResults = it.supportsPartialResults,
+                requiresNetwork = it.requiresNetwork
+            )
+        },
+        tool = tool?.let {
+            com.kingzcheung.xime.plugin.core.model.PluginCapabilities.ToolCapabilities(
+                display = when (it.display?.lowercase()) {
+                    "direct" -> com.kingzcheung.xime.plugin.core.api.ToolResult.DIRECT
+                    "passive" -> com.kingzcheung.xime.plugin.core.api.ToolResult.PASSIVE
+                    // 旧契约 "select"（全屏结果页）已并入 passive（InfoPanel 内 items 点选上屏）
+                    "select" -> com.kingzcheung.xime.plugin.core.api.ToolResult.PASSIVE
+                    else -> null
+                }
+            )
+        },
+        clipboardSync = clipboardSync?.let {
+            com.kingzcheung.xime.plugin.core.model.PluginCapabilities.ClipboardSyncCapabilities(
+                protocols = it.protocols.filter { p -> p.isNotBlank() },
+                attachments = it.attachments
+            )
+        },
+        backup = backup?.let {
+            com.kingzcheung.xime.plugin.core.model.PluginCapabilities.BackupCapabilities(
+                protocols = it.protocols.filter { p -> p.isNotBlank() }
+            )
+        },
+        events = events.map { it.trim().lowercase() }.filter { it.isNotBlank() }.distinct(),
+        candidateTransform = candidateTransform,
+        quickSendRead = quickSendRead,
+        clipboardRead = clipboardRead
+    )
+}
+
+/**
+ * 插件安装器（JS 脚本插件）。
+ *
+ * 插件包为 zip（.xipk），结构：
+ *   manifest.json   元数据（宿主解析）
+ *   main.js         入口脚本（宿主 QuickJS 沙箱执行）
+ *   libs/           纯 JS 依赖模块（require 加载）
+ *   resources/      资源文件
+ *
+ * 安装 = 解压到 files/plugins/<id>/ + 解析 manifest 写入注册表。
+ */
 class InstallerManager(
     private val context: Application,
-    private val xmlManager: XmlManager
+    private val pluginRegistry: PluginRegistry
 ) {
     companion object {
         private const val PLUGINS_DIR = "plugins"
-        private const val PLUGIN_BASE_APK_NAME = "base.apk"
-        private const val NATIVE_LIBS_DIR_NAME = "lib"
-        private const val CLASS_INDEX_FILENAME = "class_index"
-        private const val META_PLUGIN_ENTRY_CLASS = "plugin.entryClass"
-        private const val META_PLUGIN_DESCRIPTION = "plugin.description"
-        private const val META_PLUGIN_TYPE = "plugin.type"
+        private const val MANIFEST_JSON = "manifest.json"
+
+        /** xipk 包大小上限（10MB）：插件是脚本+资源，超过即拒绝安装。 */
+        private const val MAX_ARCHIVE_FILE_BYTES = 10 * 1024 * 1024
+
+        /** 解压条目数与解压后总体积上限（防 zip bomb）。 */
+        private const val MAX_ARCHIVE_ENTRIES = 512
+        private const val MAX_ARCHIVE_TOTAL_BYTES = 64 * 1024 * 1024
+
+        /** 插件 id 白名单：字母/数字/下划线/连字符，点号仅作命名空间分段（禁止 .. / 空段 / /），最长 64，杜绝路径穿越。 */
+        private val PLUGIN_ID_REGEX = Regex("^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$")
+        private const val PLUGIN_ID_MAX_LENGTH = 64
+
+        /** 入口脚本：普通文件名，不允许路径分隔符与 ".."。 */
+        private val ENTRY_SCRIPT_REGEX = Regex("^[A-Za-z0-9_.-]{1,128}$")
+
+        /** 网络声明域名：合法域名或 IPv4（禁止通配/空白/超长，授权 UI 直接展示，需可读可信）。 */
+        private val DECLARED_HOST_REGEX = Regex(
+            "^(?=.{1,253}$)([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(\\.([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$"
+        )
+
+        internal fun isValidPluginId(id: String): Boolean =
+            id.length <= PLUGIN_ID_MAX_LENGTH && PLUGIN_ID_REGEX.matches(id)
+
+        private fun isValidEntryScript(name: String): Boolean =
+            ENTRY_SCRIPT_REGEX.matches(name) && !name.contains("..")
+
+        /** 网络声明域名是否合法（域名/IPv4，供 manifest 解析时过滤）。 */
+        internal fun isValidDeclaredHost(host: String): Boolean =
+            DECLARED_HOST_REGEX.matches(host)
+
+        /** 插件包内资源相对路径：允许子目录（/ 分隔），禁止 .. 穿越、绝对路径与反斜杠。 */
+        fun isValidResourcePath(name: String): Boolean {
+            if (name.isBlank() || name.length > 256) return false
+            if (name.startsWith("/") || name.contains("\\")) return false
+            return name.split('/').all { it.isNotEmpty() && it != "." && it != ".." }
+        }
+
+        /** 工具栏按钮 id：非空；禁止逗号（偏好存储按逗号分隔）、XML 特殊字符与换行/空白控制符。
+         *  全局限定 id 建议带插件命名空间（如 `pluginId:action`）。 */
+        internal fun isValidToolbarButtonId(id: String?): Boolean {
+            if (id.isNullOrBlank()) return false
+            if (id.length > 64) return false
+            return !id.any { it in ",\u003C\u003E\"'&|\\\n\r\t " }
+        }
+
+
+        @OptIn(ExperimentalSerializationApi::class)
+        private val manifestJson: Json by lazy {
+            Json {
+                ignoreUnknownKeys = true
+                allowComments = true
+                allowTrailingComma = true
+            }
+        }
+
+        /** 解析 manifest.json 文本（kotlinx 类型化解析），失败时携带可读的错误提示。 */
+        internal fun parseManifestContent(content: String): PluginParseResult = try {
+            val manifest = manifestJson.decodeFromString<PluginManifest>(content)
+            val capabilities = manifest.capabilities?.toModel()
+            // 类型 × 能力合理性校验：内建块错配 / 横切权限非常见组合在安装时落日志提示
+            // （宿主不消费错配块，故仅告警不阻断安装；开发期硬校验由 xipm check 承担）
+            capabilities?.let {
+                val (capErrors, capWarnings) = PluginCapabilities.validateForType(manifest.type, it)
+                capErrors.forEach { msg -> Log.w("PluginManifest", "[${manifest.id}] $msg") }
+                capWarnings.forEach { msg -> Log.w("PluginManifest", "[${manifest.id}] $msg") }
+            }
+            val declaredHosts = manifest.network?.hosts.orEmpty()
+                .filter { it.isNotBlank() && isValidDeclaredHost(it) }
+            val toolbarButtons = manifest.toolbarButtons
+                .filter { isValidToolbarButtonId(it.id) }
+                .map {
+                    PluginToolbarButton(
+                        id = it.id,
+                        label = it.label,
+                        icon = it.icon?.takeIf { i -> i.isNotBlank() },
+                        action = it.action.ifBlank { "open_panel" }
+                    )
+                }
+            // 平台声明归一化：空白项过滤后为空视为 android（存量插件零改动）
+            val platforms = manifest.platforms
+                .map { it.trim() }
+                .filter { it.isNotBlank() }
+                .ifEmpty { listOf(com.kingzcheung.xime.plugin.core.model.PluginInfo.PLATFORM_ANDROID) }
+
+            PluginParseResult.Success(
+                PluginConfig(
+                    id = manifest.id,
+                    name = manifest.name ?: manifest.id,
+                    version = manifest.version,
+                    description = manifest.description ?: "",
+                    type = manifest.type,
+                    minHostVersion = manifest.minHostVersion?.takeIf { it.isNotBlank() },
+                    maxHostVersion = manifest.maxHostVersion?.takeIf { it.isNotBlank() },
+                    entryScript = manifest.entry,
+                    declaredHosts = declaredHosts,
+                    allowCustomHosts = manifest.network?.allowCustomHosts ?: false,
+                    toolbarButtons = toolbarButtons,
+                    icon = manifest.icon?.takeIf { it.isNotBlank() },
+                    capabilities = capabilities,
+                    platforms = platforms
+                )
+            )
+        } catch (e: Exception) {            Log.e("InstallerManager", "parsePluginConfig yaml failed", e)
+            PluginParseResult.Failure(manifestError(e))
+        }
+
+        /** 把 manifest 解析异常整理成可读的提示（kotlinx 消息含行号/字段）。 */
+        private fun manifestError(e: Exception): String {
+            val detail = e.message
+                ?.lineSequence()
+                ?.firstOrNull { it.isNotBlank() }
+                ?.trim()
+                ?: e.javaClass.simpleName
+            return "manifest.json 解析失败：$detail"
+        }
     }
 
     sealed class InstallResult {
@@ -39,64 +319,113 @@ class InstallerManager(
     }
 
     suspend fun installPlugin(
-        pluginApkFile: File,
-        forceOverwrite: Boolean = false
+        pluginFile: File,
+        forceOverwrite: Boolean = false,
+        onlyIfNewer: Boolean = false,
+        source: PluginSource = PluginSource.FILE
     ): InstallResult = withContext(Dispatchers.IO) {
-        if (!pluginApkFile.exists()) {
+        if (!pluginFile.exists()) {
             return@withContext InstallResult.Failure("插件文件不存在")
         }
+        if (pluginFile.length() > MAX_ARCHIVE_FILE_BYTES) {
+            return@withContext InstallResult.Failure(
+                "插件包超过大小上限（${MAX_ARCHIVE_FILE_BYTES / 1024 / 1024}MB），拒绝安装"
+            )
+        }
 
-        val pluginConfig = parsePluginConfig(pluginApkFile)
-            ?: return@withContext InstallResult.Failure("插件配置解析失败")
-
+        val pluginConfig = when (val parsed = parsePluginConfig(pluginFile)) {
+            is PluginParseResult.Failure -> return@withContext InstallResult.Failure(parsed.reason)
+            is PluginParseResult.Success -> parsed.config
+        }
         val pluginId = pluginConfig.id
+        if (!isValidPluginId(pluginId)) {
+            return@withContext InstallResult.Failure("非法插件 id: $pluginId（仅允许字母/数字/下划线/连字符，点号分段，最长 64）")
+        }
+        val entryScript = pluginConfig.entryScript ?: "main.js"
+        if (!isValidEntryScript(entryScript)) {
+            return@withContext InstallResult.Failure("非法入口脚本: $entryScript")
+        }
         val pluginDir = getPluginDirectory(pluginId)
 
-        val existingPlugin = xmlManager.getPluginById(pluginId)
-        
-        // 强制覆盖或版本更新时重新安装
-        val needsReinstall = forceOverwrite || 
-            (existingPlugin != null && pluginConfig.versionCode > existingPlugin.versionCode) ||
-            (existingPlugin != null && existingPlugin.providers.isEmpty() && pluginConfig.providers.isNotEmpty())
+        // 校验插件声明的宿主版本范围
+        val hostVersion = com.kingzcheung.xime.plugin.core.util.VersionUtil.getHostVersionName(context)
+        if (hostVersion != null &&
+            !com.kingzcheung.xime.plugin.core.util.VersionUtil.isHostSupported(
+                hostVersion, pluginConfig.minHostVersion, pluginConfig.maxHostVersion
+            )
+        ) {
+            val range = buildString {
+                append("当前主应用版本 v$hostVersion 不在插件支持范围内")
+                if (!pluginConfig.minHostVersion.isNullOrBlank()) {
+                    append("（最低 v${pluginConfig.minHostVersion}")
+                    if (!pluginConfig.maxHostVersion.isNullOrBlank()) {
+                        append(" - v${pluginConfig.maxHostVersion}")
+                    }
+                    append("）")
+                }
+            }
+            return@withContext InstallResult.Failure(range)
+        }
 
-        if (!needsReinstall && existingPlugin != null) {
-            fixExistingPluginPermissions(pluginDir)
+        val existingPlugin = pluginRegistry.getPluginById(pluginId)
+
+        // JS 插件无版本号概念：只有首次安装或强制覆盖才重新解压
+        if (!forceOverwrite && existingPlugin != null) {
+            return@withContext InstallResult.Success(existingPlugin)
+        }
+
+        // onlyIfNewer（内置 assets 启动同步）：已装版本 >= 本次包版本时保留已装，
+        // 避免 debug 启动覆盖开发中的热更新（热更新版本号通常与内置相同）。
+        if (existingPlugin != null && onlyIfNewer &&
+            com.kingzcheung.xime.plugin.core.util.VersionUtil.compare(
+                pluginConfig.version, existingPlugin.versionName
+            ) <= 0
+        ) {
             return@withContext InstallResult.Success(existingPlugin)
         }
 
         if (pluginDir.exists()) {
             pluginDir.deleteRecursively()
         }
-
         pluginDir.mkdirs()
 
         try {
-            val targetApkFile = copyPluginApk(pluginApkFile, pluginDir)
-            val nativeLibPath = extractNativeLibs(pluginApkFile, pluginDir)
-            createClassIndex(targetApkFile, pluginDir)
+            extractPluginArchive(pluginFile, pluginDir)
+            val entryFile = File(pluginDir, entryScript)
+            if (!entryFile.exists()) {
+                throw IllegalArgumentException("插件入口脚本不存在: $entryScript")
+            }
 
             val pluginInfo = PluginInfo(
                 id = pluginConfig.id,
                 name = pluginConfig.name,
-                iconResId = pluginConfig.iconResId,
+                iconResId = 0,
                 description = pluginConfig.description,
-                versionCode = pluginConfig.versionCode,
-                versionName = pluginConfig.versionName,
-                path = targetApkFile.absolutePath,
-                entryClass = pluginConfig.entryClass,
+                versionCode = 0,
+                versionName = pluginConfig.version,
+                path = entryFile.absolutePath,
                 type = pluginConfig.type,
                 enabled = existingPlugin?.enabled ?: true,
                 installTime = existingPlugin?.installTime ?: System.currentTimeMillis(),
-                nativeLibPath = nativeLibPath,
-                providers = pluginConfig.providers
+                source = source,
+                minHostVersion = pluginConfig.minHostVersion,
+                maxHostVersion = pluginConfig.maxHostVersion,
+                trustLevel = com.kingzcheung.xime.plugin.core.util.PluginSignatureUtil.classifyScriptPlugin(source),
+                entryScript = entryScript,
+                declaredHosts = pluginConfig.declaredHosts,
+                allowCustomHosts = pluginConfig.allowCustomHosts,
+                toolbarButtons = pluginConfig.toolbarButtons,
+                manifestIcon = pluginConfig.icon,
+                capabilities = pluginConfig.capabilities,
+                platforms = pluginConfig.platforms
             )
 
             if (existingPlugin != null) {
-                xmlManager.updatePlugin(pluginInfo)
+                pluginRegistry.updatePlugin(pluginInfo)
             } else {
-                xmlManager.addPlugin(pluginInfo)
+                pluginRegistry.addPlugin(pluginInfo)
             }
-            xmlManager.flushToDisk()
+            pluginRegistry.flushToDisk()
 
             InstallResult.Success(pluginInfo)
         } catch (e: Exception) {
@@ -106,233 +435,84 @@ class InstallerManager(
     }
 
     suspend fun uninstallPlugin(pluginId: String): Boolean = withContext(Dispatchers.IO) {
+        if (!isValidPluginId(pluginId)) {
+            Log.e("InstallerManager", "uninstallPlugin 拒绝非法 id: $pluginId")
+            return@withContext false
+        }
         val pluginDir = getPluginDirectory(pluginId)
         if (pluginDir.exists()) {
             pluginDir.deleteRecursively()
         }
-        xmlManager.removePlugin(pluginId)
-        xmlManager.flushToDisk()
+        pluginRegistry.removePlugin(pluginId)
+        pluginRegistry.flushToDisk()
         true
     }
 
+    suspend fun installPluginFromUri(uri: Uri): InstallResult = withContext(Dispatchers.IO) {
+        if (uri.scheme == "file") {
+            val file = File(uri.path ?: return@withContext InstallResult.Failure("无法解析文件路径"))
+            installPlugin(file, forceOverwrite = true, source = PluginSource.FILE)
+        } else {
+            val tempFile = File(context.cacheDir, "plugin_import_${System.currentTimeMillis()}.xipk")
+            try {
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    tempFile.outputStream().use { output -> input.copyTo(output) }
+                } ?: return@withContext InstallResult.Failure("无法读取文件")
+                installPlugin(tempFile, forceOverwrite = true, source = PluginSource.FILE)
+            } catch (e: Exception) {
+                InstallResult.Failure("插件导入失败: ${e.message}", e)
+            } finally {
+                if (tempFile.exists()) tempFile.delete()
+            }
+        }
+    }
+
     internal fun getPluginDirectory(pluginId: String): File {
+        require(isValidPluginId(pluginId)) { "非法插件 id: $pluginId" }
         return File(pluginsDir, pluginId)
     }
 
-    internal fun getOptimizedDirectory(pluginId: String): File? {
-        return if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
-            File(File(context.cacheDir, "dex_opt"), pluginId).apply { mkdirs() }
-        } else {
-            null
-        }
-    }
-
-    private fun fixExistingPluginPermissions(pluginDir: File) {
-        val apkFile = File(pluginDir, PLUGIN_BASE_APK_NAME)
-        if (apkFile.exists() && apkFile.canWrite()) {
-            apkFile.setReadOnly()
-        }
-        
-        val libDir = File(pluginDir, NATIVE_LIBS_DIR_NAME)
-        if (libDir.exists()) {
-            libDir.walk().filter { it.isFile }.forEach { it.setReadOnly() }
-        }
-    }
-
-    suspend fun scanAndInstallSystemPlugins(): Int = withContext(Dispatchers.IO) {
-        Log.d("InstallerManager", "Scanning system installed plugins...")
-        
-        val intent = Intent("com.wanjishipin.xime.plugin.EXTENSION")
-        val resolveInfos = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            context.packageManager.queryIntentActivities(
-                intent,
-                PackageManager.ResolveInfoFlags.of(PackageManager.GET_META_DATA.toLong())
-            )
-        } else {
-            @Suppress("DEPRECATION")
-            context.packageManager.queryIntentActivities(intent, PackageManager.GET_META_DATA)
-        }
-        
-        Log.d("InstallerManager", "Found ${resolveInfos.size} potential plugin apps")
-        
-        var installedCount = 0
-        for (resolveInfo in resolveInfos) {
-            val packageName = resolveInfo.activityInfo.packageName
-            if (packageName == context.packageName) continue
-            
-            Log.d("InstallerManager", "Processing plugin: $packageName")
-            
-            try {
-                val apkPath = resolveInfo.activityInfo.applicationInfo.publicSourceDir
-                    ?: resolveInfo.activityInfo.applicationInfo.sourceDir
-                if (apkPath == null) {
-                    Log.w("InstallerManager", "No APK path for $packageName")
-                    continue
+    /** 解压 JS 插件包到插件目录（防 zip-slip 路径穿越与 zip bomb 解压膨胀）。 */
+    private fun extractPluginArchive(archiveFile: File, pluginDir: File) {
+        ZipFile(archiveFile).use { zip ->
+            var entryCount = 0
+            var totalBytes = 0L
+            for (entry in zip.entries()) {
+                if (++entryCount > MAX_ARCHIVE_ENTRIES) {
+                    throw IllegalArgumentException("插件包条目数超过上限（$MAX_ARCHIVE_ENTRIES）")
                 }
-                
-                val apkFile = File(apkPath)
-                // 强制更新以确保 providers 信息正确
-                val result = installPlugin(apkFile, forceOverwrite = true)
-                
-                if (result is InstallResult.Success) {
-                    installedCount++
-                    Log.d("InstallerManager", "Successfully installed: ${result.pluginInfo.id}, providers: ${result.pluginInfo.providers.size}")
-                } else if (result is InstallResult.Failure) {
-                    Log.w("InstallerManager", "Failed to install $packageName: ${result.reason}")
+                if (entry.isDirectory) continue
+                if (entry.size > 0) totalBytes += entry.size
+                if (totalBytes > MAX_ARCHIVE_TOTAL_BYTES) {
+                    throw IllegalArgumentException("插件包解压体积超过上限（${MAX_ARCHIVE_TOTAL_BYTES / 1024 / 1024}MB）")
                 }
-            } catch (e: Exception) {
-                Log.e("InstallerManager", "Error installing $packageName", e)
+                // Windows 打包工具可能产生 "\" 分隔的条目名，统一规范为 "/"
+                val name = entry.name.replace('\\', '/')
+                if (name.startsWith("lib/")) continue
+                if (name.contains("../") || name.startsWith("/")) {
+                    throw IllegalArgumentException("非法路径: $name")
+                }
+                val outputFile = File(pluginDir, name)
+                outputFile.parentFile?.mkdirs()
+                zip.getInputStream(entry).use { input ->
+                    outputFile.outputStream().use { output -> input.copyTo(output) }
+                }
             }
         }
-        
-        Log.d("InstallerManager", "Total installed from system: $installedCount")
-        installedCount
     }
-    
-    private data class PluginConfig(
-        val id: String,
-        val name: String,
-        val iconResId: Int,
-        val versionCode: Long,
-        val versionName: String,
-        val entryClass: String,
-        val description: String,
-        val type: String,
-        val providers: List<ProviderInfo>
-    )
 
-    @Suppress("DEPRECATION")
-    private fun parsePluginConfig(pluginApkFile: File): PluginConfig? {
-        return try {
-            val pm = context.packageManager
-            val packageInfo = pm.getPackageArchiveInfo(
-                pluginApkFile.absolutePath,
-                PackageManager.GET_META_DATA or PackageManager.GET_PROVIDERS
-            )
-
-            if (packageInfo == null) return null
-            val appInfo = packageInfo.applicationInfo ?: return null
-            
-            appInfo.publicSourceDir = pluginApkFile.absolutePath
-
-            val metaData = appInfo.metaData ?: return null
-
-            val pluginId = packageInfo.packageName
-            val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                packageInfo.longVersionCode
-            } else {
-                packageInfo.versionCode.toLong()
+    private fun parsePluginConfig(pluginFile: File): PluginParseResult {
+        val content = try {
+            ZipFile(pluginFile).use { zip ->
+                val entry = zip.getEntry(MANIFEST_JSON)
+                    ?: return PluginParseResult.Failure("插件配置解析失败（缺少 manifest.json）")
+                zip.getInputStream(entry).readBytes().toString(Charsets.UTF_8)
             }
-            val versionName = packageInfo.versionName ?: "0.0.0"
-            val name = pm.getApplicationLabel(appInfo).toString()
-            val iconResId = appInfo.icon
-            val entryClass = metaData.getString(META_PLUGIN_ENTRY_CLASS) ?: return null
-            val description = metaData.getString(META_PLUGIN_DESCRIPTION) ?: ""
-            val type = metaData.getString(META_PLUGIN_TYPE) ?: "unknown"
-
-            val providers = parseProviders(packageInfo.providers)
-
-            PluginConfig(
-                id = pluginId,
-                name = name,
-                iconResId = iconResId,
-                versionCode = versionCode,
-                versionName = versionName,
-                entryClass = entryClass,
-                description = description,
-                type = type,
-                providers = providers
-            )
         } catch (e: Exception) {
             Log.e("InstallerManager", "parsePluginConfig failed", e)
-            null
+            return PluginParseResult.Failure("插件配置解析失败：${e.message}")
         }
-    }
 
-    private fun parseProviders(androidProviders: Array<AndroidProviderInfo>?): List<ProviderInfo> {
-        if (androidProviders == null || androidProviders.isEmpty()) return emptyList()
-        
-        return androidProviders.map { provider ->
-            ProviderInfo(
-                className = provider.name,
-                authorities = provider.authority?.split(";")?.filter { it.isNotBlank() } ?: emptyList(),
-                exported = provider.exported,
-                enabled = provider.isEnabled
-            )
-        }
-    }
-
-    private fun copyPluginApk(sourceFile: File, pluginDir: File): File {
-        val targetFile = File(pluginDir, PLUGIN_BASE_APK_NAME)
-        sourceFile.inputStream().use { input ->
-            targetFile.outputStream().use { output ->
-                input.copyTo(output)
-            }
-        }
-        targetFile.setReadOnly()
-        return targetFile
-    }
-
-    private fun extractNativeLibs(pluginApk: File, pluginDir: File): String? {
-        val libDir = File(pluginDir, NATIVE_LIBS_DIR_NAME)
-        libDir.mkdirs()
-
-        var extractedPath: String? = null
-
-        ZipFile(pluginApk).use { zip ->
-            for (entry in zip.entries()) {
-                if (entry.name.startsWith("lib/") && !entry.isDirectory) {
-                    val abi = entry.name.substringAfter("lib/").substringBefore('/')
-                    if (Build.SUPPORTED_ABIS.contains(abi)) {
-                        val abiDir = File(libDir, abi).apply { mkdirs() }
-                        val outputFile = File(abiDir, entry.name.substringAfterLast('/'))
-                        zip.getInputStream(entry).use { input ->
-                            outputFile.outputStream().use { output ->
-                                input.copyTo(output)
-                            }
-                        }
-                        outputFile.setReadOnly()
-                        if (extractedPath == null) {
-                            extractedPath = abiDir.absolutePath
-                        }
-                    }
-                }
-            }
-        }
-        return extractedPath
-    }
-
-    private fun createClassIndex(pluginApkFile: File, pluginDir: File): Boolean {
-        val indexFile = File(pluginDir, CLASS_INDEX_FILENAME)
-        return try {
-            val dexContainer = DexFileFactory.loadDexContainer(
-                pluginApkFile,
-                Opcodes.forApi(Build.VERSION.SDK_INT)
-            )
-
-            indexFile.bufferedWriter().use { writer ->
-                for (dexEntryName in dexContainer.dexEntryNames) {
-                    val dexEntry = dexContainer.getEntry(dexEntryName) ?: continue
-                    val dexFile = dexEntry.dexFile
-                    dexFile.classes.asSequence().forEach { classDef ->
-                        val className = convertDexTypeToClassName(classDef.type)
-                        writer.write(className)
-                        writer.newLine()
-                    }
-                }
-            }
-            true
-        } catch (e: Exception) {
-            indexFile.delete()
-            false
-        }
-    }
-
-    private fun convertDexTypeToClassName(dexType: String): String {
-        return if (dexType.startsWith("L") && dexType.endsWith(";")) {
-            dexType.substring(1, dexType.length - 1).replace('/', '.')
-        } else {
-            dexType.replace('/', '.')
-        }
+        return parseManifestContent(content)
     }
 }

@@ -22,11 +22,14 @@ class SettingsPreferencesTest {
     }
 
     @Test
-    fun currentSchemaUsesDefaultThenPersists() {
+    fun currentSchemaUsesDefaultThenMigratesLegacy() {
+        // 引擎未初始化（测试环境）且无历史数据时使用默认方案
         assertEquals("wubi86", SettingsPreferences.getCurrentSchema(context))
-
-        SettingsPreferences.setCurrentSchema(context, "wubi98")
-
+        // 模拟旧版本 SharedPreferences 数据：一次性迁移读取
+        context.getSharedPreferences("kime_settings", Context.MODE_PRIVATE)
+            .edit()
+            .putString("current_schema", "wubi98")
+            .commit()
         assertEquals("wubi98", SettingsPreferences.getCurrentSchema(context))
     }
 
@@ -231,29 +234,16 @@ class SettingsPreferencesTest {
     }
     
     @Test
-    fun sttProviderSettings() {
-        assertEquals("funasr", SettingsPreferences.getSttProvider(context))
-        
-        SettingsPreferences.setSttProvider(context, "whisper")
-        assertEquals("whisper", SettingsPreferences.getSttProvider(context))
-    }
-    
-    @Test
-    fun funasrApiKeySettings() {
-        assertEquals("", SettingsPreferences.getFunAsrApiKey(context))
-        
-        val apiKey = "test-api-key-12345"
-        SettingsPreferences.setFunAsrApiKey(context, apiKey)
-        assertEquals(apiKey, SettingsPreferences.getFunAsrApiKey(context))
-    }
-    
-    @Test
-    fun schemaSwitchingSequence() {
+    fun schemaLegacyMigration() {
         val schemas = listOf("wubi86", "wubi98", "wubi_pinyin")
-        
+
+        // 方案状态以 librime user.yaml 为准；引擎未初始化时回退读取旧 SharedPreferences 数据
         for (schema in schemas) {
-            SettingsPreferences.setCurrentSchema(context, schema)
-            assertEquals("Current schema should be $schema", 
+            context.getSharedPreferences("kime_settings", Context.MODE_PRIVATE)
+                .edit()
+                .putString("current_schema", schema)
+                .commit()
+            assertEquals("Current schema should be $schema",
                 schema, SettingsPreferences.getCurrentSchema(context))
         }
     }
@@ -272,7 +262,6 @@ class SettingsPreferencesTest {
     
     @Test
     fun clearingPreferencesResetsToDefaults() {
-        SettingsPreferences.setCurrentSchema(context, "custom_schema")
         SettingsPreferences.setDarkMode(context, 2)
         SettingsPreferences.setSoundEnabled(context, false)
         

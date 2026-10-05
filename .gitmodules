@@ -1,12 +1,10 @@
 [submodule "librime"]
 	path = app/src/main/jni/librime
-	url = https://github.com/rime/librime.git
+	url = git@github.com:ximeiorg/librime.git
+	ignore = untracked
 [submodule "app/src/main/jni/snappy"]
 	path = app/src/main/jni/snappy
 	url = https://github.com/google/snappy.git
-[submodule "app/src/main/jni/sherpa-onnx-src"]
-	path = app/src/main/jni/sherpa-onnx-src
-	url = https://github.com/k2-fsa/sherpa-onnx
 [submodule "app/src/main/jni/librime-lua"]
 	path = app/src/main/jni/librime-lua
 	url = https://github.com/hchunhui/librime-lua.git
@@ -20,3 +18,6 @@
 [submodule "app/src/main/jni/librime-predict"]
 	path = app/src/main/jni/librime-predict
 	url = https://github.com/rime/librime-predict.git
+[submodule "app/src/main/assets/rime"]
+	path = app/src/main/assets/rime
+	url = https://github.com/kingzcheung/rime-wubi.git

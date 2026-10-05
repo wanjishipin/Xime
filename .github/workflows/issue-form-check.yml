@@ -1,0 +1,162 @@
+name: Issue 表单检查
+
+# 检查新 issue 是否按表单填写必填项：
+# - 缺失 → 打 needs-more-info 标签 + @作者列缺失项（幂等，不重复刷屏）
+# - 补齐 → 自动移除标签并删除提醒评论
+# - 每天扫描一次：打标超过 7 天未补充的 issue 自动关闭
+# 仅检查表单格式提交的 issue（body 含 "### " 段落），旧格式 issue 不受影响。
+
+on:
+  issues:
+    types: [opened, edited]
+  schedule:
+    - cron: '30 21 * * *' # UTC 21:30 = 北京时间 5:30，每天一次
+
+permissions:
+  issues: write
+
+jobs:
+  check:
+    if: github.event_name == 'issues'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const MARKER = '<!-- issue-form-check -->';
+            const STALE_LABEL = 'needs-more-info';
+            const CLOSE_AFTER_DAYS = 7;
+
+            // 各表单的必填项 label（与 .github/ISSUE_TEMPLATE/*.yml 保持同步）
+            const REQUIRED_BY_LABEL = {
+              bug: ['问题描述', '复现步骤', '期望行为', '实际行为', 'Xime 版本', '设备与系统版本', '输入方案与键盘布局'],
+              enhancement: ['功能描述', '使用场景'],
+            };
+            // 敷衍回答判定：空串 / GitHub 默认占位 / 常见无意义填法
+            const INVALID_ANSWERS = ['', '_no response_', '无', '没有', '-', '？', '?', 'n/a', 'none', '/'];
+
+            function requiredLabels(issue) {
+              const names = issue.labels.map(l => (typeof l === 'string' ? l : l.name));
+              const list = [];
+              for (const [label, required] of Object.entries(REQUIRED_BY_LABEL)) {
+                if (names.includes(label)) list.push(...required);
+              }
+              return list;
+            }
+
+            // 表单渲染后的 body 为 "### label\n\ncontent" 段落结构
+            function parseSections(body) {
+              const sections = {};
+              const re = /^### (.+?)\s*\r?\n([\s\S]*?)(?=\r?\n### |$)/gm;
+              let m;
+              while ((m = re.exec(body)) !== null) {
+                sections[m[1].trim()] = m[2].trim();
+              }
+              return sections;
+            }
+
+            function isInvalid(text) {
+              return INVALID_ANSWERS.includes((text || '').trim().toLowerCase());
+            }
+
+            async function findReminderComment() {
+              const { data: comments } = await github.rest.issues.listComments({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: context.issue.number, per_page: 100,
+              });
+              return comments.find(c => c.user.type === 'Bot' && c.body.includes(MARKER));
+            }
+
+            const issue = context.payload.issue;
+
+            // 旧格式 issue（Markdown 模板 / API 直建）没有表单段落，跳过
+            if (!issue.body || !issue.body.includes('### ')) {
+              core.info('不是表单格式提交的 issue，跳过检查');
+              return;
+            }
+
+            const sections = parseSections(issue.body);
+            const missing = requiredLabels(issue).filter(label => isInvalid(sections[label]));
+
+            if (missing.length > 0) {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number, labels: [STALE_LABEL],
+              });
+              const message = [
+                MARKER,
+                `@${issue.user.login} 以下必填信息缺失或未按要求填写，请**编辑本 issue** 补充：`,
+                '',
+                ...missing.map(x => `- ${x}`),
+                '',
+                `补充完整后本提醒会自动清除；超过 ${CLOSE_AFTER_DAYS} 天未补充将被自动关闭。`,
+              ].join('\n');
+              const existing = await findReminderComment();
+              if (existing) {
+                // 编辑后仍不合格：更新已有提醒（不另发新评论刷屏）
+                await github.rest.issues.updateComment({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  comment_id: existing.id, body: message,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: issue.number, body: message,
+                });
+              }
+              core.info(`缺失 ${missing.length} 项，已提醒`);
+            } else {
+              // 合格：清理标签与提醒评论（无则什么都不做）
+              try {
+                await github.rest.issues.removeLabel({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: issue.number, name: STALE_LABEL,
+                });
+              } catch (e) { /* 标签本就不存在 */ }
+              const existing = await findReminderComment();
+              if (existing) {
+                await github.rest.issues.deleteComment({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  comment_id: existing.id,
+                });
+                await github.rest.issues.createComment({
+                  owner: context.repo.owner, repo: context.repo.repo,
+                  issue_number: issue.number,
+                  body: `@${issue.user.login} 信息已补齐，感谢！`,
+                });
+              }
+              core.info('必填项完整');
+            }
+
+  close-stale:
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const STALE_LABEL = 'needs-more-info';
+            const CLOSE_AFTER_DAYS = 7;
+            const now = Date.now();
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              state: 'open', labels: STALE_LABEL, per_page: 100,
+            });
+
+            for (const issue of issues) {
+              if (issue.pull_request) continue;
+              const ageDays = (now - new Date(issue.updated_at).getTime()) / 86400000;
+              if (ageDays < CLOSE_AFTER_DAYS) continue;
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `超过 ${CLOSE_AFTER_DAYS} 天未补充必填信息，暂时关闭。如仍需反馈，请补充信息后重新打开。`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: issue.number, state: 'closed',
+                state_reason: 'not_planned',
+              });
+              core.info(`已关闭 #${issue.number}（${Math.floor(ageDays)} 天未活动）`);
+            }

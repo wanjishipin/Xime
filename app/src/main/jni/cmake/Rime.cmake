@@ -37,22 +37,33 @@ if(EXISTS "${LUA_LIOLIB_SRC}")
   endif()
 endif()
 
-# 已集成的插件
+# 已集成的插件（拷贝式同步；librime-t9 单独处理，见下）
 set(RIME_PLUGINS librime-octagram librime-predict)
 
-# 将插件复制到 plugins/ 目录
+# 将插件复制到 plugins/ 目录。
+# 顶层插件目录（librime-octagram 等）是唯一权威源码，这里在每次 configure 时
+# 都全量同步，确保插件编译副本与顶层一致（file(COPY) 保留源文件时间戳，
+# 内容未变的文件不会触发重编译）。
 foreach(plugin ${RIME_PLUGINS})
-  if(NOT EXISTS "${CMAKE_SOURCE_DIR}/librime/plugins/${plugin}")
-    file(COPY "${CMAKE_SOURCE_DIR}/${plugin}/"
-         DESTINATION "${CMAKE_SOURCE_DIR}/librime/plugins/${plugin}")
-  endif()
+  file(COPY "${CMAKE_SOURCE_DIR}/${plugin}/"
+       DESTINATION "${CMAKE_SOURCE_DIR}/librime/plugins/${plugin}")
 endforeach()
 
-# librime-lua 需要特殊命名 lua
-if(NOT EXISTS "${CMAKE_SOURCE_DIR}/librime/plugins/lua")
-  file(COPY "${CMAKE_SOURCE_DIR}/librime-lua/"
-       DESTINATION "${CMAKE_SOURCE_DIR}/librime/plugins/lua")
+# librime-t9 源码在顶层 jni/librime-t9，这里用符号链接（而非拷贝）接入
+# librime 插件构建，物理上只保留一份：既避免 IDE 双份索引改错文件，也
+# 从根本上消除“改副本被构建静默覆盖”的隐患。幂等：已存在则先删再建。
+set(T9_PLUGIN_LINK "${CMAKE_SOURCE_DIR}/librime/plugins/librime-t9")
+if(IS_SYMLINK "${T9_PLUGIN_LINK}")
+  file(REMOVE "${T9_PLUGIN_LINK}")
+elseif(EXISTS "${T9_PLUGIN_LINK}")
+  file(REMOVE_RECURSE "${T9_PLUGIN_LINK}")
 endif()
+file(CREATE_LINK "../../librime-t9"
+     "${T9_PLUGIN_LINK}" SYMBOLIC)
+
+# librime-lua 需要特殊命名 lua
+file(COPY "${CMAKE_SOURCE_DIR}/librime-lua/"
+     DESTINATION "${CMAKE_SOURCE_DIR}/librime/plugins/lua")
 
 # librime-lua thirdparty 依赖（Lua 5.4 源码）
 if(NOT EXISTS "${CMAKE_SOURCE_DIR}/librime/plugins/lua/thirdparty")

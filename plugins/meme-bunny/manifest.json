@@ -1,0 +1,38 @@
+// =============================================
+// 恶搞兔表情包插件元数据（宿主用宽松 JSON 解析：支持 // 注释与尾逗号）
+// =============================================
+{
+  // 插件唯一标识（沿用原 DEX 插件 id，覆盖旧实现）
+  "id": "com.kingzcheung.xime.plugin.meme_bunny",
+
+  // 插件名称与描述
+  "name": "恶搞兔表情包",
+  "description": "恶搞兔表情包（6 个表情图片），这只是一个示例插件，展示了如何在 Xime 中使用脚本插件开发表情包功能。",
+
+  // 插件中心列表图标（字符图标）
+  "icon": "🐰",
+
+  // 插件版本（字符串）
+  "version": "4.0.0",
+
+  // 插件分类：emoji 表情（多选启用，即时生效）
+  "type": "emoji",
+  "activation": "multi",
+
+  // 入口脚本（TS 编译产物）
+  "entry": "main.js",
+
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": ["android"],
+
+  // 宿主最低版本要求（v3 起为 async/await 服务模型）
+  "minHostVersion": "3.0.0",
+
+  "capabilities": {
+    "emoji": {
+      "supportsSearch": true,
+      "columns": 3,
+      "itemHeightDp": 110
+    }
+  }
+}

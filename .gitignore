@@ -29,10 +29,8 @@ app/src/main/jni/snappy/
 app/src/main/jni/boost*
 app/src/main/jni/onnxruntime/
 app/src/main/jniLibs/
+app/src/main/jni/librime-t9/build_test/
 app/release
-# sherpa-onnx build artifacts
-build/sherpa-onnx-*
-build/sherpa-onnx-*.tar.gz
 # Large archives
 *.tar.xz
 *.tar.gz
@@ -40,20 +38,26 @@ build/sherpa-onnx-*.tar.gz
 /.agents
 # Association model weights (large files, manually placed)
 app/src/main/assets/association_model
-
+/.sisyphus
 /.kilo
 /.kotlin
 
-# Plugin module builds
+# Plugin toolchain (Rust CLI build artifacts)
+tools/xime-plugin/target/
+tools/xime-plugin/build/
+# Plugin module builds（历史残留目录）
 plugin-api/build
-plugins/funasr-speech/build
-plugins/meme-bunny/build
-plugins/kaomoji/build
 
 # Plugin APKs (development only, not packaged in main app)
 app/src/main/assets/plugins/*.apk
-
+app/src/main/assets/plugins/*.xipk
+/.zcodeignore
 /.skills
 fix_encoding.py
 perf.data
 xime_heap.hprof
+app/src/main/jni/ncnn-build
+app/src/main/jni/ncnn
+# Downloaded at build time by gradle task downloadKnf
+app/src/main/jni/third_party/
+/.zcode

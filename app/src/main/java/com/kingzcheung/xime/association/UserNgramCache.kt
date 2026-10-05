@@ -28,7 +28,6 @@ class UserNgramCache(private val context: Context) {
             if (cacheFile.exists()) {
                 val json = JSONObject(cacheFile.readText())
                 loadFromJson(json)
-                Log.d(TAG, "Loaded ${bigramTrie.size()} bigrams, ${trigramTrie.size()} trigrams")
             }
             true
         } catch (e: Exception) {
@@ -53,7 +52,6 @@ class UserNgramCache(private val context: Context) {
             trigramTrie.insert(window)
         }
         
-        trimIfNeeded()
     }
     
     private fun tokenize(text: String): List<String> {
@@ -66,13 +64,6 @@ class UserNgramCache(private val context: Context) {
         recentInputs.addAll(newTokens)
         if (recentInputs.size > MAX_HISTORY_SIZE) {
             recentInputs.subList(0, recentInputs.size - MAX_HISTORY_SIZE).clear()
-        }
-    }
-    
-    private fun trimIfNeeded() {
-        val totalSize = bigramTrie.size() + trigramTrie.size()
-        if (totalSize > MAX_ENTRIES) {
-            Log.d(TAG, "Cache size $totalSize exceeds limit, keeping recent entries")
         }
     }
     

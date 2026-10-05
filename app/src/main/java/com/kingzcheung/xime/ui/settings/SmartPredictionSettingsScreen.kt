@@ -1,6 +1,7 @@
 package com.kingzcheung.xime.ui.settings
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -65,13 +67,16 @@ import com.kingzcheung.xime.viewmodel.SmartPredictionSettingsViewModel
 @Composable
 fun SmartPredictionSettingsContent(
     onBack: () -> Unit,
-    onNavigateToModelManagement: () -> Unit = {}
+    onNavigateToModelManagement: () -> Unit = {},
+    onNavigateToModelDetail: (String) -> Unit = {},
 ) {
     val context = LocalContext.current
     val viewModel: SmartPredictionSettingsViewModel = viewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val predictionModels = remember { ModelManager.getModelsByCategory(ModelCategory.PREDICTION) }
+    // 模型清单来自远程 index，响应式收集以在加载完成后刷新（仅 PREDICTION 类别）
+    val allModels by ModelManager.modelsFlow.collectAsStateWithLifecycle()
+    val predictionModels = allModels.filter { it.category == ModelCategory.PREDICTION }
 
     val savedModelId = remember {
         SettingsPreferences.getPredictionSelectedModel(context)
@@ -92,7 +97,7 @@ fun SmartPredictionSettingsContent(
     }
 
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = { Text("智能联想") },
@@ -105,8 +110,8 @@ fun SmartPredictionSettingsContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 ),
             )
         }
@@ -185,6 +190,57 @@ fun SmartPredictionSettingsContent(
                 })
             }
 
+            if (uiState.isEnabled) {
+                item {
+                    var spaceCommitEnabled by remember {
+                        mutableStateOf(SettingsPreferences.isSpaceCommitAssociationEnabled(context))
+                    }
+                    var singleMode by remember {
+                        mutableStateOf(SettingsPreferences.isSingleAssociationMode(context))
+                    }
+                    SettingsSection(title = "联想行为", content = {
+                        SettingsToggleItem(
+                            icon = Icons.Default.AutoAwesome,
+                            title = "空格上屏联想候选",
+                            subtitle = "有联想候选时，按空格键直接上屏第一个联想词",
+                            checked = spaceCommitEnabled,
+                            onCheckedChange = {
+                                spaceCommitEnabled = it
+                                SettingsPreferences.setSpaceCommitAssociationEnabled(context, it)
+                            }
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 16.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+                        AssociationModeRow(
+                            title = "连续联想",
+                            subtitle = "联想词上屏后继续推理，可连续空格上屏联想词",
+                            isSelected = !singleMode,
+                            onClick = {
+                                singleMode = false
+                                SettingsPreferences.setAssociationSingleMode(context, false)
+                            }
+                        )
+                        HorizontalDivider(
+                            modifier = Modifier.padding(start = 16.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                        )
+                        AssociationModeRow(
+                            title = "单次联想",
+                            subtitle = "联想词上屏一次后停止推理，待下次输入再联想",
+                            isSelected = singleMode,
+                            onClick = {
+                                singleMode = true
+                                SettingsPreferences.setAssociationSingleMode(context, true)
+                            }
+                        )
+                    })
+                }
+            }
+
             if (predictionModels.isNotEmpty()) {
                 item {
                     SettingsSection(title = "选择模型", content = {
@@ -195,7 +251,8 @@ fun SmartPredictionSettingsContent(
                                 onSelect = {
                                     selectedModelId = model.id
                                     SettingsPreferences.setPredictionSelectedModel(context, model.id)
-                                }
+                                },
+                                onOpenInStore = { onNavigateToModelDetail(model.id) }
                             )
                             if (model != predictionModels.last()) {
                                 HorizontalDivider(
@@ -278,7 +335,7 @@ fun SmartPredictionSettingsContent(
                 SettingsSection(title = "模型管理", content = {
                     SettingsItem(
                         icon = Icons.Default.Build,
-                        title = "下载/删除模型",
+                        title = "模型管理",
                         subtitle = "管理所有已下载的 AI 模型",
                         onClick = onNavigateToModelManagement,
                         showArrow = true
@@ -290,10 +347,43 @@ fun SmartPredictionSettingsContent(
 }
 
 @Composable
+private fun AssociationModeRow(
+    title: String,
+    subtitle: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Medium,
+                color = if (isSelected) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        RadioButton(selected = isSelected, onClick = onClick)
+    }
+}
+
+@Composable
 private fun PredictionModelCard(
     modelInfo: com.kingzcheung.xime.model.ModelInfo,
     isSelected: Boolean,
-    onSelect: () -> Unit
+    onSelect: () -> Unit,
+    onOpenInStore: () -> Unit
 ) {
     val context = LocalContext.current
     val isDownloaded = remember { ModelManager.isModelDownloaded(context, modelInfo.id) }
@@ -378,6 +468,20 @@ private fun PredictionModelCard(
                     Spacer(Modifier.width(4.dp))
                 }
                 Text(if (isSelected) "使用中" else "使用")
+            }
+        } else {
+            Spacer(modifier = Modifier.width(8.dp))
+            OutlinedButton(
+                onClick = onOpenInStore,
+                shape = RoundedCornerShape(50)
+            ) {
+                Icon(
+                    Icons.Default.CloudDownload,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(Modifier.width(4.dp))
+                Text("去商店")
             }
         }
     }

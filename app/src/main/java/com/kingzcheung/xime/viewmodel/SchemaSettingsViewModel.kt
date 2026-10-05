@@ -4,8 +4,12 @@ import android.app.Application
 import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.kingzcheung.xime.plugin.core.runtime.PluginManager
 import com.kingzcheung.xime.rime.RimeConfigHelper
 import com.kingzcheung.xime.rime.RimeEngine
+import com.kingzcheung.xime.settings.MarketUpdateChecker
+import com.kingzcheung.xime.settings.FileConflictInfo
+import com.kingzcheung.xime.settings.ImportManager
 import com.kingzcheung.xime.settings.KeysConfigHelper
 import com.kingzcheung.xime.settings.PersonalDictManager
 import com.kingzcheung.xime.settings.SchemaManifestManager
@@ -90,32 +94,60 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
 
     fun selectSchema(schema: SchemaMeta) {
         if (_uiState.value.currentSchema == schema.schemaId) return
+        val previous = _uiState.value.currentSchema
         SettingsPreferences.setCurrentSchema(context, schema.schemaId)
         _uiState.update { it.copy(currentSchema = schema.schemaId) }
         if (RimeEngine.isInitialized()) {
             val available = RimeEngine.getInstance().getAvailableSchemas()
             if (schema.schemaId in available) {
-                RimeEngine.getInstance().switchSchema(schema.schemaId)
-                showToast("已切换到${schema.name}")
+                // 部署/编译进行中 switchSchema 不阻塞返回 false，避免主线程等待
+                val switched = RimeEngine.getInstance().switchSchema(schema.schemaId)
+                if (switched) {
+                    showToast("已切换到${schema.name}")
+                } else {
+                    rollbackSchemaSelection(previous)
+                    showToast("词库部署中，请稍后再切换方案")
+                }
             } else {
+                rollbackSchemaSelection(previous)
                 showToast("请点击「部署」按钮")
             }
         }
     }
 
+    /**
+     * 切换失败时回滚偏好与 UI 状态。不回滚有两个后果：再次点击会被
+     * [selectSchema] 开头的同值短路拦住（用户永远无法重试）；偏好与
+     * 引擎实际方案脱节后，IME 重启的方案恢复逻辑会拿到偏差好。
+     */
+    private fun rollbackSchemaSelection(previous: String) {
+        SettingsPreferences.setCurrentSchema(context, previous)
+        _uiState.update { it.copy(currentSchema = previous) }
+    }
+
     fun importSchemaFile(uri: Uri) {
         viewModelScope.launch {
-            val result = SchemaManager.importSchemaFile(context, uri)
-            refresh()
-            _importCompleted.tryEmit(Unit)
-            if (result.success) {
-                if (result.installedDirect) {
-                    showToast("导入成功，已放入 rime 目录")
-                } else {
-                    showToast("导入成功，请到「本地方案」安装")
+            when (val result = ImportManager.import(context, uri)) {
+                is ImportManager.ImportResult.Content -> {
+                    refresh()
+                    _importCompleted.tryEmit(Unit)
+                    showToast(
+                        when {
+                            result.conflicts.isNotEmpty() -> conflictMessage(result.conflicts)
+                            !result.success -> "导入失败"
+                            result.installedDirect -> "导入成功，已放入 rime 目录"
+                            else -> "导入成功，请到「本地方案」安装"
+                        }
+                    )
                 }
-            } else {
-                showToast("导入失败")
+                is ImportManager.ImportResult.Plugin -> {
+                    withContext(Dispatchers.IO) { PluginManager.loadEnabledPlugins() }
+                    refresh()
+                    _importCompleted.tryEmit(Unit)
+                    showToast("插件「${result.pluginInfo?.name}」安装成功")
+                }
+                is ImportManager.ImportResult.Failed -> showToast("导入失败：${result.reason}")
+                is ImportManager.ImportResult.Unsupported -> showToast("不支持的文件类型")
             }
         }
     }
@@ -148,20 +180,35 @@ class SchemaSettingsViewModel(application: Application) : AndroidViewModel(appli
             refresh()
             loadMarketPackages()
             showToast("已卸载")
+            // 卸载后该项不再计入可更新，立即重算角标
+            MarketUpdateChecker.refreshNow(context)
         }
     }
 
     fun importFromUrl(url: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isDownloading = true) }
-            val success = withContext(Dispatchers.IO) {
+            val result = withContext(Dispatchers.IO) {
                 SchemaManager.importFromUrl(getApplication(), url)
             }
             _uiState.update { it.copy(isDownloading = false) }
             refresh()
             _importCompleted.tryEmit(Unit)
-            showToast(if (success) "导入成功" else "下载或解压失败，请检查链接")
+            showToast(
+                when {
+                    result.conflicts.isNotEmpty() -> conflictMessage(result.conflicts)
+                    result.success -> "导入成功"
+                    else -> "下载或解压失败，请检查链接"
+                }
+            )
         }
+    }
+
+    /** 冲突提示：同名文件已被其他方案以不同内容安装，拒绝覆盖。 */
+    private fun conflictMessage(conflicts: List<FileConflictInfo>): String {
+        val first = conflicts.first()
+        val owner = first.claimedBy.firstOrNull() ?: "其他方案"
+        return "导入失败：${first.fileName} 已由「$owner」以不同内容安装，为避免覆盖已取消"
     }
 
     fun deploySchema() {

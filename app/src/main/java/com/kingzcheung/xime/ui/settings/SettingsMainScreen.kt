@@ -21,10 +21,11 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.twotone.LibraryBooks
 import androidx.compose.material.icons.twotone.AutoAwesome
+import androidx.compose.material.icons.twotone.Backup
 import androidx.compose.material.icons.twotone.Ballot
 
 import androidx.compose.material.icons.twotone.Build
-import androidx.compose.material.icons.twotone.CloudSync
+import androidx.compose.material.icons.twotone.ContentPaste
 import androidx.compose.material.icons.twotone.ContentPasteGo
 import androidx.compose.material.icons.twotone.Description
 import androidx.compose.material.icons.twotone.Extension
@@ -48,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +61,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.kingzcheung.xime.settings.MarketUpdateChecker
 import com.kingzcheung.xime.settings.SettingsPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.MainScope
@@ -69,33 +73,40 @@ import kotlinx.coroutines.withContext
 @Composable
 fun SettingsMainContent(
     onNavigateToSchema: () -> Unit,
-    onNavigateToSchemaMarket: () -> Unit = {},
+    onNavigateToMarket: () -> Unit = {},
     onNavigateToTheme: () -> Unit,
     onNavigateToKeyEffect: () -> Unit,
     onNavigateToLayoutDisplay: () -> Unit,
     onNavigateToDictionary: () -> Unit,
     onNavigateToPlugins: () -> Unit,
+    onNavigateToModelLocal: () -> Unit = {},
     onNavigateToSmartPrediction: () -> Unit,
     onNavigateToSpeechToText: () -> Unit,
-    onNavigateToModelManagement: () -> Unit = {},
     onNavigateToAbout: () -> Unit,
     onNavigateToWebDav: () -> Unit = {},
-    onNavigateToClipboard: () -> Unit = {}
+    onNavigateToClipboard: () -> Unit = {},
+    onNavigateToBackup: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    
+
+    // 扩展商店可更新计数：进主页恢复缓存并按节流后台刷新（失败静默），展示在入口角标
+    LaunchedEffect(Unit) {
+        MarketUpdateChecker.maybeRefresh(context)
+    }
+    val marketUpdates by MarketUpdateChecker.summary.collectAsStateWithLifecycle()
+
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             MediumTopAppBar(
                 title = { Text("曦码输入法设置") },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    scrolledContainerColor = MaterialTheme.colorScheme.background,
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
                     navigationIconContentColor = Color.Unspecified,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface,
                     actionIconContentColor = Color.Unspecified
                 ),
                 scrollBehavior = scrollBehavior
@@ -204,42 +215,6 @@ fun SettingsMainContent(
             }
 
             item {
-                SettingsSection(title = "方案与词库", content = {
-                    SettingsItem(
-                        icon = Icons.TwoTone.KeyboardAlt,
-                        title = "输入方案",
-                        subtitle = "管理输入方案",
-                        onClick = onNavigateToSchema,
-                        showArrow = true
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 56.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    SettingsItem(
-                        icon = Icons.TwoTone.Storefront,
-                        title = "方案市场",
-                        subtitle = "从官方源下载安装输入方案",
-                        onClick = onNavigateToSchemaMarket,
-                        showArrow = true
-                    )
-                    HorizontalDivider(
-                        modifier = Modifier.padding(start = 56.dp),
-                        thickness = 0.5.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    )
-                    SettingsItem(
-                        icon = Icons.TwoTone.Ballot,
-                        title = "词库管理",
-                        subtitle = "管理个人词库和自定义短语",
-                        onClick = onNavigateToDictionary,
-                        showArrow = true
-                    )
-                })
-            }
-
-            item {
                 SettingsSection(title = "外观与交互", content = {
                     SettingsItem(
                         icon = Icons.TwoTone.Palette,
@@ -276,12 +251,12 @@ fun SettingsMainContent(
             }
 
             item {
-                SettingsSection(title = "智能与扩展", content = {
+                SettingsSection(title = "方案与词库", content = {
                     SettingsItem(
-                        icon = Icons.TwoTone.AutoAwesome,
-                        title = "智能联想",
-                        subtitle = "基于 AI 模型的智能联想词预测",
-                        onClick = onNavigateToSmartPrediction,
+                        icon = Icons.TwoTone.KeyboardAlt,
+                        title = "输入方案",
+                        subtitle = "管理输入方案",
+                        onClick = onNavigateToSchema,
                         showArrow = true
                     )
                     HorizontalDivider(
@@ -289,31 +264,26 @@ fun SettingsMainContent(
                         thickness = 0.5.dp,
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
-                    var sttEnabled by remember { mutableStateOf(SettingsPreferences.isSttEnabled(context)) }
-                    SettingsToggleItem(
-                        icon = Icons.TwoTone.GraphicEq,
-                        title = "语音转文本",
-                        subtitle = "在线 ASR 服务和本地模型管理",
-                        checked = sttEnabled,
+                    SettingsItem(
+                        icon = Icons.TwoTone.Ballot,
+                        title = "词库管理",
+                        subtitle = "用户词库、快捷短语与词条搬运",
+                        onClick = onNavigateToDictionary,
+                        showArrow = true
+                    )
+                })
+            }
+
+            item {
+                SettingsSection(title = "扩展", content = {
+                    SettingsItem(
+                        icon = Icons.TwoTone.Storefront,
+                        title = "扩展商店",
+                        subtitle = "下载输入方案 / 模型 / 插件",
+                        onClick = onNavigateToMarket,
                         showArrow = true,
-                        onClick = {
-                            if (sttEnabled) onNavigateToSpeechToText()
-                        },
-                        onCheckedChange = { enabled ->
-                            sttEnabled = enabled
-                            SettingsPreferences.setSttEnabled(context, enabled)
-                            if (enabled && SettingsPreferences.isSttUseLocal(context)) {
-                                MainScope().launch {
-                                    try {
-                                        val engine = com.kingzcheung.xime.speech.sherpa.SherpaAsrEngine(context)
-                                        withContext(Dispatchers.IO) {
-                                            engine.initialize()
-                                        }
-                                        engine.release()
-                                    } catch (_: Exception) { }
-                                }
-                            }
-                        }
+                        badgeText = marketUpdates.totalUpdates.takeIf { it > 0 }
+                            ?.let { "$it 项可更新" }
                     )
                     HorizontalDivider(
                         modifier = Modifier.padding(start = 56.dp),
@@ -333,22 +303,67 @@ fun SettingsMainContent(
                         color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
                     )
                     SettingsItem(
-                        icon = Icons.TwoTone.Build,
+                        icon = Icons.TwoTone.Straighten,
                         title = "模型管理",
-                        subtitle = "管理已下载的 AI 模型",
-                        onClick = onNavigateToModelManagement,
+                        subtitle = "管理本地下载的智能模型",
+                        onClick = onNavigateToModelLocal,
                         showArrow = true
                     )
                 })
             }
 
             item {
-                SettingsSection(title = "同步与备份", content = {
+                SettingsSection(title = "智能", content = {
                     SettingsItem(
-                        icon = Icons.TwoTone.CloudSync,
-                        title = "WebDAV 同步",
-                        subtitle = "通过 WebDAV 备份和恢复输入方案与配置",
-                        onClick = onNavigateToWebDav,
+                        icon = Icons.TwoTone.AutoAwesome,
+                        title = "智能联想",
+                        subtitle = "基于 AI 模型的智能联想词预测",
+                        onClick = onNavigateToSmartPrediction,
+                        showArrow = true
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 56.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                    var sttEnabled by remember { mutableStateOf(SettingsPreferences.isSttEnabled(context)) }
+                    SettingsToggleItem(
+                        icon = Icons.TwoTone.GraphicEq,
+                        title = "语音转文本",
+                        subtitle = "在线 ASR 服务（需安装语音识别插件）",
+                        checked = sttEnabled,
+                        showArrow = true,
+                        onClick = {
+                            if (sttEnabled) onNavigateToSpeechToText()
+                        },
+                        onCheckedChange = { enabled ->
+                            sttEnabled = enabled
+                            SettingsPreferences.setSttEnabled(context, enabled)
+                        }
+                    )
+                })
+            }
+
+            item {
+                // 分组含两类"本地数据/数据流向"设置：剪贴板（内容与同步）优先，其后是词典与配置的同步备份
+                SettingsSection(title = "数据与同步", content = {
+                    SettingsItem(
+                        icon = Icons.TwoTone.ContentPaste,
+                        title = "剪贴板",
+                        subtitle = "图片记录、体积限制、占用清理与剪贴板同步",
+                        onClick = onNavigateToClipboard,
+                        showArrow = true
+                    )
+                    HorizontalDivider(
+                        modifier = Modifier.padding(start = 56.dp),
+                        thickness = 0.5.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+                    )
+                    SettingsItem(
+                        icon = Icons.TwoTone.Backup,
+                        title = "同步与备份",
+                        subtitle = "多设备词典互通与配置备份",
+                        onClick = onNavigateToBackup,
                         showArrow = true
                     )
                 })

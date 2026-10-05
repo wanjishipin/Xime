@@ -8,6 +8,13 @@ updates:
     open-pull-requests-limit: 5
     ignore:
       - dependency-name: "androidx.lifecycle*"
+      # AGP 是顶格匹配：AS 2026.1.4.8 传给 Gradle 的
+      # -Dandroid.studio.latest.known.compatible.agp.version 就是 9.4.1，工程也是 9.4.1——
+      # 再往上（含 patch）IDE 会弹「incompatible version」拒绝同步。升级 Android Studio 后
+      # 由人同步改 libs.versions.toml 的 agp，并连带改 Gradle wrapper 版本、compileSdk(+minor)
+      # 与 .github/workflows 里 sdkmanager 安装的 platforms;android-XX.Y。
+      - dependency-name: "com.android.application"
+      - dependency-name: "com.android.library"
     groups:
       kotlin:
         patterns:

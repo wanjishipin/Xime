@@ -8,7 +8,12 @@
   <a href="README.zh-CN.md">简体中文</a> · <a href="README.zh-TW.md">繁體中文</a>
 </p>
 
-[Windows Version](https://github.com/ximeiorg/winxime) | [Linux Version](https://github.com/ximeiorg/xime-wayland) | [Predictive Text Model](https://github.com/ximeiorg/predictive-text) | [Handwriting Model](https://github.com/ximeiorg/ochwpro)
+[<img src="https://f-droid.org/badge/get-it-on.png"
+    alt="Get it on F-Droid"
+    height="80">](https://f-droid.org/packages/com.kingzcheung.xime)
+
+
+[Windows Version](https://github.com/ximeiorg/XimeYao) | [Linux Version](https://github.com/ximeiorg/XimeChe) | [Predictive Text Model](https://github.com/ximeiorg/predictive-text) | [Handwriting Model](https://github.com/ximeiorg/ochwpro)
 
 An Android input method built on the [Rime](https://rime.im/) engine, designed for efficient Chinese text input with Wubi (五笔) and Pinyin support.
 
@@ -39,7 +44,7 @@ An Android input method built on the [Rime](https://rime.im/) engine, designed f
     <td><img src="docs/Screenshot/theme_light.jpg" width="180"><br><p align="center">Theme Settings (Light)</p></td>
     <td><img src="docs/Screenshot/theme_dark.jpg" width="180"><br><p align="center">Theme Settings (Dark)</p></td>
     <td><img src="docs/Screenshot/plugin_light.jpg" width="180"><br><p align="center">Plugin Manager</p></td>
-    <td><img src="docs/Screenshot/方案市场.jpg" width="180"><br><p align="center">Schema Marketplace</p></td>
+    <td><img src="docs/Screenshot/扩展商店.png" width="180"><br><p align="center">Extension Store</p></td>
   </tr>
 </table>
 
@@ -49,19 +54,20 @@ An Android input method built on the [Rime](https://rime.im/) engine, designed f
 - **Rime Engine** - Powered by the mature and reliable Rime input method engine for accurate Chinese input
 - **Rich Keyboard Layouts** - QWERTY full keyboard, T9 Pinyin, Stroke 9-key, Handwriting, Numpad (with calculator)
 - **Floating Keyboard** - Floating card style with drag support, semi-transparent rounded design
-- **Voice-to-Text** - Supports Alibaba Bailian FunAsr (online) and sherpa-onnx (local offline) engines
-- **AI Enhancement** - Transformer-based predictive text and punctuation prediction for faster input
+- **Voice-to-Text** - Local offline ASR (built-in streaming zipformer2 engine) plus online ASR plugins (FunAsr, Volc, etc.)
+- **AI Enhancement** - Transformer-based predictive text for faster input
 - **Clean UI** - Material Design 3, light/dark themes with multiple color schemes
 - **Keyboard Adjustment** - Adjustable keyboard height and position
 - **Toolbar Customization** - Customizable toolbar button layout and functions
 - **Haptic Feedback** - Adjustable sound and vibration intensity
 - **Swipe Gestures** - Cursor movement, deletion, symbol input via swipe gestures
 - **Clipboard Manager** - Clipboard history with quick send and pinning
+- **Clipboard Sync** - Bidirectional clipboard sync with remote devices via plugins (WebDAV, ximed, etc.)
 - **Candidate Coding Hints** - Display Wubi codes for candidates to aid learning
 - **Radical Display** - Swipe down on keys to show Wubi radicals for memory aid
 - **Physical Keyboard Support** - Floating candidate bar when using hardware/bluetooth keyboards
 - **WebDAV Sync** - Backup and restore schemas and settings via WebDAV
-- **Emoji Plugins** - Extensible emoji plugins (kaomoji, sticker packs, etc.)
+- **Plugin Marketplace** - Extensible Lua plugins (emoji, clipboard sync, online ASR, etc.) via the built-in marketplace
 
 ## Requirements
 
@@ -84,6 +90,19 @@ Choose the APK matching your device architecture:
 3. Enable Xime in system input method settings
 4. Set Xime as the current input method
 
+### Plugins (Optional)
+
+Plugins are Lua-script plugins (`.xipk` format), installable and enabled from the app's Settings > Extension Store:
+- **kaomoji**: Kaomoji text emoticons
+- **meme-bunny**: Funny bunny sticker pack (8 stickers)
+- **xime-fluent-emoji**: Fluent UI 3D-style emoji plugin (222 curated 3D emojis, 9 categories)
+- **funasr-asr**: Alibaba Bailian FunAsr online speech recognition
+- **volc-asr**: Volcano Engine online speech recognition
+- **webdav-clipboard-sync**: WebDAV-based clipboard sync
+- **ximed-clipboard-sync**: ximed-service-based clipboard sync
+
+For the full plugin list, see the [Plugin Center](https://ime.ximei.me/plugin-list.html), or browse and install directly from the app's Settings > Extension Store.
+
 ### Build from Source
 
 1. Clone the project and build the APK
@@ -94,6 +113,11 @@ Choose the APK matching your device architecture:
 ## Documentation
 
 For detailed documentation, visit [https://ime.ximei.me](https://ime.ximei.me).
+
+- [FAQ](https://ime.ximei.me/faq.html)
+- [Rime Schemas List](https://ime.ximei.me/rime-list.html)
+- [Plugin List](https://ime.ximei.me/plugin-list.html)
+- [AI Models List](https://ime.ximei.me/model-list.html)
 
 ## Building
 
@@ -107,44 +131,6 @@ git submodule update --init --recursive
 # Build Release APK
 ./gradlew assembleRelease
 ```
-
-### Local Speech Recognition Build
-
-The project supports local offline speech recognition (based on sherpa-onnx). The JNI library is downloaded and compiled automatically on first build.
-
-If the automatic build fails, run:
-
-```bash
-# Build sherpa-onnx JNI library manually
-./build-sherpa-onnx.sh
-```
-
-The built `libsherpa-onnx-jni.so` will be placed in `app/src/main/jniLibs/`.
-
-The local ASR model can be downloaded from within the app's settings page.
-
-### AI Model Download
-
-#### Predictive Text Model
-
-- **Repository**: https://github.com/ximeiorg/predictive-text
-- **Model**: https://www.modelscope.cn/models/bikeand/predictive-text-small
-- **File**: `model_int8_dynamic.onnx` (~17MB)
-- **Vocabulary**: `vocab.json`
-- **Location**: `filesDir/` (app private directory root)
-- **Function**: Transformer-based Chinese word prediction for intelligent candidate suggestions
-
-#### Punctuation Prediction Model
-
-- **Repository**: https://github.com/ximeiorg/srf-punctuation
-- **Demo**: https://srf-punctuation.ximei.me/
-- **Model**: https://www.modelscope.cn/models/bikeand/srf-punctuation
-- **File**: `punctuation_int8.onnx` (~2.2MB)
-- **Vocabulary**: `vocab.json`
-- **Location**: `filesDir/punctuation_models/`
-- **Function**: Transformer-based Chinese punctuation prediction, auto-punctuation after speech recognition
-
-**Note**: All models can be downloaded directly from within the app (Settings > AI Prediction / Speech Recognition) — no manual placement required.
 
 ## Tech Stack
 
@@ -168,18 +154,13 @@ Core rules:
 - [Rime](https://rime.im/) - Input method engine
 - [Trime](https://github.com/osfans/trime) - Configuration reference
 - [fcitx5-android](https://github.com/fcitx5-android/fcitx5-android) - Keyboard layout reference
-- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) - Local speech-to-text support
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=ximeiorg/Xime&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&legend=top-left" />
- </picture>
-</a>
+- [onnxruntime](https://github.com/microsoft/onnxruntime) - ONNX inference runtime for predictive text and speech recognition models
 
 ## License
 
 GPLv3 License
+
+Copyright © 2026 Kingz Cheung
+
+The Xime name, logo and other brand assets are **not** covered by the GPLv3 license.
+See [TRADEMARKS.md](TRADEMARKS.md) for details.

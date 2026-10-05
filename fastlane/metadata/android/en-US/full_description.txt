@@ -1,0 +1,8 @@
+Xime (曦码) is a Chinese IME built on the Rime engine for Wubi and Pinyin input, focused on a simple and efficient typing experience.
+
+Features:
+* Multiple input schemes - Wubi 86, Wubi 98, Pinyin, and mixed Wubi/Pinyin
+* Rime engine - mature and stable Rime input method engine
+* Speech-to-text - built-in voice recognition (FunAsr and local models)
+* Emoji plugins - supports extendable emoji plugins
+* Material Design 3 style with light/dark themes

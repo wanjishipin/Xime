@@ -16,7 +16,6 @@ class PluginInfoTest {
             versionCode = 1,
             versionName = "1.0.0",
             path = "/path/to/plugin",
-            entryClass = "com.example.Plugin",
             description = "A test plugin"
         )
         
@@ -36,7 +35,6 @@ class PluginInfoTest {
             versionCode = 2,
             versionName = "2.0.0",
             path = "",
-            entryClass = "",
             description = ""
         )
         
@@ -52,7 +50,6 @@ class PluginInfoTest {
             versionCode = 1,
             versionName = "1.0",
             path = "",
-            entryClass = "",
             description = "",
             enabled = false
         )
@@ -69,12 +66,31 @@ class PluginInfoTest {
             versionCode = 1,
             versionName = "1.0",
             path = "",
-            entryClass = "",
             description = "",
             type = "emoji"
         )
         
         assertEquals("emoji", emojiPlugin.type)
+    }
+
+    @Test
+    fun `PluginInfo category is derived from type`() {
+        assertEquals(
+            PluginCategory.EMOJI,
+            PluginInfo(id = "e", name = "E", iconResId = 0, versionCode = 1, versionName = "1", path = "", description = "", type = "emoji").category
+        )
+        assertEquals(
+            PluginCategory.ASR,
+            PluginInfo(id = "a", name = "A", iconResId = 0, versionCode = 1, versionName = "1", path = "", description = "", type = "speech").category
+        )
+        assertEquals(
+            PluginCategory.PREDICTION,
+            PluginInfo(id = "p", name = "P", iconResId = 0, versionCode = 1, versionName = "1", path = "", description = "", type = "prediction").category
+        )
+        assertEquals(
+            PluginCategory.UNKNOWN,
+            PluginInfo(id = "u", name = "U", iconResId = 0, versionCode = 1, versionName = "1", path = "", description = "").category
+        )
     }
     
     @Test
@@ -86,7 +102,6 @@ class PluginInfoTest {
             versionCode = 100,
             versionName = "10.0",
             path = "/original/path",
-            entryClass = "com.original.Plugin",
             description = "Original plugin",
             type = "emoji",
             enabled = true
@@ -111,7 +126,6 @@ class PluginInfoTest {
             versionCode = 1,
             versionName = "1.0",
             path = "",
-            entryClass = "",
             description = "",
             installTime = customTime
         )
@@ -120,93 +134,61 @@ class PluginInfoTest {
     }
     
     @Test
-    fun `PluginInfo can have nativeLibPath`() {
+    fun `PluginInfo can have entryScript`() {
         val pluginInfo = PluginInfo(
-            id = "native_plugin",
-            name = "Native",
+            id = "js_plugin",
+            name = "QuickJS",
             iconResId = 0,
-            versionCode = 1,
+            versionCode = 0,
             versionName = "1.0",
-            path = "",
-            entryClass = "",
+            path = "/data/plugins/js_plugin/main.js",
             description = "",
-            nativeLibPath = "/lib/path"
+            entryScript = "main.js"
         )
-        
-        assertEquals("/lib/path", pluginInfo.nativeLibPath)
-    }
-    
-    @Test
-    fun `PluginInfo can have providers`() {
-        val providers = listOf(
-            ProviderInfo("com.example.Provider1", listOf("authority1")),
-            ProviderInfo("com.example.Provider2", listOf("authority2"))
-        )
-        val pluginInfo = PluginInfo(
-            id = "provider_plugin",
-            name = "Provider",
-            iconResId = 0,
-            versionCode = 1,
-            versionName = "1.0",
-            path = "",
-            entryClass = "",
-            description = "",
-            providers = providers
-        )
-        
-        assertEquals(2, pluginInfo.providers.size)
-        assertEquals("com.example.Provider1", pluginInfo.providers[0].className)
-        assertEquals(listOf("authority1"), pluginInfo.providers[0].authorities)
-    }
-}
 
-class ProviderInfoTest {
-    
+        assertEquals("main.js", pluginInfo.entryScript)
+    }
+
     @Test
-    fun `ProviderInfo should have correct properties`() {
-        val provider = ProviderInfo(
-            className = "com.example.TestProvider",
-            authorities = listOf("test_provider")
+    fun `PluginInfo toolbarButtons default to empty list`() {
+        val pluginInfo = PluginInfo(
+            id = "test",
+            name = "Test",
+            iconResId = 0,
+            versionCode = 1,
+            versionName = "1.0",
+            path = "",
+            description = ""
         )
-        
-        assertEquals("com.example.TestProvider", provider.className)
-        assertEquals(listOf("test_provider"), provider.authorities)
+        assertEquals("toolbarButtons 缺省应为空", emptyList<PluginToolbarButton>(), pluginInfo.toolbarButtons)
     }
-    
+
     @Test
-    fun `ProviderInfo can have multiple authorities`() {
-        val provider = ProviderInfo(
-            className = "com.example.Provider",
-            authorities = listOf("authority1", "authority2", "authority3")
+    fun `PluginInfo keeps toolbar buttons and category of tool type`() {
+        val buttons = listOf(
+            PluginToolbarButton(id = "ai_reply", label = "AI 回复", icon = "ai_reply.png"),
+            PluginToolbarButton(id = "ai_write", label = "AI 帮写")
         )
-        
-        assertEquals(3, provider.authorities.size)
-    }
-    
-    @Test
-    fun `ProviderInfo can be compared`() {
-        val p1 = ProviderInfo("com.example.Provider", listOf("authority"))
-        val p2 = ProviderInfo("com.example.Provider", listOf("authority"))
-        
-        assertEquals(p1, p2)
-    }
-    
-    @Test
-    fun `ProviderInfo exported and enabled defaults`() {
-        val provider = ProviderInfo("com.example.Provider", listOf("authority"))
-        
-        assertFalse("Exported should default to false", provider.exported)
-        assertTrue("Enabled should default to true", provider.enabled)
-    }
-    
-    @Test
-    fun `ProviderInfo can be exported`() {
-        val provider = ProviderInfo(
-            className = "com.example.Provider",
-            authorities = listOf("authority"),
-            exported = true
+        val pluginInfo = PluginInfo(
+            id = "test",
+            name = "Test",
+            iconResId = 0,
+            versionCode = 1,
+            versionName = "1.0",
+            path = "",
+            description = "",
+            type = "tool",
+            toolbarButtons = buttons
         )
-        
-        assertTrue("Provider can be exported", provider.exported)
+        assertEquals(buttons, pluginInfo.toolbarButtons)
+        assertEquals(PluginCategory.TOOL, pluginInfo.category)
+    }
+
+    @Test
+    fun `PluginToolbarButton defaults`() {
+        val button = PluginToolbarButton(id = "ai_reply")
+        assertEquals("", button.label)
+        assertEquals(null, button.icon)
+        assertEquals("open_panel", button.action)
     }
 }

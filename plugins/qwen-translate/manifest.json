@@ -1,0 +1,42 @@
+// =============================================
+// AI 翻译插件元数据（QuickJS/TS 版；宽松 JSON：支持 // 注释与尾逗号）
+// =============================================
+{
+  // 插件唯一标识
+  "id": "com.kingzcheung.xime.plugin.qwen_translate",
+  // 插件名称与描述
+  "name": "千问翻译",
+  "icon": "译",
+  "description": "qwen-mt 专用翻译：翻译选中文本/输入框内容，结果替换原选区或光标处追加。基于阿里云百炼 qwen-mt 系列翻译模型。",
+  // 插件版本
+  "version": "1.0.0",
+  // 插件分类：tool 工具类（多开）
+  "type": "tool",
+  "activation": "multi",
+  // 入口脚本（xime-plugin 编译产物）
+  "entry": "main.js",
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": [
+    "android"
+  ],
+  // 宿主最低版本要求
+  "minHostVersion": "3.0.0",
+  // 工具栏入口
+  "toolbarButtons": [
+    {
+      "id": "com.kingzcheung.xime.plugin.qwen_translate:open",
+      "label": "千问翻译",
+      "action": "open_panel"
+    }
+  ],
+  // 网络访问：接受用户自定义服务器地址
+  "network": {
+    "allowCustomHosts": true
+  },
+  // 能力声明
+  "capabilities": {
+    "tool": {
+      "display": "direct"
+    }
+  }
+}

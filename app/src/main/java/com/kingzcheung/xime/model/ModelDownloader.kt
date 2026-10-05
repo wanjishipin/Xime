@@ -32,18 +32,25 @@ object ModelDownloader {
     suspend fun downloadModel(
         context: Context,
         modelInfo: ModelInfo,
-        onProgress: (ModelDownloadState) -> Unit
+        onProgress: (ModelDownloadState) -> Unit,
+        version: ModelVersion? = null
     ) = withContext(Dispatchers.IO) {
         FileLogger.i(TAG, "Starting download: ${modelInfo.id}")
+
+        val target = version ?: modelInfo.resolvedVersion()
+        if (target == null) {
+            onProgress(ModelDownloadState.Error("模型没有可用版本"))
+            return@withContext
+        }
 
         val storageDir = getStorageDir(context, modelInfo)
         storageDir.mkdirs()
 
         try {
-            if (modelInfo.archiveUrl != null) {
-                downloadAndExtractArchive(context, modelInfo, storageDir, onProgress)
+            if (target.archiveUrl != null) {
+                downloadAndExtractArchive(context, target.archiveUrl, storageDir, onProgress)
             } else {
-                downloadFiles(modelInfo, storageDir, onProgress)
+                downloadFiles(target.files, storageDir, onProgress)
             }
             FileLogger.i(TAG, "Download complete: ${modelInfo.id}")
             onProgress(ModelDownloadState.Complete)
@@ -54,21 +61,18 @@ object ModelDownloader {
     }
 
     private fun getStorageDir(context: Context, modelInfo: ModelInfo): File {
-        return if (modelInfo.storageDir.isEmpty()) {
-            context.filesDir
-        } else {
-            File(context.filesDir, modelInfo.storageDir)
-        }
+        // 统一规则：所有模型一律存 filesDir/models/<id>/
+        return ModelStorage.getModelDir(context, modelInfo.id)
     }
 
     private suspend fun downloadFiles(
-        modelInfo: ModelInfo,
+        files: List<ModelFile>,
         targetDir: File,
         onProgress: (ModelDownloadState) -> Unit
     ) {
-        val totalFiles = modelInfo.files.size
+        val totalFiles = files.size
 
-        modelInfo.files.forEachIndexed { index, file ->
+        files.forEachIndexed { index, file ->
             FileLogger.i(TAG, "Downloading ${file.name} (${index + 1}/$totalFiles)")
             downloadSingleFile(file.downloadUrl, File(targetDir, file.name)) { fileProgress ->
                 val overall = (index.toFloat() + fileProgress) / totalFiles
@@ -160,12 +164,11 @@ object ModelDownloader {
 
     private suspend fun downloadAndExtractArchive(
         context: Context,
-        modelInfo: ModelInfo,
+        archiveUrl: String,
         targetDir: File,
         onProgress: (ModelDownloadState) -> Unit
     ) {
-        val archiveUrl = modelInfo.archiveUrl ?: return
-        val tmpFile = File(context.cacheDir, "${modelInfo.id}.tar.bz2")
+        val tmpFile = File(context.cacheDir, "${archiveUrl.hashCode()}.tar.bz2")
 
         for (attempt in 1..MAX_RETRIES) {
             try {
@@ -221,8 +224,9 @@ object ModelDownloader {
         }
     }
 
-    suspend fun getDownloadSize(modelInfo: ModelInfo): Long {
-        val url = modelInfo.archiveUrl ?: modelInfo.files.firstOrNull()?.downloadUrl ?: return -1
+    suspend fun getDownloadSize(modelInfo: ModelInfo, version: ModelVersion? = null): Long {
+        val target = version ?: modelInfo.resolvedVersion()
+        val url = target?.archiveUrl ?: target?.files?.firstOrNull()?.downloadUrl ?: return -1
         return try {
             val request = Request.Builder().head().url(url).build()
             val response = client.newCall(request).execute()

@@ -6,19 +6,94 @@ metadata:
   generator: "Xime Config Generator" # 暂时无用
   modified_time: "2026-06-18"
 
+# `color_schemes` 配色方案：
+# - name / primary_color：必填
+# - keyboard_background：可选，背景类型（纯色/渐变/图片），不填则使用 keyboard.colors 全局默认
+# - key_bg_color / key_text_color / candidate_text_color 及其 _dark 变体：可选，覆盖按键、
+#   按键文字、候选文字颜色；不填则使用全局默认
+#
+# 纯色背景：
+#   keyboard_background:
+#     type: solid
+#     color: 0xRRGGBB             # 亮色
+#     color_dark: 0xRRGGBB        # 暗色（可选，不填则自动暗化）
+#
+# 渐变背景：
+#   keyboard_background:
+#     type: gradient
+#     colors: [0xRRGGBB, ...]     # 亮色渐变断点（至少 2 个）
+#     colors_dark: [0xRRGGBB, ...] # 暗色渐变断点（可选）
+#     angle: 90                    # 角度制，0=左→右，90=下→上
+#
+# 图片背景：
+#   keyboard_background:
+#     type: image
+#     src: "themes/bg.png"         # 相对于 rime/ 用户目录（优先）或 assets/（回退）
+#     src_dark: "themes/bg_night.png" # 暗色变体（可选）
+#     fit: cover                   # cover | contain | fill | fit_width | fit_height | none
+#     overlay_alpha: 0.35          # 背景遮罩强度（0~1），半透明黑色覆盖层压暗背景，改善文字可读性
+#     overlay_alpha_dark: 0.5      # 暗色模式下的遮罩强度（可选，不填则沿用 overlay_alpha）
+#
+# 自定义图片背景的两种方式：
+# 1. 在系统相册/文件管理中把图片「分享到 Xime」，图片自动存入 rime/themes/custom_<时间戳>.jpg，
+#    并把可用的 color_schemes 配置模板复制到剪贴板，粘贴到 xime.custom.yaml 即可在主题设置中选择。
+# 2. 手动把图片放入 rime/themes/（如通过 USB 或文件管理器），再在 xime.custom.yaml 中引用它。
+#    内置主题的同名文件会被用户目录中的文件覆盖。
+
+color_schemes:
+style:
+  color_scheme:
+    light: zine_light
+    dark: zine_dark
+  dark_mode: 2
+
 color_schemes:
   zine_light:
     name: "银灰 · 浅"
     primary_color: 0x9E9E9E
+    keyboard_background:
+      type: gradient
+      colors: [0xF5F5F5, 0xFFFFFF]
+      colors_dark: [0x2A2A2A, 0x1E1E1E]
+      angle: 0
   
   zine_medium:
     name: "中灰 · 中"
     primary_color: 0x616161
+    keyboard_background:
+      type: solid
+      color: 0xF0F0F0
+      color_dark: 0x252525
   
   zine_dark:
     name: "烟灰 · 深"
     primary_color: 0x424242
+    keyboard_background:
+      type: gradient
+      colors: [0xE0E0E0, 0xF5F5F5]
+      colors_dark: [0x1A1A1A, 0x2D2D2D]
+      angle: 90
   
   zine_deep:
     name: "墨灰 · 浓"
     primary_color: 0x212121
+    keyboard_background:
+      type: solid
+      color: 0xE8E8E8
+      color_dark: 0x121212
+
+  zine_photo:
+    name: "夜幕之影"
+    primary_color: 0x8F73E2
+    keyboard_background:
+      type: image
+      src: "themes/llh-silhouette-bg.jpg"
+      fit: cover
+      overlay_alpha: 0.15
+      overlay_alpha_dark: 0.30
+    key_bg_color: 0x8cffffff
+    key_bg_color_dark: 0x5affffff
+    key_text_color: 0x232323
+    key_text_color_dark: 0xf2f2f2
+    candidate_text_color: 0x232323
+    candidate_text_color_dark: 0xf2f2f2

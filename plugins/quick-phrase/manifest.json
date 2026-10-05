@@ -1,0 +1,40 @@
+// =============================================
+// 常用语插件元数据（宿主用宽松 JSON 解析：支持 // 注释与尾逗号）
+//
+// 能力：capabilities.candidate_transform 候选词变换 + capabilities.quick_send_read
+// （读取宿主快捷发送数据）
+// =============================================
+{
+  "id": "com.kingzcheung.xime.plugin.quick_phrase",
+
+  "name": "常用语",
+  "icon": "语",
+  "description": "把常用语联想进候选栏：读取宿主快捷发送库（设置里的快捷短语，含触发编码），输入时内容命中（条目以候选词开头）跟随该候选，编码命中（输入为 code 前缀）放第二候选位，点选即上屏。数据经 host.quickSend.list() 读取，变更经 quick_send_changed 事件刷新。",
+
+  "version": "1.0.0",
+
+  "type": "tool",
+  "activation": "multi",
+
+  // 入口脚本（TS 编译产物）
+  "entry": "main.js",
+
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": ["android"],
+
+  "minHostVersion": "3.0.0",
+
+  // 无 network 声明：本插件不联网
+
+  // 能力声明：
+  //   candidate_transform  候选词变换（hotPath：按键路径同步调用，硬超时 15ms，须纯内存计算）
+  //   quick_send_read      读取宿主快捷发送数据（注入 host.quickSend）
+  //   events.quick_send_changed  快捷发送列表变更通知
+  "capabilities": {
+    "candidate_transform": true,
+    "quick_send_read": true,
+    "events": [
+      "quick_send_changed"
+    ]
+  }
+}

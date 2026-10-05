@@ -1,0 +1,40 @@
+metadata:
+  app_name: Xime
+  app_version: ">=3.0.0"
+  platform: android
+  config_version: 1
+  generator: "Xime Config Generator" # 暂时无用
+  modified_time: "2026-09-24"
+
+# ── 逗号 / 句号分开布局示例 ──
+# 控制行由 [mode_change, comma, space, earth, enter] 改为
+# [mode_change, comma, space, period, earth, enter]：
+#   逗号在空格左边，句号在空格右边。
+# 说明：
+#   - rows 为「整段覆盖」：写了 rows 就需给出完整行。
+#   - comma 是内置功能键；period 不是功能键，作为普通按键使用，需在 keys 中定义。
+#   - width 控制列宽占比；这里给 comma / period 设 0.8，与内置逗号键宽度一致。
+keyboard:
+  # ── 中文键盘 ──
+  qwerty:
+    layout:
+      rows:
+        - [q, w, e, r, t, y, u, i, o, p]
+        - [a, s, d, f, g, h, j, k, l]
+        - [shift, z, x, c, v, b, n, m, delete]
+        - [mode_change, comma, space, period, earth, enter]
+    keys:
+      comma: { width: 0.8, tap: { label: "，", value: "," } }
+      period: { width: 0.8, tap: { label: "。", value: "." } }
+
+  # ── 英文键盘 ──
+  qwerty_en:
+    layout:
+      rows:
+        - [q, w, e, r, t, y, u, i, o, p]
+        - [a, s, d, f, g, h, j, k, l]
+        - [shift, z, x, c, v, b, n, m, delete]
+        - [mode_change, comma, space, period, earth, enter]
+    keys:
+      comma: { width: 0.8, tap: { label: ",", value: "," } }
+      period: { width: 0.8, tap: { label: ".", value: "." } }

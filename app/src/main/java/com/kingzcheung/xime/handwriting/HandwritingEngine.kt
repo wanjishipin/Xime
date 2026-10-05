@@ -1,61 +1,86 @@
 package com.kingzcheung.xime.handwriting
 
 import android.content.Context
+import android.os.SystemClock
 import android.util.Log
+import com.kingzcheung.xime.model.ModelStorage
+import com.kingzcheung.xime.service.InferenceClient
 import com.kingzcheung.xime.util.FileLogger
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.coroutines.runBlocking
 import java.io.File
-import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
-import kotlin.math.sqrt
 
 data class HandwritingCandidate(
     val char: String,
     val score: Float,
 )
 
+/**
+ * 手写识别客户端（主进程）：只负责模型生命周期管理与 IPC 代理。
+ * 笔画预处理、ONNX 推理与 idx→汉字映射全部在 :inference 进程完成
+ * （见 [HandwritingInference]），主进程不加载 ONNX 运行库、不常驻词表。
+ */
 object HandwritingEngine {
     private const val TAG = "HandwritingEngine"
-    private const val FIXED_LEN = 200
-    private const val MAX_POINTS_PER_STROKE = 8
     private const val DEFAULT_TOP_K = 10
+    /** 自愈重试节流：:inference 进程回收后重载失败时，短时间内不重复 bind 空转。 */
+    private const val REINIT_RETRY_INTERVAL_MS = 5_000L
 
+    @Volatile
     private var initialized = false
-    private var chars: List<String> = emptyList()
-    private var modelFile: File? = null
-    private var charIndexFile: File? = null
+    private var inferenceClient: InferenceClient? = null
+    private var appContext: Context? = null
+
+    @Volatile
+    private var lastReinitAttemptMs = 0L
 
     fun initialize(context: Context): Boolean {
-        if (initialized) return true
+        if (initialized && inferenceClient?.isBound() == true) return true
 
-        val filesDir = context.filesDir
-        modelFile = File(filesDir, "ochwpro.onnx")
-        charIndexFile = File(filesDir, "char_index.json")
+        val ctx = context.applicationContext
+        val modelDir = ModelStorage.getModelDir(ctx, "ochwpro")
+        // 兼容旧版：旧版手写模型在 filesDir 根目录
+        ModelStorage.migrateLegacyForModel(ctx, "ochwpro")
+        val modelFile = File(modelDir, "ochwpro.onnx")
+        val charIndexFile = File(modelDir, "char_index.json")
 
-        if (!modelFile!!.exists() || !charIndexFile!!.exists()) {
+        if (!modelFile.exists() || !charIndexFile.exists()) {
             Log.w(TAG, "Model files not found: $modelFile, $charIndexFile")
             return false
         }
 
-        Log.d(TAG, "Model file size: ${modelFile!!.length()}, char_index size: ${charIndexFile!!.length()}")
-
         try {
-            if (!loadCharIndex(context)) {
-                Log.e(TAG, "Failed to load char_index.json")
-                return false
+            val client = InferenceClient(ctx)
+            // 先释放旧 client 的绑定，避免重复 initialize 泄漏 ServiceConnection
+            inferenceClient?.unbind()
+            inferenceClient = client
+            appContext = ctx
+            client.onDisconnected = {
+                // 进程被回收后系统 AUTO_CREATE 自动重启只恢复 binder，模型不会自己回来：
+                // 仅软重置本地"已加载"标志（不 unbind，保留自动重启），下次落笔由
+                // ensureEngineReady 检测到未初始化后重载，避免"重启抢先→静默空结果"
+                initialized = false
             }
 
-            Log.d(TAG, "Initializing ONNX engine with: ${modelFile!!.absolutePath}")
-            val ok = HandwritingNativeEngine.initialize(context, modelFile!!.absolutePath)
-            if (!ok) {
-                Log.e(TAG, "Failed to initialize HandwritingNativeEngine")
+            // 调用方均在后台线程（键盘 LaunchedEffect(IO)/切方案 Thread），runBlocking 桥接 IPC
+            val bound = runBlocking { client.ensureBound() }
+            if (!bound) {
+                Log.e(TAG, "Failed to bind InferenceService for handwriting")
+                return false
+            }
+            val loaded = runBlocking {
+                client.loadModel(
+                    InferenceClient.MODEL_HANDWRITING,
+                    modelFile.absolutePath,
+                    charIndexFile.absolutePath
+                )
+            }
+            if (!loaded) {
+                Log.e(TAG, "Failed to load handwriting model in inference process")
                 return false
             }
 
             initialized = true
-            Log.i(TAG, "Handwriting engine initialized: ${chars.size} chars")
+            Log.i(TAG, "Handwriting engine initialized via IPC")
             return true
         } catch (e: Exception) {
             Log.e(TAG, "HandwritingEngine init failed: ${e.message}", e)
@@ -66,195 +91,72 @@ object HandwritingEngine {
 
     fun isInitialized(): Boolean = initialized
 
-    override fun toString(): String {
-        return "HandwritingEngine(initialized=$initialized, chars=${chars.size})"
-    }
-
-    private fun loadCharIndex(context: Context): Boolean {
-        return try {
-            val text = charIndexFile!!.readText().trimStart('\uFEFF')
-            val json = JSONObject(text)
-
-            val extracted = mutableListOf<String>()
-
-            if (json.has("chars")) {
-                val arr = json.getJSONArray("chars")
-                for (i in 0 until arr.length()) {
-                    extracted.add(arr.getString(i))
-                }
-            } else if (json.has("char_index")) {
-                val obj = json.getJSONObject("char_index")
-                val keys = obj.keys()
-                val indexed = mutableMapOf<Int, String>()
-                while (keys.hasNext()) {
-                    val ch = keys.next()
-                    indexed[obj.getInt(ch)] = ch
-                }
-                val maxIdx = indexed.keys.maxOrNull() ?: 0
-                extracted.addAll(Array(maxIdx + 1) { "" }.toList())
-                for ((idx, ch) in indexed) {
-                    extracted[idx] = ch
-                }
-            } else if (json.has("labels")) {
-                val arr = json.getJSONArray("labels")
-                for (i in 0 until arr.length()) {
-                    extracted.add(arr.optString(i, ""))
-                }
-            } else {
-                val keys = json.keys()
-                val indexed = mutableMapOf<Int, String>()
-                while (keys.hasNext()) {
-                    val key = keys.next()
-                    indexed[json.getInt(key)] = key
-                }
-                val maxIdx = indexed.keys.maxOrNull() ?: 0
-                extracted.addAll(Array(maxIdx + 1) { "" }.toList())
-                for ((idx, ch) in indexed) {
-                    extracted[idx] = ch
-                }
-            }
-
-            chars = extracted.toList()
-            Log.d(TAG, "Loaded ${chars.size} characters from char_index")
-            true
-        } catch (e: Exception) {
-            Log.e(TAG, "Failed to load char_index: ${e.message}", e)
-            FileLogger.e(TAG, "Failed to load char_index: ${e.message}", e)
-            false
-        }
-    }
-
-    fun isCjk(ch: String): Boolean {
-        if (ch.length != 1) return false
-        val cp = ch[0].code
-        return (cp in 0x4E00..0x9FFF) ||
-               (cp in 0x3400..0x4DBF) ||
-               (cp in 0x20000..0x2A6DF) ||
-               (cp in 0x2A700..0x2B73F) ||
-               (cp in 0x2B740..0x2B81F) ||
-               (cp in 0x2B820..0x2CEAF) ||
-               (cp in 0xF900..0xFAFF) ||
-               (cp in 0x2F800..0x2FA1F)
-    }
-
-    internal fun simplifyStrokes(
-        strokes: List<List<Pair<Float, Float>>>
-    ): List<List<Pair<Float, Float>>> {
-        val simplified = mutableListOf<List<Pair<Float, Float>>>()
-        for (stroke in strokes) {
-            if (stroke.size <= MAX_POINTS_PER_STROKE) {
-                simplified.add(stroke)
-            } else {
-                val step = (stroke.size - 1).toFloat() / (MAX_POINTS_PER_STROKE - 1)
-                val indices = (0 until MAX_POINTS_PER_STROKE).map { i ->
-                    (i * step).roundToInt().coerceIn(0, stroke.size - 1)
-                }
-                simplified.add(indices.map { stroke[it] })
-            }
-        }
-        return simplified
-    }
-
-    internal data class SequenceData(
-        val data: FloatArray,
-        val originalLen: Int,
-    )
-
-    internal fun strokesToSequence(
-        strokes: List<List<Pair<Float, Float>>>
-    ): SequenceData {
-        val allPoints = mutableListOf<Pair<Float, Float>>()
-        val penDownFlags = mutableListOf<Int>()
-
-        for (stroke in strokes) {
-            for (pt in stroke) {
-                allPoints.add(pt)
-                penDownFlags.add(1)
-            }
-            if (penDownFlags.isNotEmpty()) {
-                penDownFlags[penDownFlags.size - 1] = 0
-            }
-        }
-
-        val T = allPoints.size
-        if (T == 0) {
-            return SequenceData(FloatArray(FIXED_LEN * 5) { 0f }, 0)
-        }
-
-        val xs = allPoints.map { it.first }
-        val ys = allPoints.map { it.second }
-
-        val minX = xs.min()
-        val maxX = xs.max()
-        val minY = ys.min()
-        val maxY = ys.max()
-
-        val rangeX = max(maxX - minX, 1.0f)
-        val rangeY = max(maxY - minY, 1.0f)
-
-        val seq = FloatArray(T * 5)
-        for (i in 0 until T) {
-            val xNorm = (allPoints[i].first - minX) / rangeX
-            val yNorm = (allPoints[i].second - minY) / rangeY
-            val dx = if (i == 0) 0f else (allPoints[i].first - allPoints[i - 1].first) / rangeX
-            val dy = if (i == 0) 0f else (allPoints[i].second - allPoints[i - 1].second) / rangeY
-            val base = i * 5
-            seq[base] = xNorm
-            seq[base + 1] = yNorm
-            seq[base + 2] = dx
-            seq[base + 3] = dy
-            seq[base + 4] = penDownFlags[i].toFloat()
-        }
-
-        val paddedLen = min(T, FIXED_LEN)
-        val padded = FloatArray(FIXED_LEN * 5) { 0f }
-        System.arraycopy(seq, 0, padded, 0, paddedLen * 5)
-        return SequenceData(padded, min(T, FIXED_LEN))
-    }
-
-    internal fun buildMask(seqLen: Int): ByteArray {
-        val mask = ByteArray(FIXED_LEN) { 0 }
-        for (i in 0 until min(seqLen, FIXED_LEN)) {
-            mask[i] = 1
-        }
-        return mask
+    /** 手写模型是否可用（含旧版 filesDir 根目录模型迁移后检查）。 */
+    fun hasModel(context: Context): Boolean {
+        ModelStorage.migrateLegacyForModel(context, "ochwpro")
+        val modelDir = ModelStorage.getModelDir(context, "ochwpro")
+        return File(modelDir, "ochwpro.onnx").exists() && File(modelDir, "char_index.json").exists()
     }
 
     fun predict(
         strokes: List<List<Pair<Float, Float>>>,
         topK: Int = DEFAULT_TOP_K
     ): List<HandwritingCandidate> {
-        if (!initialized || strokes.isEmpty()) return emptyList()
+        if (strokes.isEmpty()) return emptyList()
+        if (!ensureEngineReady()) return emptyList()
+        val client = inferenceClient ?: return emptyList()
 
-        val simplified = simplifyStrokes(strokes)
-        if (simplified.isEmpty()) return emptyList()
-
-        val seqData = strokesToSequence(simplified)
-        val mask = buildMask(seqData.originalLen)
-
-        val rawResults = HandwritingNativeEngine.predict(seqData.data, mask, topK)
-        if (rawResults.isEmpty()) return emptyList()
-
-        val results = mutableListOf<HandwritingCandidate>()
-        val seen = mutableSetOf<String>()
-
-        for ((idx, score) in rawResults) {
-            if (idx < 0 || idx >= chars.size) continue
-            val ch = chars[idx]
-            if (ch.isEmpty()) continue
-            if (ch in seen) continue
-            seen.add(ch)
-            results.add(HandwritingCandidate(ch, score))
+        // 原始笔画扁平化：points = [x0,y0,x1,y1,...]，counts = 每笔画点数
+        var totalPoints = 0
+        for (stroke in strokes) totalPoints += stroke.size
+        val points = FloatArray(totalPoints * 2)
+        val counts = IntArray(strokes.size)
+        var pi = 0
+        strokes.forEachIndexed { i, stroke ->
+            counts[i] = stroke.size
+            for (pt in stroke) {
+                points[pi++] = pt.first
+                points[pi++] = pt.second
+            }
         }
 
-        return results.take(topK)
+        val candidates = runBlocking { client.recognizeHandwriting(points, counts, topK) }
+
+        // IPC 期间服务进程被回收（客户端已吞 DeadObjectException 并重置绑定）：
+        // 重置本地状态，下次 predict 由 ensureEngineReady 自愈重载
+        if (!client.isBound()) {
+            release()
+            return emptyList()
+        }
+        return candidates
+    }
+
+    /**
+     * 预测前确保引擎可用。:inference 进程被系统回收（设计内行为，同联想模型）
+     * 后在此按需重载（重新 bind + loadModel）实现自愈。从未初始化过时直接返回
+     * false，保持"无模型时 predict 返回空"的既有语义，不自动拉起服务。
+     */
+    private fun ensureEngineReady(): Boolean {
+        val ctx = appContext ?: return false
+        if (initialized && inferenceClient?.isBound() == true) return true
+
+        release()
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastReinitAttemptMs < REINIT_RETRY_INTERVAL_MS) return false
+        lastReinitAttemptMs = now
+        return initialize(ctx)
     }
 
     fun release() {
-        if (!initialized) return
-        HandwritingNativeEngine.release()
+        if (!initialized && inferenceClient == null) return
         initialized = false
-        chars = emptyList()
-        Log.d(TAG, "Handwriting engine released")
+        inferenceClient?.apply {
+            try {
+                runBlocking { unloadModel(InferenceClient.MODEL_HANDWRITING) }
+            } catch (_: Exception) {
+            }
+            unbind()
+        }
+        inferenceClient = null
     }
 }

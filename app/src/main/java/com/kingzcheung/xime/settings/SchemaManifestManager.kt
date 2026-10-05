@@ -413,9 +413,7 @@ object SchemaManifestManager {
                 while (keys.hasNext()) {
                     val fn = keys.next() as String
                     val src = File(rimeDir, fn)
-                    if (src.exists()) {
-                        src.copyTo(File(builtinDir, fn), overwrite = true)
-                    }
+                    copyToBuiltinBackup(src, builtinDir, fn)
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "failed to backup builtin", e)
@@ -511,7 +509,7 @@ object SchemaManifestManager {
                             put("sha256", sha256)
                             put("size", file.length())
                         })
-                        file.copyTo(File(builtinDir, fn), overwrite = true)
+                        copyToBuiltinBackup(file, builtinDir, fn)
                     }
 
                     if (fileEntries.length() == 0) return@withContext
@@ -558,14 +556,24 @@ object SchemaManifestManager {
     // ── Market Package Listing ──
 
     /** 判断文件是否为用户数据或系统配置（不应被清单追踪，卸载时不应被删除）。 */
-    private fun isUserDataFile(relPath: String): Boolean {
+    internal fun isUserDataFile(relPath: String): Boolean {
         if (relPath.startsWith("build/")) return true
         if (relPath.contains(".userdb/")) return true
         if (relPath.endsWith(".custom.yaml")) return true
         if (relPath == "installation.yaml") return true
         if (relPath == "custom_phrase.txt") return true
         if (relPath == "xime.custom.yaml") return true
+        // themes/ 存放用户导入或自定义的背景图片，不应被清单追踪
+        if (relPath.startsWith("themes/")) return true
         return false
+    }
+
+    /** 备份文件到 market/builtin/，确保嵌套路径的父目录存在（如 lua/t9_preedit.lua）。 */
+    internal fun copyToBuiltinBackup(src: File, builtinDir: File, relPath: String) {
+        if (!src.exists()) return
+        val dest = File(builtinDir, relPath)
+        dest.parentFile?.mkdirs()
+        src.copyTo(dest, overwrite = true)
     }
 
     /**
@@ -578,9 +586,20 @@ object SchemaManifestManager {
      * 用户数据文件（.userdb/、*.custom.yaml、installation.yaml、custom_phrase.txt）
      * 不会被追踪，确保卸载时不被误删。
      */
-    suspend fun refreshBuiltinManifest(context: Context) = withContext(Dispatchers.IO) {
+    suspend fun refreshBuiltinManifest(context: Context) {
+        withContext(Dispatchers.IO) {
+            try {
+                refreshBuiltinManifestInternal(context)
+            } catch (e: Exception) {
+                // 备份/刷新失败不应中断安装流程或导致崩溃，只记录日志
+                Log.e(TAG, "refreshBuiltinManifest failed", e)
+            }
+        }
+    }
+
+    private suspend fun refreshBuiltinManifestInternal(context: Context) {
         val rimeDir = SchemaManager.getRimeDir(context)
-        if (!rimeDir.exists()) return@withContext
+        if (!rimeDir.exists()) return
 
         val registry = loadRegistry(context)
         val allFiles = registry.optJSONObject("files") ?: JSONObject()
@@ -595,10 +614,26 @@ object SchemaManifestManager {
             if (allFiles.has(relPath)) return@forEach
             untracked[relPath] = f
         }
-        if (untracked.isEmpty()) return@withContext
 
         val existingManifest = loadManifest(context, BUILTIN_PACKAGE_ID)
         val fileEntries = existingManifest?.optJSONObject("files") ?: JSONObject()
+
+        // 同步 registry 中 builtin 声明的文件到 manifest（防止 manifest 与 registry 不同步）
+        val keysIt = allFiles.keys()
+        while (keysIt.hasNext()) {
+            val fn = keysIt.next() as String
+            if (fileEntries.has(fn)) continue
+            val entry = allFiles.optJSONObject(fn) ?: continue
+            val claimants = entry.optJSONArray("claimedBy")
+            if (claimants != null && jsonArrayToList(claimants).contains(BUILTIN_PACKAGE_ID)) {
+                fileEntries.put(fn, JSONObject().apply {
+                    put("sha256", entry.optString("sha256", ""))
+                    put("size", entry.optLong("size", 0))
+                })
+            }
+        }
+
+        if (untracked.isEmpty() && fileEntries.length() == (existingManifest?.optJSONObject("files")?.length() ?: 0)) return
 
         for ((relPath, file) in untracked) {
             val sha256 = SchemaManager.fileSha256(file) ?: continue
@@ -638,7 +673,7 @@ object SchemaManifestManager {
         val builtinDir = SchemaManager.getMarketDir(context, BUILTIN_PACKAGE_ID)
         builtinDir.mkdirs()
         for ((relPath, file) in untracked) {
-            file.copyTo(File(builtinDir, relPath), overwrite = true)
+            copyToBuiltinBackup(file, builtinDir, relPath)
         }
 
         Log.i(TAG, "refreshBuiltinManifest: added ${untracked.size} untracked files")

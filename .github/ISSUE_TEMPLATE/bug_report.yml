@@ -1,0 +1,79 @@
+name: 问题反馈（Bug）
+description: 报告使用中遇到的问题（带 * 为必填项，信息不全的问题可能无法排查）
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢反馈问题！以下为必填表单，填写越完整越容易定位问题。
+        标题请简要概括问题本身（如"九键键盘候选栏遮挡输入框"）。
+  - type: textarea
+    id: description
+    attributes:
+      label: 问题描述
+      description: 遇到了什么问题？简要说明现象
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 复现步骤
+      description: 如何一步步触发这个问题
+      placeholder: |
+        1. 打开 Xime 输入法
+        2. 切换到 XX 键盘
+        3. 点击 / 滑动 XX
+        4. 出现 XX
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期望行为
+      description: 你认为正确的结果应该是什么
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+      description: 实际发生了什么（与期望的差异）
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Xime 版本
+      description: 在 设置 → 关于 中查看
+      placeholder: 例如 3.0.0-beta8
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: 设备与系统版本
+      placeholder: 例如 Galaxy S24+ / Android 16
+    validations:
+      required: true
+  - type: input
+    id: schema
+    attributes:
+      label: 输入方案与键盘布局
+      description: 出问题时的方案与键盘（全键盘 / 九键 / 笔画 / 手写，排查键盘相关问题的关键信息）
+      placeholder: 例如 雾凇拼音（九键）
+    validations:
+      required: true
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 截图或视频
+      description: 有助于说明问题的截图 / 录屏（可直接拖拽上传）
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充信息
+      description: 日志、发生频率、其他说明等
+    validations:
+      required: false

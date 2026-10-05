@@ -94,7 +94,6 @@ object SchemaConfigHelper {
         val schemaListIds = parseSchemaListFromDefault(context)
         for (schemaId in schemaListIds) {
             if (needsDownload(context, schemaId)) {
-                Log.d(TAG, "Schema $schemaId needs download")
                 if (downloadSchema(context, schemaId)) {
                     downloaded.add(schemaId)
                 }

@@ -13,7 +13,6 @@ object AssociationService {
     
     suspend fun initialize(context: Context): Boolean = withContext(Dispatchers.IO) {
         if (isInitialized) {
-            Log.d(TAG, "Already initialized")
             return@withContext true
         }
         
@@ -62,7 +61,6 @@ object AssociationService {
         }
         
         val candidates = trieEngine!!.predict(prefix, topK)
-        Log.d(TAG, "English associations for '$prefix': ${candidates.map { it.text }}")
         
         return candidates
     }
@@ -74,7 +72,6 @@ object AssociationService {
     ): List<AssociationCandidate> = withContext(Dispatchers.Default) {
         try {
             if (!AssociationManager.isInitialized()) {
-                Log.d(TAG, "AssociationManager not initialized, initializing...")
                 val initSuccess = withContext(Dispatchers.IO) {
                     AssociationManager.initialize(context)
                 }
@@ -85,7 +82,6 @@ object AssociationService {
             }
             
             val candidates = AssociationManager.predict(inputText, topK)
-            Log.d(TAG, "Chinese associations for '$inputText': ${candidates.map { it.text }}")
             
             candidates
         } catch (e: Exception) {
@@ -102,6 +98,5 @@ object AssociationService {
         trieEngine?.release()
         trieEngine = null
         isInitialized = false
-        Log.d(TAG, "Association service released")
     }
 }

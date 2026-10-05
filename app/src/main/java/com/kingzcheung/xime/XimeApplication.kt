@@ -7,6 +7,7 @@ import coil.ImageLoaderFactory
 import coil.disk.DiskCache
 import coil.memory.MemoryCache
 import com.kingzcheung.xime.plugin.ExtensionManager
+import com.kingzcheung.xime.plugin.PluginConfigStoreImpl
 import com.kingzcheung.xime.util.FileLogger
 import com.kingzcheung.xime.plugin.core.runtime.PluginManager
 import com.kingzcheung.xime.rime.RimeConfigHelper
@@ -19,6 +20,7 @@ import com.kingzcheung.xime.ui.theme.KeyboardThemes
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.File
 
 class XimeApplication : Application(), ImageLoaderFactory {
 
@@ -40,7 +42,6 @@ class XimeApplication : Application(), ImageLoaderFactory {
     
     companion object {
         private const val TAG = "XimeApplication"
-        const val HOST_PROVIDER_AUTHORITY = "com.wanjishipin.xime.plugin.proxy"
     }
     
     private val applicationScope = CoroutineScope(Dispatchers.IO)
@@ -54,76 +55,83 @@ class XimeApplication : Application(), ImageLoaderFactory {
         Thread.setDefaultUncaughtExceptionHandler { thread, throwable ->
             try {
                 FileLogger.e("CrashHandler", "Uncaught exception on thread: ${thread.name}", throwable)
-                FileLogger.flush()
+                FileLogger.flushNow()
             } catch (_: Exception) {
             }
             defaultHandler?.uncaughtException(thread, throwable)
         }
 
         val isDebug = BuildConfig.DEBUG
-        Log.d(TAG, "Initializing PluginManager...")
-        PluginManager.initialize(this, HOST_PROVIDER_AUTHORITY) {
-            Log.d(TAG, "PluginManager onSetup callback executing...")
-            
-            Log.d(TAG, "Scanning system installed plugins...")
-            val systemInstalled = PluginManager.scanAndInstallSystemPlugins()
-            Log.d(TAG, "Installed $systemInstalled plugins from system")
-            
+        if (isDebug) {
+            // 插件 console 日志落盘（xipm dev/logs 轮询回显，规避 ROM 后台日志限流）
+            com.kingzcheung.xime.plugin.PluginDevConsoleFileSink.install(this)
+        }
+        PluginManager.configStoreFactory =
+            PluginManager.PluginConfigStoreFactory { app, pluginId ->
+                PluginConfigStoreImpl(app, pluginId)
+            }
+        PluginManager.wsHostApiFactory = { pluginId ->
+            com.kingzcheung.xime.plugin.ws.WsHostApiImpl(this, pluginId)
+        }
+        PluginManager.httpHostApiFactory = { pluginId ->
+            com.kingzcheung.xime.plugin.http.HttpHostApiImpl(this, pluginId)
+        }
+        PluginManager.sseHostApiFactory = { pluginId ->
+            com.kingzcheung.xime.plugin.http.SseHostApiImpl(this, pluginId)
+        }
+        PluginManager.cryptoHostApiFactory = {
+            com.kingzcheung.xime.plugin.crypto.CryptoHostApiImpl()
+        }
+        PluginManager.quickSendHostApiFactory = { _ ->
+            com.kingzcheung.xime.plugin.QuickSendHostApiImpl(this)
+        }
+        PluginManager.clipboardHostApiFactory = { _ ->
+            com.kingzcheung.xime.plugin.ClipboardHostApiImpl(this)
+        }
+        com.kingzcheung.xime.plugin.core.security.PluginErrorLog.initialize(
+            com.kingzcheung.xime.plugin.FilePluginErrorStore(
+                File(filesDir, "logs/plugins/errors.jsonl")
+            )
+        )
+        PluginManager.initialize(this) {
             if (isDebug) {
-                val assetInstalled = PluginManager.installPluginsFromAssetsForDebug("plugins")
-                Log.d(TAG, "Installed $assetInstalled plugins from assets")
+                PluginManager.installPluginsFromAssetsForDebug("plugins")
             }
             
-            Log.d(TAG, "Loading enabled plugins...")
-            val loaded = PluginManager.loadEnabledPlugins()
-            Log.d(TAG, "Loaded $loaded plugins")
-            
-            Log.d(TAG, "All installed plugins: ${PluginManager.getAllInstallPlugins().map { it.id }}")
-            Log.d(TAG, "All plugin instances: ${PluginManager.getAllPluginInstances().keys}")
+            PluginManager.loadEnabledPlugins()
         }
         
-        Log.d(TAG, "Initializing ExtensionManager...")
         ExtensionManager.initialize(this)
 
         // 从 xime.yaml 加载配色方案
         KeyboardThemes.initFromConfig(this)
 
-        // 从 xime.yaml 的 style.color_scheme 读取默认主题
+        // 从 xime.yaml 的 style 读取默认主题和显示模式
+        // color_scheme 可指定 dynamic（Material You 动态配色，仅 Android 12+，
+        // 低版本 getThemeById 自动回退到内置配色）
         SettingsPreferences.defaultKeyboardTheme = KeysConfigHelper.loadDefaultThemeId(this)
-        Log.d(TAG, "Default keyboard theme: ${SettingsPreferences.defaultKeyboardTheme}")
+        SettingsPreferences.defaultDarkMode = KeysConfigHelper.loadDefaultDarkMode(this)
 
         // 初始化模型运行时（内存管理 + 生命周期）
         ModelRuntime.attach(this)
-        Log.d(TAG, "ModelRuntime initialized")
 
         preInitializeRimeEngine()
-        
-        Log.d(TAG, "Initialization complete")
     }
     
     private fun preInitializeRimeEngine() {
         if (RimeEngine.isInitialized()) {
-            Log.d(TAG, "Rime engine already initialized")
             return
         }
         
-        Log.d(TAG, "Pre-initializing Rime engine...")
         applicationScope.launch {
             try {
                 val (userDataDir, sharedDataDir) = RimeConfigHelper.initializeRimeDataAsync(this@XimeApplication)
                 val engine = RimeEngine.getInstance()
                 engine.initialize(userDataDir, sharedDataDir)
 
-                // 首次启动时静默编译词库，避免用户在设置中手动点「部署」
-                if (!SettingsPreferences.isDeploymentDone(this@XimeApplication)) {
-                    Log.d(TAG, "First launch: silently deploying schemas...")
-                    engine.deploy()
-                    SettingsPreferences.setDeploymentDone(this@XimeApplication, true)
-                    RimeConfigHelper.storeDeploymentHash(this@XimeApplication)
-                    Log.d(TAG, "Silent deploy completed")
-                }
-
-                Log.d(TAG, "Rime engine pre-initialization completed")
+                // 首次安装/升级后静默编译词库。ensureDeployment 内部带互斥且 hash 一致时跳过，
+                // 统一负责 deploymentDone/hash 状态，避免与输入法服务的初始化重复触发全量编译。
+                RimeConfigHelper.ensureDeployment(this@XimeApplication)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to pre-initialize Rime engine", e)
             }

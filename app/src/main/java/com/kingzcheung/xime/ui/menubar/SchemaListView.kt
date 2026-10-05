@@ -1,14 +1,19 @@
 package com.kingzcheung.xime.ui.menubar
 
+import com.kingzcheung.xime.ui.keyboard.WIDE_CONTAINER_WIDTH
+import com.kingzcheung.xime.ui.keyboard.isHandwritingSchema
+import com.kingzcheung.xime.ui.keyboard.isT9Schema
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -22,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.twotone.Gesture
 import androidx.compose.material.icons.twotone.KeyboardAlt
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -30,7 +36,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import com.kingzcheung.xime.R
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -41,21 +46,32 @@ import com.kingzcheung.xime.settings.SchemaInfo
 fun SchemaListView(
     schemas: List<SchemaInfo>,
     currentSchemaId: String,
-    isDarkTheme: Boolean,
     backgroundColor: Color,
     accentColor: Color,
+    keyTextColor: Color,
+    keyBgColor: Color,
     onSelectSchema: (String) -> Unit,
     onBack: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
-    val itemBgColor = if (isDarkTheme) Color(0xFF45474A) else Color.White
-    val textColor = if (isDarkTheme) Color(0xFFE8EAED) else Color(0xFF202124)
-    val subTextColor = if (isDarkTheme) Color(0xFF9AA0A6) else Color(0xFF5F6368)
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    // 功能 item 背景：与键盘按键背景一致（keyBgColor，浅色纯白、深色跟随 keyboard.colors）
+    val itemBgColor = keyBgColor
+    val textColor = keyTextColor
+    val subTextColor = keyTextColor.copy(alpha = 0.65f)
+    // 图标按钮容器色：surface 与 primary 的混合色调（带种子色但不过于强烈）
+    val iconButtonContainer = androidx.compose.ui.graphics.lerp(
+        MaterialTheme.colorScheme.surface,
+        MaterialTheme.colorScheme.primary,
+        0.35f
+    )
+    // 布局按父容器真实宽度自适应（悬浮卡片/键盘收窄/分屏的容器宽 ≠ 屏幕宽），
+    // 不读屏幕方向：宽容器（横屏全屏）用横排网格，其余按竖屏分页网格
+    BoxWithConstraints(modifier = modifier) {
+        val isWide = maxWidth >= WIDE_CONTAINER_WIDTH
+
     Column(
-        modifier = modifier
-            .fillMaxWidth()
+        modifier = Modifier
+            .fillMaxSize()
             .background(backgroundColor),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
@@ -63,14 +79,14 @@ fun SchemaListView(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
-                .padding(horizontal = if (isLandscape) 50.dp else 8.dp),
+                .padding(horizontal = if (isWide) 50.dp else 8.dp),
             contentAlignment = Alignment.CenterStart
         ) {
             Box(
                 modifier = Modifier
                     .size(28.dp)
                     .clip(CircleShape)
-                    .background(if (isDarkTheme) Color(0xFF374151) else Color(0xFFF3F4F6))
+                    .background(iconButtonContainer)
                     .clickable { onBack?.invoke() },
                 contentAlignment = Alignment.Center
             ) {
@@ -83,7 +99,7 @@ fun SchemaListView(
             }
         }
 
-        if (isLandscape) {
+        if (isWide) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -186,6 +202,7 @@ fun SchemaListView(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -211,16 +228,15 @@ private fun SchemaGridItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        val isT9 = schema.schemaId.contains("t9", ignoreCase = true) || schema.name.contains("t9", ignoreCase = true)
         when {
-            schema.schemaId == "handwriting" ->
+            isHandwritingSchema(schema.schemaId) ->
                 Icon(
                     imageVector = Icons.TwoTone.Gesture,
                     contentDescription = schema.name,
                     tint = if (isSelected) accentColor else textColor,
                     modifier = Modifier.size(if (isLandscape) 18.dp else 24.dp)
                 )
-            isT9 ->
+            isT9Schema(schema.schemaId) ->
                 Icon(
                     painter = painterResource(R.drawable.keyboard_t9),
                     contentDescription = schema.name,

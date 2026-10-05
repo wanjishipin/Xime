@@ -1,0 +1,47 @@
+// =============================================
+// Xime JS 插件元数据（宿主用宽松 JSON 解析：支持 // 注释与尾逗号）
+// =============================================
+{
+  // 插件唯一标识
+  "id": "com.kingzcheung.xime.plugin.s3_clipboard_sync",
+
+  // 插件名称与描述
+  "name": "S3 剪贴板同步",
+  "icon": "🪣",
+  "description": "通过 S3 兼容对象存储（Cloudflare R2 / AWS S3 / MinIO 等）同步剪贴板文本与图片，多设备共享。",
+
+  // 插件版本（字符串）
+  "version": "1.0.0",
+
+  // 插件分类：clipboard_sync 剪贴板同步（单选激活）
+  "type": "clipboard_sync",
+  "activation": "single",
+
+  // 入口脚本
+  "entry": "main.js",
+
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": ["android"],
+
+  // 宿主最低版本要求
+  "minHostVersion": "3.0.0",
+
+  // 能力声明
+  "capabilities": {
+    "clipboard_sync": {
+      "protocols": [
+        "s3"   // S3 兼容对象存储（SigV4 签名直连，无中间服务）
+      ],
+      // 支持附件（图片原图）传输：blob 放 {对象键目录}/blobs/<sha256>.<ext>。
+      // 未声明该字段的插件，宿主自动降级为仅文本同步。
+      "attachments": true
+    }
+  },
+
+  // 网络访问声明：端点地址由用户配置（R2 账户域名 / 自建 MinIO 等），域名不固定。
+  // allowCustomHosts: 接受用户填写的端点域名，经配置后自动授权联网
+  "network": {
+    "hosts": [],
+    "allowCustomHosts": true
+  }
+}

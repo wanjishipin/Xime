@@ -53,6 +53,29 @@ sealed interface KeyboardViewState {
 }
 
 /**
+ * 键盘 ascii 上下文 — 每个上下文持有独立的 ascii 记忆，
+ * 键盘切换时（attach/detach）由 [KeyboardAsciiStateMachine] 统一同步引擎。
+ */
+enum class AsciiKeyboardContext {
+    /** 主键盘（中文/英文/拼音九键/笔画/手写/语音 共享同一记忆） */
+    MAIN,
+
+    /** 数字面板（无中英切换键，记忆恒等于引擎，对称保留） */
+    NUMBER_PANEL,
+
+    /** 符号面板（有中英切换键，默认英文，独立记忆） */
+    SYMBOL_PANEL,
+}
+
+/** 获取视图状态所属的 ascii 上下文；Overlay 取背后键盘，不改变上下文 */
+fun KeyboardViewState.asciiContext(): AsciiKeyboardContext = when (this) {
+    is KeyboardViewState.NumberPanel -> AsciiKeyboardContext.NUMBER_PANEL
+    is KeyboardViewState.CommonSymbolPanel -> AsciiKeyboardContext.SYMBOL_PANEL
+    is KeyboardViewState.Overlay -> behind.asciiContext()
+    else -> AsciiKeyboardContext.MAIN
+}
+
+/**
  * 键盘调度动作 — 所有状态转移走单一入口。
  */
 sealed interface KeyboardDispatchAction {

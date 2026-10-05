@@ -21,6 +21,18 @@ object XimeIndexParser {
     fun parseDirectIndex(text: String): SchemasDirectIndex =
         yaml.decodeFromString(SchemasDirectIndex.serializer(), text)
 
+    /** 解析插件扁平索引（plugins/index.yaml）。 */
+    fun parsePluginsDirectIndex(text: String): PluginsDirectIndex =
+        yaml.decodeFromString(PluginsDirectIndex.serializer(), text)
+
+    /** 解析单个插件条目（与 [parseScheme] 对称，测试/工具用）。 */
+    fun parsePlugin(text: String): MarketPlugin =
+        yaml.decodeFromString(MarketPlugin.serializer(), text)
+
+    /** 解析布局扁平索引（layouts/index.yaml）。 */
+    fun parseLayoutsDirectIndex(text: String): LayoutsDirectIndex =
+        yaml.decodeFromString(LayoutsDirectIndex.serializer(), text)
+
     fun parseScheme(text: String): MarketScheme =
         yaml.decodeFromString(MarketScheme.serializer(), migrateDownloadUrl(text))
 
@@ -64,6 +76,8 @@ object XimeIndexParser {
         if (!c.startsWith(">=")) return true // 不支持的操作符 → fail-open
         val min = numericCore(c.removePrefix(">=").trim())
         val app = numericCore(appVersion)
+        // 任一无法解析（如 nightly-日期-commit、master 等非语义化版本号）→ fail-open
+        if (min == null || app == null) return true
         for (i in 0..2) {
             if (app[i] != min[i]) return app[i] > min[i]
         }
@@ -80,17 +94,62 @@ object XimeIndexParser {
         }
     }
 
-    fun toItem(scheme: MarketScheme, appVersion: String): MarketSchemeItem =
+    fun toItem(
+        scheme: MarketScheme,
+        appVersion: String,
+        installedVersion: String? = null,
+    ): MarketSchemeItem =
         MarketSchemeItem(
             scheme = scheme,
             compatible = isCompatible(appVersion, scheme.appVersion),
             minAppVersion = minAppVersionLabel(scheme.appVersion),
+            installedVersion = installedVersion,
         )
 
-    /** 取版本号的数值核心 major.minor.patch（忽略 -beta/+build 后缀，缺位补 0）。 */
-    private fun numericCore(v: String): List<Int> {
+    /** 插件条目：兼容性判定与方案一致（appVersion 约束）；索引 v2 的 minHostVersion
+     *  作为附加门禁折入（声明为 3.0.0 即按 >=3.0.0 判定）。[installedVersions] 为本地已安装版本表（id → versionName）。 */
+    fun toPluginItem(
+        plugin: MarketPlugin,
+        appVersion: String,
+        installedVersions: Map<String, String>,
+    ): MarketPluginItem {
+        val installedVersion = installedVersions[plugin.id]
+        val hostCompatible = plugin.minHostVersion.isBlank() ||
+            isCompatible(appVersion, ">=" + plugin.minHostVersion.trim())
+        return MarketPluginItem(
+            plugin = plugin,
+            compatible = isCompatible(appVersion, plugin.appVersion) && hostCompatible,
+            minAppVersion = minAppVersionLabel(plugin.appVersion),
+            installed = installedVersion != null,
+            installedVersion = installedVersion,
+        )
+    }
+
+    /** 平台可见性（索引 v2 platforms）：未声明视为不限；声明了则仅 android 可见。 */
+    fun isAvailableOnAndroid(plugin: MarketPlugin): Boolean =
+        plugin.platforms.isEmpty() || "android" in plugin.platforms
+
+    /** 布局条目：兼容性判定同方案/插件；[installedSchemaIds] 用于依赖方案校验。 */
+    fun toLayoutItem(
+        layout: MarketLayout,
+        appVersion: String,
+        installedVersion: String? = null,
+        installedSchemaIds: Set<String> = emptySet(),
+    ): MarketLayoutItem =
+        MarketLayoutItem(
+            layout = layout,
+            compatible = isCompatible(appVersion, layout.appVersion),
+            minAppVersion = minAppVersionLabel(layout.appVersion),
+            installedVersion = installedVersion,
+            schemeReady = layout.requiresSchemes.isEmpty() ||
+                layout.requiresSchemes.all { it in installedSchemaIds },
+        )
+
+    /** 取版本号的数值核心 major.minor.patch（忽略 -beta/+build 后缀，缺位补 0）；无法解析返回 null。 */
+    private fun numericCore(v: String): List<Int>? {
         val core = v.trim().takeWhile { it != '-' && it != '+' }
-        val parts = core.split('.').map { it.toIntOrNull() ?: 0 }
+        if (core.isEmpty()) return null
+        val parts = core.split('.').map { it.toIntOrNull() ?: return null }
         return (parts + listOf(0, 0, 0)).take(3)
     }
 }

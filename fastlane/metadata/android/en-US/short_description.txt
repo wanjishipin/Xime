@@ -1,0 +1,1 @@
+A Rime-based Chinese IME for Wubi and Pinyin input

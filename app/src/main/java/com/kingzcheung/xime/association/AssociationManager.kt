@@ -67,7 +67,6 @@ object AssociationManager {
     
     suspend fun predict(contextText: String, topK: Int = 20): List<AssociationCandidate> = withContext(Dispatchers.Default) {
         if (!isInitialized) {
-            Log.d(TAG, "Not initialized, attempting to initialize...")
             val ctx = context
             if (ctx != null) {
                 val initSuccess = withContext(Dispatchers.IO) {
@@ -83,18 +82,27 @@ object AssociationManager {
             }
         }
         
+        // :inference 进程被系统回收（空闲回收是设计内行为，同 AsrInferenceService 的
+        // 空闲释放）后，OnnxAssociationEngine 检测到失联会重置自身状态，而本类的
+        // isInitialized 仍为 true。必须在这里检测引擎状态并按需重载（重新 bind +
+        // loadModel），否则所有预测入口都会被本方法上方的 isInitialized 守卫放行、
+        // 撞上引擎的 "Engine not initialized" 空转，联想永远失效。
+        if (!OnnxAssociationEngine.isInitialized()) {
+            val reloaded = ModelRuntime.load("predictive_text")
+            if (!reloaded) {
+                FileLogger.e(TAG, "Reload predictive_text failed after service reclaim")
+                return@withContext emptyList()
+            }
+        }
+
         try {
             val modelCandidates = OnnxAssociationEngine.predict(contextText, topK * 2)
-            
-            Log.d(TAG, "Model candidates: ${modelCandidates.size}, ${modelCandidates.map { it.text }}")
             
             if (modelCandidates.isEmpty()) {
                 return@withContext emptyList()
             }
             
             val fusedCandidates = fusionEngine.fuseCandidates(modelCandidates, contextText)
-            
-            Log.d(TAG, "Fused candidates: ${fusedCandidates.size}, ${fusedCandidates.map { it.text }}")
             
             fusedCandidates.take(topK)
             
@@ -125,7 +133,6 @@ object AssociationManager {
             ModelRuntime.unload("predictive_text")
             isInitialized = false
             context = null
-            Log.d(TAG, "AssociationManager released")
         }
     }
 }

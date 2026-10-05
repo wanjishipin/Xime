@@ -5,8 +5,8 @@ import android.view.KeyEvent
 /**
  * 手势动作执行上下文接口。
  *
- * 由 InputMethodService 实现并注入给 [GestureAction.execute]，封装所有执行手势动作所需的能力。
- * 枚举值通过此接口操作编辑器，不直接依赖 InputConnection，便于测试和替换。
+ * 由 InputMethodService 实现并注入给动作分发层，封装所有执行手势动作所需的能力。
+ * 动作通过此接口操作编辑器，不直接依赖 InputConnection，便于测试和替换。
  */
 interface ActionExecutor {
 
@@ -24,9 +24,9 @@ interface ActionExecutor {
     fun performEditorMenuAction(actionId: Int)
 
     /**
-     * 发送按键事件（用于光标移动和特殊按键等操作）。
-     * @param keyCode  按键码，如 [KeyEvent.KEYCODE_MOVE_HOME]、[KeyEvent.KEYCODE_MOVE_END]
-     * @param metaState 修饰键掩码，0 表示无修饰键。如 [KeyEvent.META_CTRL_ON]
+     * 发送按键事件（用于光标移动等操作）。
+     * @param keyCode 按键码，如 [KeyEvent.KEYCODE_MOVE_HOME]、[KeyEvent.KEYCODE_MOVE_END]
+     * @param metaState 修饰键状态，如 [KeyEvent.META_CTRL_ON]，默认无修饰
      */
     fun sendKeyEvent(keyCode: Int, metaState: Int = 0)
 
@@ -38,136 +38,103 @@ interface ActionExecutor {
 
     /** 重复上一次输入。 */
     fun repeatLastInput()
+
+    /**
+     * 派发功能键语义进服务层按键路由（ImeKeyRouter），复用其全部既有状态机
+     * （组合态提交、候选选择、退格合并、T9 partial 等均在路由内处理）。
+     * @param key 功能键字符串，如 "enter"、"space"、"delete"、"clear_all"
+     */
+    fun dispatchKey(key: String)
 }
 
 /**
- * 键盘手势动作枚举。
+ * 按键动作类型（纯类型标记，不携带执行逻辑）。
  *
- * 每个枚举值自包含执行逻辑（[execute]），零分支调度。
- * 新增动作只需添加一个枚举值 + 实现 execute() 即可。
- *
- * YAML 中的 action 字段值通过 [fromValue] 映射到枚举。
+ * YAML 中的 `action` 字段值通过 [fromValue] 映射到本枚举；执行体统一由
+ * [KeyActionRegistry] 按 id 分发，新增动作只需登记处理体，无需改动本枚举。
  */
 enum class GestureAction(val value: String) {
 
     /** 上屏文本，value 为上屏内容。 */
-    COMMIT("commit") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.commitText(value)
-        }
-    },
-
-    /** 执行内置命令，value 为命令名（如 "clear_composition"）。 */
-    COMMAND("command") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.executeCommand(value)
-        }
-    },
-
-    /** 全选。 */
-    SELECT_ALL("select_all") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.performEditorMenuAction(android.R.id.selectAll)
-        }
-    },
-
-    /** 复制。 */
-    COPY("copy") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.performEditorMenuAction(android.R.id.copy)
-        }
-    },
-
-    /** 剪切。 */
-    CUT("cut") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.performEditorMenuAction(android.R.id.cut)
-        }
-    },
-
-    /** 粘贴。 */
-    PASTE("paste") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.performEditorMenuAction(android.R.id.paste)
-        }
-    },
-
-    /** 移动到行首。 */
-    LINE_START("line_start") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.sendKeyEvent(KeyEvent.KEYCODE_MOVE_HOME)
-        }
-    },
-
-    /** 移动到行尾。 */
-    LINE_END("line_end") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.sendKeyEvent(KeyEvent.KEYCODE_MOVE_END)
-        }
-    },
-
-    /** 撤销。 */
-    UNDO("undo") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.performEditorMenuAction(android.R.id.undo)
-        }
-    },
-
-    /** 仅显示，无操作。 */
-    NONE("none") {
-        override fun execute(context: ActionExecutor, value: String) { /* no-op */ }
-    },
-
-    /** 重复上一次输入。 */
-    REPEAT("repeat") {
-        override fun execute(context: ActionExecutor, value: String) {
-            context.repeatLastInput()
-        }
-    },
-
-    /** 切换键盘路由/面板（如打开 emoji、符号面板）。
-     *  由 KeyboardView 拦截处理，[ActionExecutor] 层 no-op。 */
-    SWITCH_ROUTE("switch_route") {
-        override fun execute(context: ActionExecutor, value: String) { /* no-op, handled at UI layer */ }
-    },
-
-    /** 切换中/英文输入模式。
-     *  由 KeyboardView 拦截处理，发送 "ime_switch" 指令到服务层。 */
-    TOGGLE_ASCII("toggle_ascii") {
-        override fun execute(context: ActionExecutor, value: String) { /* no-op, handled at UI layer */ }
-    },
-
-    /** 删除/退格。由 UI 层拦截处理，调用 onKeyPress("delete")。 */
-    DELETE("delete") {
-        override fun execute(context: ActionExecutor, value: String) { /* no-op, handled at UI layer */ }
-    },
-
-    /** 切换符号键盘。由 UI 层拦截处理。 */
-    TOGGLE_SYMBOLS("toggle_symbols") {
-        override fun execute(context: ActionExecutor, value: String) { /* no-op, handled at UI layer */ }
-    },
-
-    /** 发送特殊按键。value 为按键表达式（如 "Escape"、"Control+c"）。 */
-    SEND_KEY("send") {
-        override fun execute(context: ActionExecutor, value: String) {
-            val (keyCode, metaState) = Keycode.parseSend(value)
-            if (keyCode != 0) {
-                context.sendKeyEvent(keyCode, metaState)
-            }
-        }
-    };
+    COMMIT("commit"),
 
     /**
-     * 执行本动作。
-     * @param context 执行上下文，提供 InputConnection 等能力
-     * @param value   动作参数（如 COMMIT 时的上屏文本、COMMAND 时的命令名）
+     * 提交给 rime 引擎：value 作为按键输入走引擎组合路径（与物理键盘敲键同一条
+     * 路由，中文模式下字母进拼音组合、由候选选词上屏），不直接上屏。
      */
-    abstract fun execute(context: ActionExecutor, value: String)
+    SEND_RIME("send_rime"),
+
+    /** 执行内置命令，value 为命令名（如 "clear_composition"）。 */
+    COMMAND("command"),
+
+    /** 全选。 */
+    SELECT_ALL("select_all"),
+
+    /** 复制。 */
+    COPY("copy"),
+
+    /** 剪切。 */
+    CUT("cut"),
+
+    /** 粘贴。 */
+    PASTE("paste"),
+
+    /** 移动到行首。 */
+    LINE_START("line_start"),
+
+    /** 移动到行尾。 */
+    LINE_END("line_end"),
+
+    /** 撤销。 */
+    UNDO("undo"),
+
+    /** 仅显示，无操作。 */
+    NONE("none"),
+
+    /** 重复上一次输入。 */
+    REPEAT("repeat"),
+
+    /** 切换键盘路由/面板（如打开 emoji、符号面板）。由 UI 层拦截处理。 */
+    SWITCH_ROUTE("switch_route"),
+
+    /** 切换中/英文输入模式。UI 分发层优先处理。 */
+    TOGGLE_ASCII("toggle_ascii"),
+
+    /** 删除/退格。UI 分发层优先处理。 */
+    DELETE("delete"),
+
+    /** 切换符号键盘。纯 UI 层行为。 */
+    TOGGLE_SYMBOLS("toggle_symbols"),
+
+    /** 回车键语义（组合态提交编码 / 空闲态编辑器动作）。 */
+    ENTER("enter"),
+
+    /** 纯换行语义：无视编辑器 imeOptions，固定插入一个换行（组合态先提交编码）。 */
+    NEWLINE("newline"),
+
+    /** 空格键语义（组合态选首候选 / 空闲态上屏空格）。 */
+    SPACE("space"),
+
+    /** 上滑清空：输入态清输入态 / 空闲态清空全部已上屏（记录撤回）。 */
+    CLEAR_ALL("clear_all"),
+
+    /** 下滑撤回：恢复最近一次 clear_all 清空的内容，仅空闲态有效。 */
+    UNDO_CLEAR("undo_clear"),
+
+    /** 切换大小写状态。纯 UI 层行为。 */
+    TOGGLE_SHIFT("toggle_shift"),
+
+    /** 进入语音输入态（含麦克风权限校验）。纯 UI 层行为。 */
+    VOICE("voice"),
+
+    /** 重复空格：value 为次数（默认 5），一次触发连续上屏多个空格。 */
+    REPEAT_SPACE("repeat_space"),
+
+    /** 发送特殊按键。value 为按键表达式（如 "Escape"、"Control+c"）。 */
+    SEND_KEY("send");
 
     companion object {
-        private val map = entries.associateBy { it.value }
-
         /** 根据 YAML 字符串值查找对应的枚举，找不到返回 null。 */
-        fun fromValue(value: String): GestureAction? = map[value]
+        fun fromValue(value: String): GestureAction? = KeyActionRegistry.fromId(value)?.action
     }
 }

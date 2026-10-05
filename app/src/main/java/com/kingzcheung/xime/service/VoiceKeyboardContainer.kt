@@ -1,18 +1,10 @@
 package com.kingzcheung.xime.service
 
 import android.content.Context
-import android.graphics.Bitmap
-import android.graphics.Canvas
-import android.graphics.Color
-import android.graphics.LinearGradient
 import android.graphics.Paint
-import android.graphics.RectF
-import android.graphics.Shader
-import android.os.Build
 import android.view.MotionEvent
 import android.view.View
 import android.widget.FrameLayout
-import kotlin.random.Random
 
 class VoiceKeyboardContainer(
     context: Context,
@@ -24,46 +16,17 @@ class VoiceKeyboardContainer(
     private val onStopRecognition: () -> Unit,
     private val isRecording: () -> Boolean,
     private val setRecording: (Boolean) -> Unit,
-    private val onVoiceDismiss: () -> Unit = {}
+    private val onVoiceDismiss: () -> Unit = {},
+    private val onTouchCancel: () -> Unit = {},
 ) : FrameLayout(context) {
 
     private var isTrackingVoiceButtons = false
     private var lastLeftActive = false
     private var lastRightActive = false
 
-    private val rectF = RectF()
-    private val glassPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         style = Paint.Style.STROKE
         strokeWidth = 0f
-    }
-
-    private var noiseBitmap: Bitmap? = null
-    private var noiseWidth = 0
-    private var noiseHeight = 0
-
-    private fun getNoiseBitmap(w: Int, h: Int): Bitmap? {
-        if (w <= 0 || h <= 0) return null
-        if (noiseBitmap != null && noiseWidth == w && noiseHeight == h) {
-            return noiseBitmap
-        }
-        noiseBitmap?.recycle()
-        val bitmap = try {
-            Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
-        } catch (e: OutOfMemoryError) {
-            return null
-        }
-        val pixels = IntArray(w * h)
-        val rng = Random(System.nanoTime())
-        for (i in pixels.indices) {
-            val n = rng.nextInt(40)
-            pixels[i] = Color.argb(n, 255, 255, 255)
-        }
-        bitmap.setPixels(pixels, 0, w, 0, 0, w, h)
-        noiseBitmap = bitmap
-        noiseWidth = w
-        noiseHeight = h
-        return bitmap
     }
 
     fun enableVoiceButtonTracking() {
@@ -72,99 +35,12 @@ class VoiceKeyboardContainer(
 
     fun updateHeight(heightDp: Int) {
         val heightPx = (heightDp * resources.displayMetrics.density).toInt()
-        val params = layoutParams
-        if (params != null && params.height != heightPx) {
+        val params = layoutParams ?: return
+        if (params.height != heightPx) {
             params.height = heightPx
             layoutParams = params
             requestLayout()
         }
-    }
-
-    private fun isEffectivelyDark(): Boolean {
-        val state = uiStateProvider()
-        return when (state.darkMode) {
-            1 -> true
-            0 -> false
-            else -> {
-                val nightMode = resources.configuration.uiMode and
-                        android.content.res.Configuration.UI_MODE_NIGHT_MASK
-                nightMode == android.content.res.Configuration.UI_MODE_NIGHT_YES
-            }
-        }
-    }
-
-    override fun dispatchDraw(canvas: Canvas) {
-        super.dispatchDraw(canvas)
-
-        if (!uiStateProvider().isGlassEffectEnabled) return
-
-        val w = width.toFloat()
-        val h = height.toFloat()
-        if (w <= 0f || h <= 0f) return
-
-        rectF.set(0f, 0f, w, h)
-
-        if (isEffectivelyDark()) {
-            drawFrostedGlass(canvas, w, h, dark = true)
-        } else {
-            drawFrostedGlass(canvas, w, h, dark = false)
-        }
-    }
-
-    private fun drawFrostedGlass(canvas: Canvas, w: Float, h: Float, dark: Boolean) {
-        val noiseAlpha = if (dark) 28 else 35
-        val noiseBmp = getNoiseBitmap(w.toInt(), h.toInt())
-        if (noiseBmp != null) {
-            val noisePaint = Paint()
-            noisePaint.alpha = noiseAlpha
-            canvas.drawBitmap(noiseBmp, 0f, 0f, noisePaint)
-        }
-
-        if (dark) {
-            glassPaint.shader = LinearGradient(
-                0f, 0f, 0f, h,
-                intArrayOf(0x2A000000, 0x18000000, 0x30FFFFFF),
-                floatArrayOf(0f, 0.5f, 1f),
-                Shader.TileMode.CLAMP
-            )
-        } else {
-            glassPaint.shader = LinearGradient(
-                0f, 0f, 0f, h,
-                intArrayOf(0x2DFFFFFF, 0x14FFFFFF, 0x2A000000),
-                floatArrayOf(0f, 0.5f, 1f),
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawRect(rectF, glassPaint)
-
-        if (dark) {
-            glassPaint.shader = LinearGradient(
-                0f, 0f, 0f, h * 0.08f,
-                intArrayOf(0x3CFFFFFF, 0x00000000),
-                floatArrayOf(0f, 1f),
-                Shader.TileMode.CLAMP
-            )
-        } else {
-            glassPaint.shader = LinearGradient(
-                0f, 0f, 0f, h * 0.10f,
-                intArrayOf(0x28000000, 0x00000000),
-                floatArrayOf(0f, 1f),
-                Shader.TileMode.CLAMP
-            )
-        }
-        canvas.drawRect(rectF, glassPaint)
-
-        val borderCol = if (dark) 0x30FFFFFF.toInt() else 0x18000000
-        borderPaint.color = borderCol
-        canvas.drawRoundRect(0.5f, 0.5f, w - 0.5f, h - 0.5f, 2f, 2f, borderPaint)
-
-        glassPaint.shader = null
-        if (dark) {
-            glassPaint.color = Color.argb(28, 140, 160, 200)
-        } else {
-            glassPaint.color = Color.argb(20, 200, 210, 235)
-        }
-        canvas.drawRect(rectF, glassPaint)
     }
 
     override fun dispatchTouchEvent(ev: MotionEvent?): Boolean {
@@ -174,10 +50,15 @@ class VoiceKeyboardContainer(
                     handleActionDown(it)
                 }
 
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                MotionEvent.ACTION_UP -> {
                     handleActionUp()
                 }
-
+                MotionEvent.ACTION_CANCEL -> {
+                    // 系统手势（如三指截图）截走触摸流时，IME 收不到 UP，Compose 手势也不会被取消。
+                    // 这里把 cancel 上抛，触发活动键盘 remount 来取消所有进行中的手势协程。
+                    handleActionUp()
+                    onTouchCancel()
+                }
                 MotionEvent.ACTION_MOVE -> {
                     handleActionMove(it)
                 }
@@ -187,7 +68,8 @@ class VoiceKeyboardContainer(
     }
 
     private fun handleActionDown(ev: MotionEvent) {
-        val isVoiceMode = uiStateProvider().isVoiceMode
+        val uiState = uiStateProvider()
+        val isVoiceMode = uiState.isVoiceMode && !uiState.voiceSticky
 
         lastLeftActive = false
         lastRightActive = false
@@ -206,6 +88,14 @@ class VoiceKeyboardContainer(
 
     private fun handleActionUp() {
         val state = uiStateProvider()
+
+        // 常驻语音（工具栏进入）不拦截触摸：空格键/工具栏自行结束语音
+        if (state.voiceSticky) {
+            isTrackingVoiceButtons = false
+            lastLeftActive = false
+            lastRightActive = false
+            return
+        }
 
         if (state.isVoiceMode || isRecording()) {
             if (state.voiceButtonState.leftActive) {
@@ -230,7 +120,7 @@ class VoiceKeyboardContainer(
     }
 
     private fun handleActionMove(ev: MotionEvent) {
-        val isVoiceMode = uiStateProvider().isVoiceMode
+        val isVoiceMode = uiStateProvider().isVoiceMode && !uiStateProvider().voiceSticky
 
         if (isVoiceMode && isTrackingVoiceButtons) {
             val yThreshold = height * 0.6f

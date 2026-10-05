@@ -1,6 +1,7 @@
 package com.kingzcheung.xime.ui.settings
 
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -25,6 +26,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -44,15 +46,19 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kingzcheung.xime.plugin.core.security.PluginErrorLog
 import com.kingzcheung.xime.viewmodel.LogViewerEvent
 import com.kingzcheung.xime.viewmodel.LogViewerViewModel
 import java.io.File
@@ -94,11 +100,17 @@ fun LogViewerScreen(
     }
     
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface,
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
-                title = { Text("日志查看器") },
+                title = {
+                    Text(
+                        "日志查看器",
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                    )
+                },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(
@@ -111,12 +123,6 @@ fun LogViewerScreen(
                     val targetFile = uiState.selectedLogFile
                         ?: uiState.logFiles.firstOrNull()
                     if (targetFile != null) {
-                        IconButton(onClick = { viewModel.shareLogFile(targetFile) }) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "分享日志"
-                            )
-                        }
                         TextButton(onClick = { viewModel.saveToDownloads(targetFile) }) {
                             Text("保存")
                         }
@@ -137,8 +143,8 @@ fun LogViewerScreen(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 ),
             )
         }
@@ -182,8 +188,14 @@ fun LogViewerScreen(
                 onSave = { viewModel.saveToDownloads(uiState.selectedLogFile!!) }
             )
         } else {
+            // 插件错误来自 PluginErrorLog 持久化快照（getAllErrors 已含启动恢复的历史），
+            // 随刷新联动重取（logFiles 为 key）
+            val pluginErrors = remember(uiState.logFiles) {
+                com.kingzcheung.xime.plugin.core.security.PluginErrorLog.getAllErrors()
+            }
             LogFilesList(
                 logFiles = uiState.logFiles,
+                pluginErrors = pluginErrors,
                 onSelect = { viewModel.selectLogFile(it) },
                 onShare = { viewModel.shareLogFile(it) },
                 onSave = { viewModel.saveToDownloads(it) },
@@ -278,6 +290,7 @@ private fun LogContentSection(
 @Composable
 private fun LogFilesList(
     logFiles: List<File>,
+    pluginErrors: Map<String, List<com.kingzcheung.xime.plugin.core.security.PluginErrorLog.PluginError>>,
     onSelect: (File) -> Unit,
     onShare: (File) -> Unit,
     onSave: (File) -> Unit,
@@ -285,6 +298,10 @@ private fun LogFilesList(
     context: android.content.Context,
     modifier: Modifier = Modifier
 ) {
+    val pluginNames = remember(pluginErrors) {
+        com.kingzcheung.xime.plugin.core.runtime.PluginManager.getAllInstallPlugins()
+            .associate { it.id to it.name }
+    }
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -350,6 +367,26 @@ private fun LogFilesList(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                 )
+            }
+        }
+        
+        if (pluginErrors.isNotEmpty()) {
+            item {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "插件错误 (${pluginErrors.values.sumOf { it.size }})",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+            pluginErrors.toList().forEach { (pluginId, errors) ->
+                item(key = "plugin-error-$pluginId") {
+                    PluginErrorsCard(
+                        pluginId = pluginId,
+                        pluginName = pluginNames[pluginId] ?: pluginId,
+                        errors = errors
+                    )
+                }
             }
         }
     }
@@ -447,6 +484,178 @@ private fun LogFileItem(
             }
         }
     }
+}
+
+@Composable
+private fun PluginErrorsCard(
+    pluginId: String,
+    pluginName: String,
+    errors: List<com.kingzcheung.xime.plugin.core.security.PluginErrorLog.PluginError>
+) {
+    val context = LocalContext.current
+    var showDetail by remember { mutableStateOf(false) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = { showDetail = true },
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.35f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = pluginName,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f, fill = false).padding(end = 8.dp),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${errors.size} 条",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer
+                )
+            }
+            errors.takeLast(2).reversed().forEach { error ->
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "${formatTimestamp(error.timestamp)} · ${categoryLabel(error.category)}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = com.kingzcheung.xime.plugin.core.security.PluginErrorLog.userMessage(error),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onErrorContainer
+                    )
+                }
+            }
+            Text(
+                text = "点击查看详情",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+
+    if (showDetail) {
+        PluginErrorsDetailDialog(
+            pluginId = pluginId,
+            pluginName = pluginName,
+            errors = errors,
+            onCopy = {
+                val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                val text = buildPluginDiagnosticText(
+                    hostVersionName = com.kingzcheung.xime.BuildConfig.VERSION_NAME,
+                    pluginName = pluginName,
+                    pluginId = pluginId,
+                    pluginVersion = com.kingzcheung.xime.plugin.core.runtime.PluginManager
+                        .getAllInstallPlugins().firstOrNull { it.id == pluginId }?.versionName ?: "?",
+                    enabled = true,
+                    errors = errors
+                )
+                clipboard?.setPrimaryClip(
+                    android.content.ClipData.newPlainText("Xime 插件诊断信息", text)
+                )
+                Toast.makeText(context, "诊断信息已复制", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { showDetail = false }
+        )
+    }
+}
+
+@Composable
+private fun PluginErrorsDetailDialog(
+    pluginId: String,
+    pluginName: String,
+    errors: List<com.kingzcheung.xime.plugin.core.security.PluginErrorLog.PluginError>,
+    onCopy: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("$pluginName 错误详情") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(340.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                errors.reversed().forEachIndexed { index, error ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = "${formatTimestamp(error.timestamp)} · ${categoryLabel(error.category)}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = com.kingzcheung.xime.plugin.core.security.PluginErrorLog.userMessage(error),
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = com.kingzcheung.xime.plugin.core.security.PluginErrorLog.userHint(error),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = error.message,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            error.stackTrace?.let { stack ->
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = stack,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                )
+                            }
+                        }
+                    }
+                    if (index < errors.lastIndex) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
+                }
+                if (errors.isEmpty()) {
+                    Text(
+                        "暂无错误记录",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onCopy() }) {
+                Text("复制诊断信息")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
 }
 
 private fun formatFileSize(size: Long): String {

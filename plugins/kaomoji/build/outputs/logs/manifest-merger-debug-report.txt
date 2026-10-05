@@ -1,0 +1,67 @@
+-- Merging decision tree log ---
+manifest
+ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:2:1-32:12
+INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:2:1-32:12
+INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:2:1-32:12
+INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:2:1-32:12
+	package
+		INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml
+	android:versionName
+		INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml
+	android:versionCode
+		INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml
+	xmlns:android
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:2:11-69
+application
+ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:4:5-30:19
+INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:4:5-30:19
+	android:extractNativeLibs
+		INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml
+	android:supportsRtl
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:7:9-35
+	android:label
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:6:9-41
+	android:allowBackup
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:5:9-36
+activity#com.kingzcheung.xime.plugin.kaomoji.PluginDeclaration
+ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:9:9-16:20
+	android:exported
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:11:13-36
+	android:name
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:10:13-46
+intent-filter#action:name:com.wanjishipin.xime.plugin.EXTENSION+category:name:android.intent.category.DEFAULT
+ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:12:13-15:29
+action#com.wanjishipin.xime.plugin.EXTENSION
+ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:13:17-80
+	android:name
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:13:25-77
+category#android.intent.category.DEFAULT
+ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:14:17-76
+	android:name
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:14:27-73
+meta-data#plugin.entryClass
+ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:18:9-20:81
+	android:value
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:20:13-78
+	android:name
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:19:13-45
+meta-data#plugin.description
+ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:22:9-24:43
+	android:value
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:24:13-40
+	android:name
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:23:13-46
+meta-data#plugin.type
+ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:26:9-28:37
+	android:value
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:28:13-34
+	android:name
+		ADDED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:27:13-39
+uses-sdk
+INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml reason: use-sdk injection requested
+INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml
+INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml
+	android:targetSdkVersion
+		INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml
+	android:minSdkVersion
+		INJECTED from /data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml

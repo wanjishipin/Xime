@@ -17,9 +17,7 @@ data class KeyEffectUiState(
     val longPressDuration: Int = 0,
     val pressAmplitude: Int = 0,
     val longPressAmplitude: Int = 0,
-    val hasAmplitudeControl: Boolean = false,
-    val swipeUpHintsEnabled: Boolean = true,
-    val swipeDownHintsEnabled: Boolean = true
+    val hasAmplitudeControl: Boolean = false
 )
 
 class KeyEffectSettingsViewModel(application: Application) : AndroidViewModel(application) {
@@ -33,9 +31,7 @@ class KeyEffectSettingsViewModel(application: Application) : AndroidViewModel(ap
         pressDuration = SettingsPreferences.getVibrationPressDuration(context),
         longPressDuration = SettingsPreferences.getVibrationLongPressDuration(context),
         pressAmplitude = SettingsPreferences.getVibrationPressAmplitude(context),
-        longPressAmplitude = SettingsPreferences.getVibrationLongPressAmplitude(context),
-        swipeUpHintsEnabled = SettingsPreferences.isSwipeUpHintsEnabled(context),
-        swipeDownHintsEnabled = SettingsPreferences.isSwipeDownHintsEnabled(context)
+        longPressAmplitude = SettingsPreferences.getVibrationLongPressAmplitude(context)
     ))
     val uiState: StateFlow<KeyEffectUiState> = _uiState.asStateFlow()
 
@@ -93,15 +89,5 @@ class KeyEffectSettingsViewModel(application: Application) : AndroidViewModel(ap
     fun setLongPressAmplitude(amplitude: Int) {
         SettingsPreferences.setVibrationLongPressAmplitude(context, amplitude)
         _uiState.update { it.copy(longPressAmplitude = amplitude) }
-    }
-
-    fun setSwipeUpHintsEnabled(enabled: Boolean) {
-        SettingsPreferences.setSwipeUpHintsEnabled(context, enabled)
-        _uiState.update { it.copy(swipeUpHintsEnabled = enabled) }
-    }
-
-    fun setSwipeDownHintsEnabled(enabled: Boolean) {
-        SettingsPreferences.setSwipeDownHintsEnabled(context, enabled)
-        _uiState.update { it.copy(swipeDownHintsEnabled = enabled) }
     }
 }

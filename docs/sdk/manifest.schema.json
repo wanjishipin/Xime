@@ -1,0 +1,183 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://ime.ximei.me/schemas/plugin-manifest.schema.json",
+  "title": "Xime 插件清单（manifest.json）",
+  "description": "校验插件包 manifest.json 的字段（宽松 JSON：支持 // 注释与尾逗号）、枚举与能力声明拼写。宿主解析真相源：InstallerManager.PluginManifest（plugin-core）。未知字段宿主静默忽略。",
+  "type": "object",
+  "required": ["id", "type", "entry", "version"],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "插件唯一标识：字母/数字/下划线/连字符，点号分段，最长 64。示例 com.example.my_plugin",
+      "pattern": "^[A-Za-z0-9_-]+(\\.[A-Za-z0-9_-]+)*$",
+      "maxLength": 64
+    },
+    "name": {
+      "type": "string",
+      "description": "展示名（缺省取 id）"
+    },
+    "icon": {
+      "type": "string",
+      "description": "顶层图标：文字（如 \"译\"）或 resources/ 下图片文件名"
+    },
+    "description": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string",
+      "description": "插件版本（语义化）",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(-[A-Za-z0-9.]+)?$",
+      "default": "0.0.0"
+    },
+    "type": {
+      "type": "string",
+      "description": "插件类别，决定宿主适配器与 UI",
+      "enum": ["tool", "emoji", "speech", "clipboard_sync", "backup", "prediction", "unknown"]
+    },
+    "entry": {
+      "type": "string",
+      "description": "入口脚本（相对包根），普通文件名，禁止路径分隔符与 ..",
+      "pattern": "^[A-Za-z0-9_.-]{1,128}$",
+      "default": "main.js"
+    },
+    "platforms": {
+      "type": "array",
+      "description": "目标平台声明（缺省视为 [\"android\"]；宿主按平台门禁加载）。已知标识：android/ios/windows/macos/linux，未知标识仅提示不拒绝",
+      "items": { "type": "string", "minLength": 1 },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "minHostVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "最低主应用版本（不满足拒绝安装/加载）"
+    },
+    "maxHostVersion": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "最高主应用版本（含）"
+    },
+    "network": {
+      "type": "object",
+      "description": "网络白名单声明：联网必须先声明 + 用户授权",
+      "properties": {
+        "hosts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "description": "合法域名或 IPv4（禁止通配/空白/超长，授权 UI 直接展示）",
+            "pattern": "^(?=.{1,253}$)([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?)(\\.([A-Za-z0-9]([A-Za-z0-9-]{0,61}[A-Za-z0-9])?))*$"
+          }
+        },
+        "allowCustomHosts": {
+          "type": "boolean",
+          "description": "允许用户自定义服务器域名（保存配置时自动获得联网授权）",
+          "default": false
+        }
+      }
+    },
+    "toolbarButtons": {
+      "type": "array",
+      "description": "工具栏入口按钮（点击打开该插件通用面板）",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "全局限定 id（建议 pluginId:action），禁止逗号/XML 特殊字符/空白，最长 64",
+            "maxLength": 64
+          },
+          "label": {
+            "type": "string",
+            "description": "显示标签（图标缺失时兜底文本）"
+          },
+          "icon": {
+            "type": "string",
+            "description": "resources/ 下图标文件名"
+          },
+          "action": {
+            "type": "string",
+            "default": "open_panel",
+            "description": "点击行为标识（当前仅 open_panel）"
+          }
+        }
+      }
+    },
+    "capabilities": {
+      "type": "object",
+      "description": "能力声明（宿主消费能力的唯一来源；未知字段/非法枚举按未声明处理）",
+      "properties": {
+        "emoji": {
+          "type": "object",
+          "description": "emoji 布局参数",
+          "properties": {
+            "supportsSearch": { "type": "boolean", "default": false },
+            "columns": { "type": "integer", "minimum": 1 },
+            "itemHeightDp": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "speech": {
+          "type": "object",
+          "description": "ASR（speech 类型）能力",
+          "properties": {
+            "inputMode": { "type": "string", "default": "streaming" },
+            "supportsPartialResults": { "type": "boolean", "default": true },
+            "requiresNetwork": { "type": "boolean", "default": true }
+          }
+        },
+        "tool": {
+          "type": "object",
+          "description": "tool 插件结果显示方式",
+          "properties": {
+            "display": {
+              "type": "string",
+              "enum": ["direct", "passive"],
+              "description": "direct=结果直接上屏；passive=面板展示 items 点选"
+            }
+          }
+        },
+        "clipboard_sync": {
+          "type": "object",
+          "properties": {
+            "protocols": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "声明支持的同步协议（如 webdav）；宿主启动前按协议硬校验"
+            }
+          }
+        },
+        "backup": {
+          "type": "object",
+          "properties": {
+            "protocols": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          }
+        },
+        "events": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "下行事件订阅（snake_case，如 input_changed/text_committed/quick_send_changed）"
+        },
+        "candidate_transform": {
+          "type": "boolean",
+          "default": false,
+          "description": "候选词变换能力（hotPath 硬超时 15ms，须纯内存计算）"
+        },
+        "quick_send_read": {
+          "type": "boolean",
+          "default": false,
+          "description": "注入 host.quickSend（读取快捷发送缓存）"
+        },
+        "clipboard_read": {
+          "type": "boolean",
+          "default": false,
+          "description": "注入 host.clipboard（读取系统剪贴板）"
+        }
+      }
+    }
+  },
+  "additionalProperties": true
+}

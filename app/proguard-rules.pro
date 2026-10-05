@@ -6,22 +6,19 @@
 # Keep utility classes used by Application and services
 -keep class com.kingzcheung.xime.util.** { *; }
 
-# Keep Kotlin stdlib classes used by plugins via parent classloader
-# Plugins use compileOnly(plugin-core), so Kotlin stdlib resolves from host app.
-# R8 strips unused stdlib methods — these rules ensure plugins can call them.
--keep class kotlin.** { *; }
+-dontwarn com.sun.nio.file.**
+-dontwarn kotlin.Cloneable$DefaultImpls
+
+# 插件系统（宿主侧 com.kingzcheung.xime.plugin.* + plugin-core）整体保留：
+# JS 桥/序列化/动态约定多，防止 R8 裁剪造成 release 行为缺失
+# （库侧自完备规则见 plugin-core/consumer-rules.pro）
+-keep class kotlin.Metadata { *; }
 
 -keep class com.kingzcheung.xime.plugin.** { *; }
 -keepclassmembers class com.kingzcheung.xime.plugin.** { *; }
 
 -keep class com.kingzcheung.xime.rime.** { *; }
 -keep class com.kingzcheung.xime.**Jni** { *; }
-
--keep class com.k2fsa.sherpa.onnx.** { *; }
--keepclassmembers class com.k2fsa.sherpa.onnx.** {
-    <fields>;
-    <methods>;
-}
 
 -keepattributes SourceFile,LineNumberTable
 

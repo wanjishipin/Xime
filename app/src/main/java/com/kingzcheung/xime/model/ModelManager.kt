@@ -9,17 +9,22 @@ object ModelManager {
     private const val TAG = "ModelManager"
 
     private var initialized = false
-    private val remoteModels = mutableListOf<ModelInfo>()
+    private val _modelsFlow = kotlinx.coroutines.flow.MutableStateFlow<List<ModelInfo>>(emptyList())
+
+    /** 可观察的模型清单（远程 index 加载后自动更新） */
+    val modelsFlow: kotlinx.coroutines.flow.StateFlow<List<ModelInfo>> = _modelsFlow
 
     fun initialize() {
         if (initialized) return
         initialized = true
-        FileLogger.i(TAG, "ModelManager initialized, ${Models.ALL.size} built-in models")
+        FileLogger.i(TAG, "ModelManager initialized")
     }
 
-    private fun allModels(): List<ModelInfo> {
-        return if (remoteModels.isNotEmpty()) remoteModels else Models.ALL
-    }
+    /** 模型清单完全来自远程 index（xime_index.base_urls 指向的 models/index.yaml）。
+     *  以 StateFlow 内的不可变列表为唯一状态源：读方拿到的是发布时的快照，
+     *  与后续刷新互不干扰（历史上共享可变列表曾被遍历方并发 clear/addAll，
+     *  连点刷新触发 ConcurrentModificationException 闪退）。 */
+    private fun allModels(): List<ModelInfo> = _modelsFlow.value
 
     fun getAllModels(): List<ModelInfo> = allModels()
 
@@ -31,15 +36,14 @@ object ModelManager {
     suspend fun loadFromRemote(context: Context) {
         val remote = ModelIndexLoader.loadFromRemote(context)
         if (remote.isNotEmpty()) {
-            remoteModels.clear()
-            remoteModels.addAll(remote)
             FileLogger.i(TAG, "Loaded ${remote.size} models from remote index")
         } else {
-            FileLogger.w(TAG, "Remote index returned empty, keeping built-in models")
+            FileLogger.w(TAG, "Remote index returned empty, no models available")
         }
+        _modelsFlow.value = remote
     }
 
-    fun isUsingRemoteIndex(): Boolean = remoteModels.isNotEmpty()
+    fun isUsingRemoteIndex(): Boolean = _modelsFlow.value.isNotEmpty()
 
     fun isModelDownloaded(context: Context, id: String): Boolean {
         val model = getModel(id) ?: return false
@@ -47,6 +51,8 @@ object ModelManager {
     }
 
     fun isModelDownloaded(context: Context, model: ModelInfo): Boolean {
+        // 检测前先尝试迁移旧路径模型到统一目录，保证已下载的旧版可用
+        ModelStorage.migrateLegacyForModel(context, model.id)
         val dir = getModelStorageDir(context, model) ?: return false
         if (!dir.exists()) return false
 
@@ -61,11 +67,8 @@ object ModelManager {
     }
 
     fun getModelStorageDir(context: Context, model: ModelInfo): File? {
-        return if (model.storageDir.isEmpty()) {
-            context.filesDir
-        } else {
-            File(context.filesDir, model.storageDir)
-        }
+        // 统一规则：所有模型一律存 filesDir/models/<id>/
+        return ModelStorage.getModelDir(context, model.id)
     }
 
     fun getModelStorageDir(context: Context, id: String): File? {
@@ -108,9 +111,10 @@ object ModelManager {
     suspend fun downloadModel(
         context: Context,
         model: ModelInfo,
-        onProgress: (ModelDownloadState) -> Unit
+        onProgress: (ModelDownloadState) -> Unit,
+        version: ModelVersion? = null
     ) {
-        ModelDownloader.downloadModel(context, model, onProgress)
+        ModelDownloader.downloadModel(context, model, onProgress, version)
     }
 
     fun deleteModel(context: Context, id: String): Boolean {
@@ -132,6 +136,9 @@ object ModelManager {
             if (file.exists() && !file.delete()) {
                 success = false
             }
+        }
+        if (success) {
+            com.kingzcheung.xime.settings.MarketVersionStore.removeModelVersion(context, model.id)
         }
 
         return success

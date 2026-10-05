@@ -1,32 +1,56 @@
 package com.kingzcheung.xime.rime
 
+import com.kingzcheung.xime.util.FileLogger
+import android.os.Handler
+import android.os.Looper
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 /**
- * 九键拼音输入控制器。
+ * 九键拼音输入控制器（薄包装）。
  *
- * 设计文档 13.1 节模块分工：
- * - DigitStream（原 T9BufferManager）：数字流模型与 buffer 解析
- * - T9StateMachine：三态状态机 + LeftSelection 模型
- * - T9UndoManager：命令模式撤销管理（Phase 3）
- * - T9RimeBridge：RIME 引擎通信桥接
- * - T9RightCommitUtils：右侧选词消费计算
- * - T9PinyinMap：拼音映射（无需改动）
- * - T9DisplayHelper：UI 展示状态构建
+ * T9 核心逻辑（数字缓冲、三态状态机、右选消费算法、撤销管理等）已整体迁移到
+ * librime-t9（C++ 插件）中实现。本类仅通过 [RimeEngine] 的 JNI 接口与 C++ 层
+ * 交互，并维护 UI 展示所需的 Compose 状态。
+ *
+ * 原 Kotlin 侧 T9Buffer / T9StateMachine / T9UndoManager / T9RightCommitHandler /
+ * T9RimeBridge / T9PinyinMap 等类均已删除，由 C++ 同名组件替代。
+ *
+ * 异步执行模型（遗留问题 1 修复 + 方案 B 加固）：
+ * - 按键处理（processKey → FlushRimeInput → 取结果）整体运行在**单线程后台队列**，
+ *   引擎 compose（2-23ms，长输入可达 250ms）不阻塞 UI 线程；单线程 FIFO 保证连打
+ *   按键的 C++ pending 标记顺序不乱。
+ * - flush 后通过 [RimeEngine.getProcessResult] 一次 JNI 拿全量结果（input/preedit/
+ *   committed/翻页），替代重复的 getComposition 调用（每键 6→5 次 JNI，全部后台）。
+ * - UI 更新通过 [mainHandler] 投递到 Main 线程，**后台任务完成不依赖 Main**，
+ *   避免 [awaitT9Queue]（runBlocking 等待队列）与 Main 派发之间死锁。
+ * - **方案 B**：reset/clearAll 等清理入口不再在主线程 runBlocking 等待队列——
+ *   本地 Compose 状态立即复位，C++ 清空排入同一队列（与后续按键保序，主线程零等待）。
+ * - 唯一保留同步等待的入口是 onRightCandidateSelected（服务层在 keyProcessingDispatcher
+ *   后台线程调用，需同步返回 full-commit 标志）：先 [awaitT9Queue] 等待队列排空，
+ *   避免 pending 覆盖导致消费计算错乱——阻塞的是该后台线程，而非主线程。
  */
 class T9InputController(
-    onReplaceFullPinyin: (String) -> Unit,
-    onQueryRimeComposition: (() -> RimeComposition)? = null,
-    onRightCommitUndone: ((Int) -> Unit)? = null,
+    private val rimeEngine: RimeEngine = RimeEngine.getInstance(),
+    private val onCompositionRefresh: ((RimeComposition, List<com.kingzcheung.xime.service.T9CandidateInjection>) -> Unit)? = null,
+    private val onRightCommitUndone: ((Int) -> Unit)? = null,
+    /** 候选词变换（hotPath 插件能力）：后台取数后、post 主线程前同步调用
+     *  （阻塞至多 15ms，主线程零等待）；返回带引擎锚点的插件候选注入列表
+     *  （text 追加项），引擎结果原样使用（T9 不支持引擎引用替换）。null = 不干预。 */
+    private val candidateTransform: ((RimeProcessResult) -> List<com.kingzcheung.xime.service.T9CandidateInjection>?)? = null,
 ) {
     companion object {
-        const val CLEAR_COMPOSITION_ONLY = T9RimeBridge.CLEAR_COMPOSITION_ONLY
-        const val CLEAR_ALL = T9RimeBridge.CLEAR_ALL
+        private const val TAG = "T9InputController"
+        const val CLEAR_COMPOSITION_ONLY = "clear_composition"
+        const val CLEAR_ALL = "clear_all"
     }
-
-    private val rimeBridge = T9RimeBridge(onReplaceFullPinyin, onQueryRimeComposition, onRightCommitUndone)
 
     enum class LeftPanelState { IDLE, INPUT, SELECTION }
 
@@ -34,524 +58,376 @@ class T9InputController(
         DELETED, UNDO_CHOICE, UNDO_COMMIT, NOT_CONSUMED
     }
 
+    /** 音节选项（原 T9PinyinMap.SyllableOption，已内联至此） */
+    data class SyllableOption(
+        val pinyin: String,
+        val digitLength: Int
+    )
+
+    // ── 异步执行模型 ──
+    private val t9Dispatcher = Dispatchers.Default.limitedParallelism(1)
+    private val t9Scope = CoroutineScope(t9Dispatcher)
+    private var lastT9Job: Job? = null
+
+    /** UI 更新投递目标（后台任务通过 post 派发，不阻塞任务完成）。 */
+    private val mainHandler = Handler(Looper.getMainLooper())
+
     /**
-     * T9 结构化输入缓冲区。
-     *
-     * 设计文档 §2.2：替换纯字符串 buffer，分离数字序列与拼音选择。
-     * 分隔符 ' 不再存储，仅在 toBufferString() / toPreeditString() 中按规则生成。
+     * UI 刷新代际号：每次发起刷新自增。异步 post 到达 Main 时若代际已过期则丢弃，
+     * 防止「同步刷新（如右选）→ 旧的异步刷新 post 后执行」把 UI 回退到旧状态。
      */
-    var inputBuffer: T9Buffer by mutableStateOf(T9Buffer.EMPTY)
+    private var uiGeneration = 0
 
-        internal set
+    /** 长按退格合并锁/状态：同一时刻至多一个退格 job，累积请求由 [pendingDeleteCount] 记录。 */
+    private val deleteCoalesceLock = Any()
+    private var deleteJobActive = false
+    private var pendingDeleteCount = 0
 
-    /** inputBuffer 的字符串表示（供 UI 显示和外部查询）。
-     * 分词键确认的拼音已内化到 T9Buffer.selections，由 toBufferString() 自然生成。
-     * 此处仅处理 leftColumnLocked 时的尾随 ' 显示（锁定态视觉提示）。 */
-    val bufferString: String get() {
-        val buf = inputBuffer.toBufferString()
-        // 拼音选择完全消费且锁定：补尾随 '（显示锁定状态）
-        // 避免与 toBufferString 的退格缩短 ' 重复
-        if (leftColumnLocked && inputBuffer.selections.isNotEmpty() &&
-            inputBuffer.unassigned.isEmpty() && !buf.endsWith("'")) {
-            return buf + "'"
-        }
-        return buf
+    /**
+     * 最近一次 flush 快照的 input 缓存（@Volatile，后台 fetchAll 写入、主线程读取）。
+     * bufferString/inputBuffer 不再主线程调 [RimeEngine.getInput]（消除主线程 JNI），
+     * 且与 preedit/候选/左栏同源于一次 getProcessResult → 保证 UI 元素同帧同步。
+     */
+    @Volatile
+    private var cachedInput: String = ""
+
+    /** 将 T9 处理任务排入单线程后台队列（FIFO 保序）。 */
+    private fun enqueue(block: suspend CoroutineScope.() -> Unit) {
+        val job = t9Scope.launch { block() }
+        lastT9Job = job
     }
 
-    var firstOptions: List<T9PinyinMap.SyllableOption> by mutableStateOf(emptyList())
+    /**
+     * 同步等待后台队列排空（仅 onRightCandidateSelected 使用）。
+     * 该方法必须且只会被**非主线程**调用（服务层 keyProcessingDispatcher），
+     * 阻塞的是该后台线程而非 UI；队列空闲时立即返回。
+     */
+    private fun awaitT9Queue() {
+        lastT9Job?.let { runBlocking { it.join() } }
+    }
+
+    /** UI 显示的缓冲区字符串 = 最近一次 flush 快照的 input（缓存，非主线程 JNI） */
+    val bufferString: String get() {
+        val input = cachedInput
+        return when {
+            input.isEmpty() && _committedText != null -> _committedText!!
+            input.isEmpty() -> ""
+            else -> input
+        }
+    }
+
+    /** 当前输入缓冲区（供 KeyboardView 判断右选是否完整消费；缓存值，非主线程 JNI） */
+    val inputBuffer: String get() = cachedInput
+
+    var firstOptions: List<SyllableOption> by mutableStateOf(emptyList())
         private set
-
-    private var lastRimeInput: String?
-        get() = rimeBridge.getLastRimeInput()
-        set(value) { rimeBridge.setLastRimeInput(value) }
-
-    var leftColumnLocked: Boolean by mutableStateOf(false)
-        private set
-
 
     var leftPanelState: LeftPanelState by mutableStateOf(LeftPanelState.IDLE)
         private set
 
-    var selectedOption: T9PinyinMap.SyllableOption? by mutableStateOf(null)
+    var selectedOption: SyllableOption? by mutableStateOf(null)
         private set
 
     var selectionCandidateDigits: String? by mutableStateOf(null)
         private set
 
-    /** 当前输入会话中所有已确认的拼音选择历史（按选择顺序），供候选词过滤使用 */
-    val selectionHistory: List<T9PinyinMap.SyllableOption> get() = stateMachine.selectionHistory.toList()
+    var leftColumnLocked: Boolean by mutableStateOf(false)
+        private set
 
-    /** 当前左侧选择上下文（设计文档 2.3 节 LeftSelection 模型） */
-    val leftSelection: T9StateMachine.LeftSelection? get() = stateMachine.leftSelection
+    val selectionHistory: List<SyllableOption> get() = _selectionHistory
+    private var _selectionHistory: List<SyllableOption> = emptyList()
 
-    private val stateMachine = T9StateMachine()
+    private var _committedText: String? = null
 
-    private fun syncStateFromMachine() {
-        leftPanelState = when (stateMachine.state) {
-            T9StateMachine.State.IDLE -> LeftPanelState.IDLE
-            T9StateMachine.State.INPUT -> LeftPanelState.INPUT
-            T9StateMachine.State.SELECTION -> LeftPanelState.SELECTION
-        }
-        selectedOption = stateMachine.selectedOption
-        selectionCandidateDigits = stateMachine.selectionCandidateDigits
+    /**
+     * 重置（输入会话开始/切换键盘时调用，主线程）。
+     * 本地 Compose 状态立即复位；C++ 状态清空排入后台队列——与后续按键同队列保序，
+     * 主线程零等待（方案 B）。
+     */
+    fun reset() {
+        // 丢弃旧会话尚未执行的刷新 post，避免复位后被旧状态覆盖
+        uiGeneration++
+        _selectionHistory = emptyList()
+        firstOptions = emptyList()
+        leftPanelState = LeftPanelState.IDLE
+        selectedOption = null
+        selectionCandidateDigits = null
+        leftColumnLocked = false
+        _committedText = null
+        cachedInput = ""
+        enqueue { rimeEngine.t9ClearComposition(1) }
     }
 
-    /** 构建命令撤销上下文 */
-    private fun undoCtx() = T9Command.Ctx(
-        buffer = inputBuffer,
-        leftColumnLocked = leftColumnLocked,
-        separatorConsumedDigits = separatorConsumedDigits,
-        lastChoiceConsumedDigits = lastChoiceConsumedDigits,
-        stateMachine = stateMachine,
-        onRestored = {
-            syncStateFromMachine()
-            updateCandidates(force = true)
-            rimeBridge.setLastRimeInput(null)
-            sendToRime()
-        },
+    /**
+     * 公共刷新入口（同步路径使用，低频）。
+     * 一次 JNI 拿全量 composition 结果 + 左栏面板/候选，重建左栏状态。
+     */
+    fun updateCandidates(force: Boolean = false) {
+        val data = fetchAll()
+        applyCandidates(data.result, data.panel, data.options)
+    }
+
+    /**
+     * 候选词变换（hotPath 插件能力）：引擎结果原样 + 插件候选注入列表。
+     * t9Dispatcher 线程同步等插件至多 15ms；失败/不干预返回空注入。
+     */
+    private fun transformInjections(result: RimeProcessResult): Pair<RimeProcessResult, List<com.kingzcheung.xime.service.T9CandidateInjection>> {
+        val injections = candidateTransform?.invoke(result) ?: emptyList()
+        return result to injections
+    }
+
+    /**
+     * 后台线程：flush 后一次取全量结果 + 左栏数据，经 [mainHandler] 投递到 Main
+     * 更新 Compose 状态，并携带 composition 通知服务层刷新（避免其内部重复
+     * getComposition）。post 为 fire-and-forget，任务完成不依赖 Main 线程；
+     * 携带代际号，过期刷新在 Main 执行时丢弃。
+     */
+    private fun refreshOnBackground() {
+        val data = fetchAll()
+        val (finalResult, injections) = transformInjections(data.result)
+        val composition = finalResult.toComposition()
+        val gen = ++uiGeneration
+        mainHandler.post {
+            if (gen != uiGeneration) return@post
+            onCompositionRefresh?.invoke(composition, injections)
+            applyCandidates(finalResult, data.panel, data.options)
+        }
+    }
+
+    /** 一次 flush 后取回的全部刷新数据（composition 全量 + 左栏面板 + 首音节候选）。 */
+    private data class T9RefreshData(
+        val result: RimeProcessResult,
+        val panel: LeftPanelInfo,
+        val options: List<Pair<String, Int>>,
     )
 
-    /** 推送命令前的状态快照辅助：记录当前状态以备撤销 */
-    private fun pushCommand(cmd: T9Command) {
-        undoManager.push(cmd)
+    /**
+     * 后台取全量数据：一次 JNI（getProcessResult）拿 composition + T9 左栏面板 +
+     * 首音节候选（C++ readCurrentState 填充），Main 线程只做解析与状态赋值。
+     */
+    private fun fetchAll(): T9RefreshData {
+        val result = rimeEngine.getProcessResult(true)
+        // 更新主线程可读的 input 快照（与 preedit/候选/左栏同源于本次 flush）
+        cachedInput = result.inputText
+        val panel = parseLeftPanelState(result.t9PanelState.ifEmpty { "IDLE;;;;;0" })
+        val options = parseSyllableOptions(result.t9SyllableOptions)
+        return T9RefreshData(result, panel, options)
     }
 
-    private var cachedDigitSegment: String? = null
-    private var cachedFirstOptions: List<T9PinyinMap.SyllableOption> = emptyList()
-
-    private val undoManager = T9UndoManager()
-
-    private var separatorConsumedDigits: String? = null
-
-    private var lastChoiceConsumedDigits: String? = null
-
-    fun reset() = resetState(clearCache = true, clearRime = false)
-
-    fun lastDigitSegment(): String = inputBuffer.unassigned
-
-    fun updateCandidates(force: Boolean = false) {
-        val t0 = System.nanoTime()
-        if (leftColumnLocked && !force) return
-
-        val bufStr = inputBuffer.toBufferString()
-        val hasApostrophe = bufStr.contains("'")
-        val selectionDigits = selectionCandidateDigits
-
-        // 分词键锁定：继续显示之前确认的数字段的候选
-        if (separatorConsumedDigits != null && hasApostrophe) {
-            if (force || cachedDigitSegment != separatorConsumedDigits) {
-                cachedDigitSegment = separatorConsumedDigits
-                cachedFirstOptions = T9PinyinMap.firstSyllableOptions(separatorConsumedDigits!!, maxResults = 12)
-            }
-            firstOptions = cachedFirstOptions
-            leftColumnLocked = false
-            return
-        }
-
-        // 使用设计文档 2.5 节 leftCandidates() 纯函数计算候选（T9Buffer 版本）
-        val candidates = leftCandidates(inputBuffer, stateMachine.state, selectionDigits)
-        val effectiveKey = if (candidates.isNotEmpty()) inputBuffer.unassigned.ifEmpty { selectionDigits ?: "" } else ""
-
-        if (force || cachedDigitSegment != effectiveKey) {
-            cachedDigitSegment = effectiveKey
-            cachedFirstOptions = candidates
-        }
-        firstOptions = cachedFirstOptions
-
-        if (!bufStr.endsWith("'")) {
-            leftColumnLocked = false
-        }
-        val elapsed = (System.nanoTime() - t0) / 1_000_000L
-        if (elapsed > 2) {
-            try { android.util.Log.d("T9InputCtrl", "updateCandidates took ${elapsed}ms buffer='${bufStr.take(20)}'") } catch (_: Throwable) { }
+    /** 解析 JNI 返回的 "pinyin|digitLength,..." 首音节候选串。 */
+    private fun parseSyllableOptions(raw: String): List<Pair<String, Int>> {
+        if (raw.isEmpty()) return emptyList()
+        return raw.split(",").mapNotNull { entry ->
+            val parts = entry.split("|")
+            if (parts.size == 2) {
+                Pair(parts[0], parts[1].toIntOrNull() ?: 1)
+            } else null
         }
     }
 
     /**
-     * 判断当前选中的选项是否应高亮显示。
+     * 基于一次取回的全量结果重建左栏/面板状态（Main 线程执行）。
+     * PANEL_DIGITS 已内含分词键锁定 + unassigned + selectionCandidateDigits +
+     * separatorConsumedDigits 回退逻辑，确保混合输入（如 5'43）时左侧候选只显示
+     * 当前数字段（5 → j/k/l）而非整段过滤结果（543 → jie/lie）。
      */
-    fun isSelectedOptionInCurrentCandidates(): Boolean {
-        if (leftPanelState != LeftPanelState.SELECTION || selectedOption == null) return false
-        val selDigits = selectionCandidateDigits ?: return false
-        // 无选择历史 + 有未消费数字 = 纯数字上下文
-        if (inputBuffer.selections.isEmpty() && inputBuffer.unassigned.isNotEmpty()) {
-            return cachedDigitSegment == selDigits
-        }
-        if (inputBuffer.unassigned.isNotEmpty()) return false
-        return cachedDigitSegment == selDigits
-    }
-
-    private fun enterSelection(
-        option: T9PinyinMap.SyllableOption,
-        candidateDigits: String,
-        confirmedPinyin: String = "",
+    private fun applyCandidates(
+        result: RimeProcessResult,
+        panel: LeftPanelInfo,
+        options: List<Pair<String, Int>>,
     ) {
-        stateMachine.enterSelection(option, candidateDigits, confirmedPinyin)
-        syncStateFromMachine()
+        val rawInput = result.inputText
+
+        if (rawInput.isEmpty() && _committedText != result.committedText) {
+            _committedText = result.committedText
+        }
+
+        // 僵尸 RC 态（如测试文档 bs6 场景：右选"策"后删完剩余数字，仅剩消费区 '23'）：
+        // C++ SendToRime 有意清空 RIME input（kZombieClear，避免 preedit 拼接"策ce"），
+        // 但 T9 buffer 仍处于 SELECTION（panel.state 非 IDLE，如 SELECTION/ce/23）。
+        // 此时不能因 rawInput 为空误置左栏 IDLE——必须以 C++ 面板状态为准渲染。
+        if (rawInput.isEmpty() && panel.state == LeftPanelState.IDLE) {
+            if (leftPanelState != LeftPanelState.IDLE) {
+                firstOptions = emptyList()
+                leftPanelState = LeftPanelState.IDLE
+                selectedOption = null
+                selectionCandidateDigits = null
+            }
+            return
+        }
+
+        // 从数字段用 librime-t9 (C++) 计算左栏候选
+        firstOptions = options.map { SyllableOption(it.first, it.second) }
+
+        // 同步 C++ 状态机状态（分词键锁定 / 左选高亮 / 选择候选数字段）
+        leftPanelState = panel.state
+        selectedOption = if (panel.selectedPinyin.isNotEmpty()) {
+            SyllableOption(panel.selectedPinyin, panel.selectedDigitLength)
+        } else {
+            null
+        }
+        selectionCandidateDigits = panel.selectionCandidateDigits.ifEmpty { null }
+        leftColumnLocked = panel.leftLocked
     }
 
-    private fun enterIdle() {
-        stateMachine.enterIdle()
-        syncStateFromMachine()
-        firstOptions = emptyList()
-        leftColumnLocked = false
-        if (!undoManager.hasPendingRightCommit()) {
-            undoManager.clear()
+    /** C++ 左侧面板状态（t9GetLeftPanelState 解析结果） */
+    private data class LeftPanelInfo(
+        val state: LeftPanelState,
+        val selectedPinyin: String,
+        val selectedDigitLength: Int,
+        val selectionCandidateDigits: String,
+        val panelDigits: String,
+        val leftLocked: Boolean,
+    )
+
+    /** 解析 "STATE;PINYIN;DIGIT_LEN;SEL_DIGITS;PANEL_DIGITS;LEFT_LOCKED" 格式 */
+    private fun parseLeftPanelState(raw: String): LeftPanelInfo {
+        val parts = raw.split(";")
+        return LeftPanelInfo(
+            state = when (parts.getOrNull(0)) {
+                "INPUT" -> LeftPanelState.INPUT
+                "SELECTION" -> LeftPanelState.SELECTION
+                else -> LeftPanelState.IDLE
+            },
+            selectedPinyin = parts.getOrNull(1) ?: "",
+            selectedDigitLength = parts.getOrNull(2)?.toIntOrNull() ?: 0,
+            selectionCandidateDigits = parts.getOrNull(3) ?: "",
+            panelDigits = parts.getOrNull(4) ?: "",
+            leftLocked = parts.getOrNull(5) == "1",
+        )
+    }
+
+    fun onDigitPressed(digit: String) {
+        val code = digit[0].code
+        enqueue {
+            rimeEngine.processKey(code, 0)
+            // C++ T9Processor 采用异步 flush 模型：processKey 只标记 pending 动作，
+            // 必须调用 FlushRimeInput 才能真正触发 set_input → compose。
+            // 全程在后台线程执行，引擎 compose（2-23ms）不阻塞 UI 线程。
+            rimeEngine.t9FlushRimeInput()
+            refreshOnBackground()
+        }
+    }
+
+    fun onChoiceSelected(option: SyllableOption) {
+        enqueue {
+            rimeEngine.t9SelectPinyinDirect(option.pinyin, option.digitLength)
+            rimeEngine.t9FlushRimeInput()
+            refreshOnBackground()
+        }
+    }
+
+    /**
+     * 右选候选（保持同步返回值契约，供服务层判断 full/partial commit）。
+     * 由服务层在 keyProcessingDispatcher（后台线程）调用。先等待后台队列排空再执行，
+     * 避免 pending 覆盖导致消费计算错乱——阻塞的是该后台线程，不冻结主线程（方案 B）。
+     * 调频不在此进行——由服务层在 full commit 上屏后经 rimeEngine.t9Memorize 单独调用。
+     *
+     * @param candidatePinyin 候选词拼音注释（comment），null 表示无注释候选（如 emoji）
+     * @param candidateText 候选词文本，供 C++ (comment, text) 双条件定位（防同注释错码）
+     * @param candidateTextLength 候选词字数
+     */
+    fun onRightCandidateSelected(
+        candidatePinyin: String? = null,
+        candidateText: String? = null,
+        candidateTextLength: Int = 0,
+    ): Boolean {
+        awaitT9Queue()
+        val isFullCommit = if (candidatePinyin != null) {
+            val result = rimeEngine.t9SelectCandidate(candidatePinyin, candidateText, candidateTextLength)
+            rimeEngine.t9FlushRimeInput()
+            result
+        } else {
+            false
+        }
+        updateFromRime()
+        return isFullCommit
+    }
+
+    /**
+     * 退格处理（异步，结果通过回调返回）。
+     *
+     * 长按退格以 ~30ms 固定频率重复派发，而每次退格含 processKey → flush → compose
+     * 的 JNI 往返，耗时可能超过重复间隔。若每次都入队，t9Dispatcher 会堆积大量退格，
+     * 抬手后洪水式多删。这里合并高频重复：同一时刻至多一个退格 job，累积的请求由
+     * 执行中的 job 完成后顺带排空（[drainPendingDeletes]），退格速率被引擎吞吐自然限制。
+     *
+     * @param callback 在 Main 线程调用，参数为退格结果。
+     */
+    fun onDeleted(callback: (DeleteResult) -> Unit) {
+        val shouldLaunch = synchronized(deleteCoalesceLock) {
+            if (deleteJobActive) {
+                pendingDeleteCount++
+                false
+            } else {
+                deleteJobActive = true
+                true
+            }
+        }
+        if (!shouldLaunch) return
+        enqueue {
+            try {
+                processDelete(callback)
+            } finally {
+                drainPendingDeletes(callback)
+            }
+        }
+    }
+
+    /** 单次退格：processKey → flush → 撤销计数 → 取全量结果 → Main 刷新 + 回调。 */
+    private suspend fun processDelete(callback: (DeleteResult) -> Unit) {
+        val result = rimeEngine.processKey(0xff08, 0)
+        rimeEngine.t9FlushRimeInput()
+        val undoneCount = rimeEngine.t9GetAndConsumeUndoneRightCommitCount()
+        val data = fetchAll()
+        val (finalResult, injections) = transformInjections(data.result)
+        val composition = finalResult.toComposition()
+        val deleteResult = if (result) DeleteResult.DELETED else DeleteResult.NOT_CONSUMED
+        val gen = ++uiGeneration
+        mainHandler.post {
+            // 撤销计数与退格结果始终回调；仅当刷新仍是最新代际时应用，
+            // 避免后续更快的按键刷新被本退格的旧状态覆盖。
+            if (undoneCount > 0) {
+                onRightCommitUndone?.invoke(undoneCount)
+            }
+            if (gen == uiGeneration) {
+                onCompositionRefresh?.invoke(composition, injections)
+                applyCandidates(finalResult, data.panel, data.options)
+            }
+            callback(deleteResult)
+        }
+    }
+
+    /** 消费长按退格期间累积的额外退格请求（t9Dispatcher 上顺序执行）。 */
+    private suspend fun drainPendingDeletes(callback: (DeleteResult) -> Unit) {
+        while (true) {
+            val shouldDrain = synchronized(deleteCoalesceLock) {
+                if (pendingDeleteCount == 0) {
+                    deleteJobActive = false
+                    false
+                } else {
+                    pendingDeleteCount--
+                    true
+                }
+            }
+            if (!shouldDrain) break
+            try {
+                processDelete(callback)
+            } catch (t: Throwable) {
+                FileLogger.e(TAG, "onDeleted drain failed", t)
+            }
         }
     }
 
     fun forceSendToRime() {
-        rimeBridge.setLastRimeInput(null)
-        sendToRime()
-    }
-
-    fun sendToRime() {
-        if (inputBuffer.isEmpty) {
-            if (lastRimeInput != null) {
-                rimeBridge.setLastRimeInput(null)
-                val hasPendingRightCommit = undoManager.hasPendingRightCommit()
-                rimeBridge.replaceFullPinyin(if (hasPendingRightCommit) CLEAR_COMPOSITION_ONLY else CLEAR_ALL)
-
+        enqueue {
+            val remaining = rimeEngine.t9GetRemainingDigits()
+            if (remaining.isNotEmpty()) {
+                // Directly set RIME input to remaining digits (bypass processKey/AppendDigit)
+                rimeEngine.setInput(remaining)
             }
-            return
+            refreshOnBackground()
         }
-
-        // T9Buffer.toPreeditString() 统一生成预编辑字符串
-        // （分词键确认的拼音已在 selections 中，toPreeditString 自然处理分隔符）
-        val rimeInput = inputBuffer.toPreeditString()
-        if (rimeInput == lastRimeInput) return
-        lastRimeInput = rimeInput
-
-        rimeBridge.replaceFullPinyin(rimeInput)
-    }
-
-    fun onDigitPressed(digit: String) {
-        val t0 = System.nanoTime()
-        if (digit == "1") {
-            handleSeparatorKey()
-            return
-        }
-
-        if (stateMachine.isIdle) {
-            stateMachine.enterInput()
-            syncStateFromMachine()
-        }
-        // T9Buffer 自动处理字母/数字间的分隔——不需要手动插入 '
-        pushCommand(T9Command.DigitPressed(digit))
-        inputBuffer = inputBuffer.addDigit(digit)
-        updateCandidates()
-
-        sendToRime()
-        val elapsed = (System.nanoTime() - t0) / 1_000_000L
-        if (elapsed > 5) {
-            try { android.util.Log.d("T9InputCtrl", "onDigitPressed('$digit') took ${elapsed}ms, buffer='${inputBuffer.toBufferString().take(20)}'") } catch (_: Throwable) { }
-        }
-    }
-
-    /** 分词键（数字 1）：确认当前数字段的最优切分音节。 */
-    private fun handleSeparatorKey() {
-        val segment = inputBuffer.unassigned
-        if (segment.isNotEmpty()) {
-            val confirmed = rimeBridge.inferFirstSyllableFromRime(segment)
-            pushCommand(T9Command.Separator(
-                prevBuffer = inputBuffer,
-                prevSeparatorConsumedDigits = separatorConsumedDigits,
-                prevSelectionHistory = stateMachine.selectionHistory.toList(),
-            ))
-            if (confirmed != null) {
-                separatorConsumedDigits = segment.take(confirmed.digitLength)
-                lastChoiceConsumedDigits = null
-                // 确认音节：addSelection 同时记录拼音和消费对应位数
-                // （separatorConfirmedPinyin 已内化到 selections，由 toBufferString/toPreeditString 自然生成）
-                inputBuffer = inputBuffer.addSelection(confirmed.pinyin, confirmed.digitLength)
-            }
-            // 无匹配音节：仅记录分词状态（separatorConsumedDigits 保持 null），不修改 inputBuffer
-            leftColumnLocked = true
-        }
-        sendToRime()
-    }
-
-    fun onChoiceSelected(option: T9PinyinMap.SyllableOption) {
-        // SELECTION 态 + 无未分配数字 → 替换
-        if (stateMachine.isSelection && inputBuffer.unassigned.isEmpty()) {
-            handleSelectionReplacementChoice(option)
-            return
-        }
-
-        // 有未分配数字 → 新选择
-        handleLeftSelectChoice(option)
-    }
-
-    /** 从未分配数字段中选择拼音（统一处理原 apostrophe / digitSegment 两条路径）。 */
-    private fun handleLeftSelectChoice(option: T9PinyinMap.SyllableOption) {
-        if (option.digitLength > inputBuffer.unassigned.length) return
-
-        val prevBuf = inputBuffer
-        val prevSep = separatorConsumedDigits
-        val prevLocked = leftColumnLocked
-        val prevOpt = stateMachine.selectedOption
-        val prevDigits = selectionCandidateDigits
-        val prevConf = stateMachine.confirmedPinyinBeforeSelection
-        val prevHist = stateMachine.selectionHistory.toList()
-
-        val consumedDigits = if (leftColumnLocked) {
-            separatorConsumedDigits ?: inputBuffer.unassigned.take(option.digitLength)
-        } else {
-            inputBuffer.unassigned.take(option.digitLength)
-        }
-        val confirmedPinyin = inputBuffer.selectedPinyin
-
-        // 撤销语义标记：
-        //   wasFromDigitContext=true  → undo 用 undoLastSelection/copy(dropLast) 移除选择、恢复数字
-        //   wasNoConsume=true         → undo 仅移除选择，不递减 consumedCount（addSelectionNoConsume 场景）
-        val wasFromDigitContext: Boolean
-        val wasNoConsume: Boolean
-
-        if (leftColumnLocked) {
-            lastChoiceConsumedDigits = separatorConsumedDigits
-            separatorConsumedDigits = null
-            if (inputBuffer.selections.isNotEmpty()) {
-                // 分词键确认拼音后替换：undo 用 undoLastSelection 移除替换选择、恢复数字
-                inputBuffer = inputBuffer.replaceLastSelection(option.pinyin, option.digitLength)
-                wasFromDigitContext = true
-                wasNoConsume = false
-            } else {
-                // 分词键未确认拼音后首次选字：undo 仅移除选择，不递减 consumedCount
-                inputBuffer = inputBuffer.addSelectionNoConsume(option.pinyin, option.digitLength)
-                wasFromDigitContext = true
-                wasNoConsume = true
-            }
-            leftColumnLocked = false
-            enterSelection(option, lastChoiceConsumedDigits ?: "", "")
-        } else {
-            // 从 INPUT 态首次选字：undo 用 undoLastSelection 移除选择、恢复数字
-            lastChoiceConsumedDigits = consumedDigits
-            separatorConsumedDigits = null
-            inputBuffer = inputBuffer.addSelection(option.pinyin, option.digitLength)
-            enterSelection(option, consumedDigits, confirmedPinyin)
-            wasFromDigitContext = true
-            wasNoConsume = false
-        }
-
-        pushCommand(T9Command.LeftChoice(
-            prevBuffer = prevBuf, prevSeparatorConsumedDigits = prevSep,
-            prevLeftColumnLocked = prevLocked, prevSelectedOption = prevOpt,
-            prevSelectionCandidateDigits = prevDigits, prevConfirmedPinyin = prevConf,
-            prevSelectionHistory = prevHist,
-            wasFromDigitContext = wasFromDigitContext,
-            wasNoConsume = wasNoConsume,
-        ))
-        leftColumnLocked = false
-        updateCandidates(force = true)
-        sendToRime()
-    }
-
-    /** SELECTION 替换：筛选层切换拼音/字母选项。 */
-    private fun handleSelectionReplacementChoice(option: T9PinyinMap.SyllableOption) {
-        if (!stateMachine.isSelection || stateMachine.selectedOption == null) return
-
-        val prevBuf = inputBuffer
-        val prevSep = separatorConsumedDigits
-        val prevLocked = leftColumnLocked
-        val prevOpt = stateMachine.selectedOption
-        val prevDigits = selectionCandidateDigits
-        val prevConf = stateMachine.confirmedPinyinBeforeSelection
-        val prevHist = stateMachine.selectionHistory.toList()
-
-        val candidateDigits = selectionCandidateDigits ?: ""
-        if (option.digitLength > candidateDigits.length) return
-
-        val newConsumedDigits = candidateDigits.take(option.digitLength)
-        val remaining = candidateDigits.drop(option.digitLength)
-        val confirmedPrefix = inputBuffer.selectedPinyin.dropLast(
-            (stateMachine.selectedOption?.pinyin?.length ?: 0)
-        )
-
-        inputBuffer = if (inputBuffer.selections.isNotEmpty()) {
-            inputBuffer.replaceLastSelection(option.pinyin, option.digitLength)
-        } else {
-            inputBuffer.addSelection(option.pinyin, option.digitLength)
-        }
-
-        if (stateMachine.selectionHistory.isNotEmpty()) {
-            stateMachine.removeLastSelectionHistoryEntry()
-        }
-        enterSelection(option, newConsumedDigits, confirmedPrefix)
-
-        // 筛选层替换：继承被替换命令的 prev 字段
-        var eBuf: T9Buffer = prevBuf; var eSep = prevSep; var eLocked = prevLocked
-        var eOpt = prevOpt; var eDigits = prevDigits; var eConf = prevConf; var eHist = prevHist
-        val replaced = undoManager.pop() as? T9Command.LeftChoice
-        if (replaced != null) {
-            eBuf = replaced.prevBuffer; eSep = replaced.prevSeparatorConsumedDigits
-            eLocked = replaced.prevLeftColumnLocked; eOpt = replaced.prevSelectedOption
-            eDigits = replaced.prevSelectionCandidateDigits; eConf = replaced.prevConfirmedPinyin
-            eHist = replaced.prevSelectionHistory
-        }
-        pushCommand(T9Command.LeftChoice(
-            prevBuffer = eBuf, prevSeparatorConsumedDigits = eSep,
-            prevLeftColumnLocked = eLocked, prevSelectedOption = eOpt,
-            prevSelectionCandidateDigits = eDigits, prevConfirmedPinyin = eConf,
-            prevSelectionHistory = eHist,
-        ))
-        if (remaining.isNotEmpty()) lastChoiceConsumedDigits = newConsumedDigits
-        updateCandidates(force = true)
-        sendToRime()
-    }
-
-    /** 退格删除。命令模式：pop 栈顶命令 → 执行其 undo()。 */
-    fun onDeleted(): DeleteResult {
-        // 检查 RightCommit 是否可立即撤销：
-        // digitSequence 未变化（length == remainingDigitCount）说明用户未做中间操作，
-        // 可安全撤销 RC；digitSequence 缩短（删除了数字）说明用户正在逐步回退，
-        // 应先删完剩余数字再通过 step3 撤销 RC。
-        val top = undoManager.peek()
-        if (top is T9Command.RightCommit &&
-            inputBuffer.digitSequence.length == top.remainingDigitCount) {
-            val ctx = undoCtx()
-            undoManager.popAndUndo(ctx)
-            applyUndoCtx(ctx)
-            return DeleteResult.UNDO_COMMIT
-        }
-
-        // 有未分配数字 → 逐位删除数字（T9Buffer.unassigned 对应旧的 lastDigitSegment）
-        if (inputBuffer.unassigned.isNotEmpty()) {
-            // 栈顶为 Separator（无 DigitPressed 在其上）→ 撤销分词键
-            if (undoManager.isNotEmpty() && undoManager.peek() is T9Command.Separator) {
-                val ctx = undoCtx()
-                undoManager.popAndUndo(ctx)
-                applyUndoCtx(ctx)
-                sendToRime()
-                return DeleteResult.UNDO_CHOICE
-            }
-            // 弹出栈顶一个 DigitPressed 命令（逐位退格，不一次性弹出全部）
-            if (undoManager.isNotEmpty() && undoManager.peek() is T9Command.DigitPressed) {
-                undoManager.pop()
-            }
-            inputBuffer = inputBuffer.removeLastDigit()
-            // 有已确认拼音（selections 非空）时保持列锁定，否则解锁
-            if (inputBuffer.selections.isEmpty()) {
-                leftColumnLocked = false
-            }
-            if (inputBuffer.isEmpty) {
-                enterIdle()
-            } else if (inputBuffer.unassigned.isEmpty() && inputBuffer.consumedCount > 0
-                && inputBuffer.selections.isEmpty() && undoManager.hasPendingRightCommit()) {
-                // 僵尸 RC 状态：所有未分配数字已删完，但 consumed 部分仍存在。
-                // 进入 SELECTION 态显示栈顶 RC 消费的数字段候选，高亮已提交拼音。
-                // 多 RC 叠加时，仅取栈顶 RC 消费的部分（如"策"消费"23"），
-                // 而非全部 consumed 数字段（如"546946423"含"进行"+"策"两次提交）。
-                val topRC = undoManager.peek() as? T9Command.RightCommit
-                val prevConsumedCount = topRC?.prevBuffer?.consumedCount ?: 0
-                val rcDigitStart = prevConsumedCount.coerceAtMost(inputBuffer.digitSequence.length)
-                val rcDigitEnd = inputBuffer.consumedCount.coerceAtMost(inputBuffer.digitSequence.length)
-                val consumedDigits = if (rcDigitStart < rcDigitEnd) {
-                    inputBuffer.digitSequence.substring(rcDigitStart, rcDigitEnd)
-                } else {
-                    inputBuffer.digitSequence.take(inputBuffer.consumedCount)
-                }
-                val options = T9PinyinMap.firstSyllableOptions(consumedDigits)
-                val committedOption = options.firstOrNull { it.digitLength == consumedDigits.length }
-                    ?: options.firstOrNull()
-                if (committedOption != null) {
-                    enterSelection(committedOption, consumedDigits)
-                }
-                updateCandidates(force = true)
-            } else {
-                updateCandidates()
-            }
-            sendToRime()
-            return DeleteResult.DELETED
-        }
-
-        // 无未分配数字 → 执行栈顶命令的 undo
-        if (undoManager.isNotEmpty()) {
-            val ctx = undoCtx()
-            val isSep = top is T9Command.Separator
-            val isLC = top is T9Command.LeftChoice
-            undoManager.popAndUndo(ctx)
-            // undo LeftChoice 后清除 stale DigitPressed，避免后续退格时优先删数字而非撤销 Separator
-            if (isLC) {
-                undoManager.removeLastDigitPressed()
-            }
-            applyUndoCtx(ctx)
-            val isRC = top is T9Command.RightCommit
-            if (!isRC) {
-                sendToRime()
-            }
-            return if (isRC) DeleteResult.UNDO_COMMIT else DeleteResult.UNDO_CHOICE
-        }
-
-        // 无命令 → 逐位删字符（字母/符号）
-        if (!inputBuffer.isEmpty) {
-            inputBuffer = inputBuffer.removeLastDigit()
-            leftColumnLocked = false
-            if (inputBuffer.isEmpty) enterIdle() else updateCandidates()
-            sendToRime()
-            return DeleteResult.DELETED
-        }
-
-        return DeleteResult.NOT_CONSUMED
-    }
-
-    /** 将命令 undo 后的 Ctx 状态同步回控制器字段 */
-    private fun applyUndoCtx(ctx: T9Command.Ctx) {
-        inputBuffer = ctx.buffer
-        leftColumnLocked = ctx.leftColumnLocked
-        separatorConsumedDigits = ctx.separatorConsumedDigits
-        lastChoiceConsumedDigits = ctx.lastChoiceConsumedDigits
-        syncStateFromMachine()
-        updateCandidates(force = true)
-    }
-
-    private val rightCommitHandler = T9RightCommitHandler()
-
-    fun onRightCandidateSelected(): Boolean = onRightCandidateSelected(null)
-
-    /** 右侧候选选词（partial commit），返回 true = 完整消费。 */
-    fun onRightCandidateSelected(candidatePinyin: String?, candidateTextLength: Int = 0): Boolean {
-        if (inputBuffer.isEmpty) return true
-
-        // 全简拼无候选 → enterLike 提交（需控制器级别的 resetState）
-        // 不清除 RIME：服务层需要 composition 完整以便 selectCandidate + commit
-        if (candidatePinyin.isNullOrBlank() && stateMachine.selectionHistory.isNotEmpty() &&
-            stateMachine.selectionHistory.all { it.digitLength == 1 }) {
-            resetState(clearCache = true, clearRime = false)
-            return true
-        }
-
-        var ctxRef: T9RightCommitHandler.Ctx? = null
-        val ctx = T9RightCommitHandler.Ctx(
-            inputBuffer = inputBuffer,
-            leftColumnLocked = leftColumnLocked,
-            separatorConsumedDigits = separatorConsumedDigits,
-            lastChoiceConsumedDigits = lastChoiceConsumedDigits,
-            stateMachine = stateMachine,
-            undoManager = undoManager,
-            syncState = { syncStateFromMachine() },
-            updateCandidates = { force ->
-                leftColumnLocked = ctxRef!!.leftColumnLocked
-                updateCandidates(force)
-            },
-            setRimeInput = { rimeBridge.setLastRimeInput(it) },
-        )
-        ctxRef = ctx
-
-        val result = rightCommitHandler.onRightCandidateSelected(ctx, candidatePinyin, candidateTextLength)
-
-        // handler 已直接操作 T9Buffer，直接同步回控制器
-        inputBuffer = ctx.inputBuffer
-        leftColumnLocked = ctx.leftColumnLocked
-        separatorConsumedDigits = ctx.separatorConsumedDigits
-        lastChoiceConsumedDigits = ctx.lastChoiceConsumedDigits
-        syncStateFromMachine()
-        updateCandidates(force = true)
-        // 不调用 sendToRime()：服务层需要 RIME composition 保持完整，
-        // 以便在 onRightCandidateSelected 返回后调用 rimeEngine.selectCandidate + commit。
-        // full commit：服务 commit 后通过 t9ResetSignal 触发 controller.reset()
-        // partial commit：服务 commit 后调用 forceSendToRime() 发送剩余数字到 RIME
-
-        return result
     }
 
     /**
@@ -560,36 +436,44 @@ class T9InputController(
      * T9 控制器无需做音节级消费计算。
      */
     fun onRightCandidateSelectedByDirectCommit(): Boolean {
-        if (inputBuffer.isEmpty) return true
-        resetState(clearCache = true, clearRime = false)
+        if (inputBuffer.isEmpty()) return true
+        clearAll()
         return true
     }
 
     fun clearRimeAndResend() {
-        rimeBridge.clearRimeAndResend()
-        sendToRime()
+        enqueue {
+            rimeEngine.clearComposition()
+            refreshOnBackground()
+        }
     }
 
-    fun clearAll() = resetState(clearCache = false, clearRime = true)
-
-    fun onEnterCommit() = resetState(clearCache = true, clearRime = true)
-
-    private fun resetState(clearCache: Boolean, clearRime: Boolean) {
-        inputBuffer = T9Buffer.EMPTY
+    /**
+     * 清空（主线程 ResetKey/上滑手势调用）。
+     * 本地 Compose 状态立即复位；C++ 状态清空排入后台队列——若队列中已有未完成的
+     * 按键处理，清空在其后执行（与后续按键同队列保序），主线程零等待（方案 B）。
+     */
+    fun clearAll() {
+        // 丢弃排队的过期刷新 post，避免清空后被旧状态覆盖
+        uiGeneration++
         firstOptions = emptyList()
+        leftPanelState = LeftPanelState.IDLE
+        selectedOption = null
+        selectionCandidateDigits = null
         leftColumnLocked = false
-        stateMachine.enterIdle()
-        syncStateFromMachine()
-        undoManager.clear()
-        separatorConsumedDigits = null
-        lastChoiceConsumedDigits = null
-        if (clearCache) {
-            rimeBridge.setLastRimeInput(null)
-            cachedDigitSegment = null
-            cachedFirstOptions = emptyList()
-        }
-        if (clearRime) {
-            rimeBridge.replaceFullPinyin(CLEAR_ALL)
-        }
+        _selectionHistory = emptyList()
+        _committedText = null
+        cachedInput = ""
+        enqueue { rimeEngine.t9ClearComposition(1) }
+    }
+
+    fun onEnterCommit() { clearAll() }
+
+    fun isSelectedOptionInCurrentCandidates(): Boolean = selectedOption in firstOptions
+
+    private fun updateFromRime() {
+        // 同步刷新（右选路径）：使后台排队的过期刷新失效，避免旧状态 post 后执行覆盖。
+        uiGeneration++
+        updateCandidates()
     }
 }

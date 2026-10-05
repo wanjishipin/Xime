@@ -1,6 +1,7 @@
 package com.kingzcheung.xime.keyboard
 
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.twotone.Assignment
 import androidx.compose.material.icons.automirrored.twotone.LastPage
 import androidx.compose.material.icons.twotone.ContentCopy
 import androidx.compose.material.icons.twotone.ContentPaste
@@ -12,12 +13,12 @@ import androidx.compose.material.icons.twotone.Paid
 import androidx.compose.material.icons.twotone.Quickreply
 import androidx.compose.material.icons.twotone.SelectAll
 import androidx.compose.material.icons.filled.Computer
-import androidx.compose.material.icons.filled.Create
 import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PictureInPicture
 import androidx.compose.material.icons.outlined.Gesture
-import androidx.compose.material.icons.twotone.ContentPasteGo
+import androidx.compose.material.icons.twotone.Edit
+import androidx.compose.material.icons.twotone.Mic
 import androidx.compose.material.icons.twotone.RecordVoiceOver
 import androidx.compose.ui.graphics.vector.ImageVector
 
@@ -27,7 +28,7 @@ enum class ToolbarButton(
     val icon: ImageVector
 ) {
     EMOJI("emoji", "表情", Icons.TwoTone.EmojiEmotions),
-    CLIPBOARD("clipboard", "剪贴板", Icons.TwoTone.ContentPasteGo),
+    CLIPBOARD("clipboard", "剪贴板", Icons.AutoMirrored.TwoTone.Assignment),
     SCHEMA("schema", "方案选择", Icons.TwoTone.KeyboardAlt),
     QUICK_PHRASE("quick_phrase", "快捷发送", Icons.TwoTone.Quickreply),
     SYMBOL("symbol", "符号", Icons.TwoTone.Paid),
@@ -35,12 +36,12 @@ enum class ToolbarButton(
     PIN("pin", "置顶", Icons.Default.PushPin),
     SELECT_ALL("select_all", "全选", Icons.TwoTone.SelectAll),
     COPY("copy", "复制", Icons.TwoTone.ContentCopy),
-    PASTE("paste", "黏贴", Icons.TwoTone.ContentPaste),
+    PASTE("paste", "粘贴", Icons.TwoTone.ContentPaste),
     HOME("home", "段首", Icons.TwoTone.FirstPage),
     END("end", "段尾", Icons.AutoMirrored.TwoTone.LastPage),
     HANDWRITING_LOOKUP("handwriting_lookup", "手写找字", Icons.Outlined.Gesture),
-    EDIT("edit", "编辑", Icons.Default.Create),
-    TRANSCRIPTION("transcription", "听录", Icons.TwoTone.RecordVoiceOver),
+    EDIT("edit", "编辑", Icons.TwoTone.Edit),
+    VOICE("voice", "语音", Icons.TwoTone.Mic),
     VOICE_INPUT("voice_input", "语音输入", Icons.Default.Mic);
 
     companion object {
@@ -52,7 +53,7 @@ enum class ToolbarButton(
 }
 
 data class ToolbarAction(
-    val button: ToolbarButton,
+    val item: ToolbarButtonItem,
     val onClick: () -> Unit,
     val isActive: Boolean = false
 )

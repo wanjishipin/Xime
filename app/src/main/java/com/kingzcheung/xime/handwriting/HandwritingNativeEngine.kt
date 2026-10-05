@@ -6,7 +6,16 @@ import java.io.File
 
 object HandwritingNativeEngine {
     private const val TAG = "HandwritingNativeEngine"
-    private var nativeLoaded = false
+
+    /**
+     * native 生命周期 Java 侧镜像。libhandwriting_jni.so 懒加载（首次 initialize
+     * 才装载），此前任何裸调 nativeIsInitialized/nativeRelease 都会抛
+     * UnsatisfiedLinkError 炸掉 binder 线程（:inference 进程启动后首次
+     * loadModel/isModelLoaded/unloadModel 即触发）。状态由 initialize/release
+     * 维护，库未加载时各查询安全返回 false。
+     */
+    @Volatile
+    private var nativeReady = false
 
     fun loadNativeLibrary(context: Context): Boolean {
         val libsToLoad = listOf("libonnxruntime.so", "libhandwriting_jni.so")
@@ -16,8 +25,6 @@ object HandwritingNativeEngine {
                 return false
             }
         }
-        nativeLoaded = true
-        Log.d(TAG, "All native libraries loaded successfully")
         return true
     }
 
@@ -25,21 +32,17 @@ object HandwritingNativeEngine {
         val simpleName = libName.removePrefix("lib").removeSuffix(".so")
         try {
             System.loadLibrary(simpleName)
-            Log.d(TAG, "Loaded $libName via System.loadLibrary")
             return true
         } catch (e: UnsatisfiedLinkError) {
             if (e.message?.contains("already opened") == true || e.message?.contains("already loaded") == true) {
-                Log.d(TAG, "$libName already loaded, skipping")
                 return true
             }
-            Log.d(TAG, "System.loadLibrary failed for $libName: ${e.message}")
             val nativeLibDir = context.applicationInfo?.nativeLibraryDir
             if (nativeLibDir != null) {
                 val libFile = File(nativeLibDir, libName)
                 if (libFile.exists()) {
                     try {
                         System.load(libFile.absolutePath)
-                        Log.d(TAG, "Loaded $libName from nativeLibraryDir")
                         return true
                     } catch (e2: UnsatisfiedLinkError) {
                         if (e2.message?.contains("already opened") == true || e2.message?.contains("already loaded") == true) {
@@ -56,28 +59,30 @@ object HandwritingNativeEngine {
     fun initialize(context: Context, modelPath: String): Boolean {
         try {
             nativeInitialize(modelPath)
-            Log.d(TAG, "Native method already available")
+            nativeReady = true
             return true
         } catch (e: UnsatisfiedLinkError) {
-            Log.d(TAG, "Native method not available, loading libraries...")
         }
         if (!loadNativeLibrary(context)) {
             Log.e(TAG, "Native libraries not loaded")
             return false
         }
         return try {
-            nativeInitialize(modelPath)
-        } catch (e: UnsatisfiedLinkError) {
-            Log.e(TAG, "Native method still unavailable: ${e.message}")
-            nativeLoaded = false
-            false
+            nativeReady = nativeInitialize(modelPath)
+            nativeReady
+    } catch (e: UnsatisfiedLinkError) {
+        Log.e(TAG, "Native method still unavailable: ${e.message}")
+        nativeReady = false
+        false
         } catch (e: Exception) {
             Log.e(TAG, "Native method failed: ${e.message}", e)
+            nativeReady = false
             false
         }
     }
 
     fun predict(strokeData: FloatArray, mask: ByteArray, topK: Int): Array<Pair<Int, Float>> {
+        if (!nativeReady) return emptyArray()
         val result = nativePredict(strokeData, mask, topK) ?: return emptyArray()
         val pairs = mutableListOf<Pair<Int, Float>>()
         for (i in result.indices step 2) {
@@ -89,11 +94,14 @@ object HandwritingNativeEngine {
     }
 
     fun release() {
-        nativeRelease()
+        if (nativeReady) {
+            nativeRelease()
+            nativeReady = false
+        }
     }
 
     fun isInitialized(): Boolean {
-        return nativeIsInitialized()
+        return nativeReady
     }
 
     private external fun nativeInitialize(modelPath: String): Boolean

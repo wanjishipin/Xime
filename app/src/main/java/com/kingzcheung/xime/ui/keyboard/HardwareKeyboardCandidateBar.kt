@@ -53,6 +53,7 @@ fun HardwareKeyboardCandidateBar(
     cardBackgroundColor: Color,
     candidateTextColor: Color,
     activeColor: Color,
+    selectedTextColor: Color = activeColor,
 ) {
     if (candidates.isEmpty() && inputText.isEmpty()) return
 
@@ -146,9 +147,10 @@ fun HardwareKeyboardCandidateBar(
                                 Text(
                                     text = "$labelText $candidate",
                                     fontSize = 15.sp,
-                                    color = if (isActive) activeColor else candidateTextColor,
+                                    color = if (isActive) selectedTextColor else candidateTextColor,
                                     fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal,
                                     maxLines = 1,
+                                    fontFamily = AppFonts.candidateFontFamily
                                 )
                             }
                         }

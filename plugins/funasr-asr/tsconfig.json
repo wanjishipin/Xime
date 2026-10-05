@@ -1,0 +1,19 @@
+{
+  // IDE 代码补全 / 类型检查（SDK 类型为全局声明，无需 import）
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": []
+  },
+  "include": [
+    "main.ts",
+    "libs/**/*.ts",
+    "../../tools/xime-plugin/templates/xime-plugin.d.ts"
+  ]
+}

@@ -1,0 +1,142 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.wanjishipin.xime.plugin.emoji"
+4    android:versionCode="6"
+5    android:versionName="2.0.0" >
+6
+7    <uses-sdk
+7-->INJECTED
+8        android:minSdkVersion="28"
+8-->INJECTED
+9        android:targetSdkVersion="35" />
+9-->INJECTED
+10
+11    <permission
+11-->[androidx.core:core:1.12.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/54203987ef9babccb7d87a9b5c084ae3/transformed/core-1.12.0/AndroidManifest.xml:22:5-24:47
+12        android:name="com.wanjishipin.xime.plugin.emoji.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+12-->[androidx.core:core:1.12.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/54203987ef9babccb7d87a9b5c084ae3/transformed/core-1.12.0/AndroidManifest.xml:23:9-81
+13        android:protectionLevel="signature" />
+13-->[androidx.core:core:1.12.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/54203987ef9babccb7d87a9b5c084ae3/transformed/core-1.12.0/AndroidManifest.xml:24:9-44
+14
+15    <uses-permission android:name="com.wanjishipin.xime.plugin.emoji.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+15-->[androidx.core:core:1.12.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/54203987ef9babccb7d87a9b5c084ae3/transformed/core-1.12.0/AndroidManifest.xml:26:5-97
+15-->[androidx.core:core:1.12.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/54203987ef9babccb7d87a9b5c084ae3/transformed/core-1.12.0/AndroidManifest.xml:26:22-94
+16
+17    <application
+17-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:4:5-30:19
+18        android:allowBackup="false"
+18-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:5:9-36
+19        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+19-->[androidx.core:core:1.12.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/54203987ef9babccb7d87a9b5c084ae3/transformed/core-1.12.0/AndroidManifest.xml:28:18-86
+20        android:debuggable="true"
+21        android:extractNativeLibs="false"
+21-->INJECTED
+22        android:label="@string/app_name"
+22-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:6:9-41
+23        android:supportsRtl="true" >
+23-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:7:9-35
+24        <activity
+24-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:9:9-16:20
+25            android:name="com.kingzcheung.xime.plugin.emoji.PluginDeclaration"
+25-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:10:13-46
+26            android:exported="true" >
+26-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:11:13-36
+27            <intent-filter>
+27-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:12:13-15:29
+28                <action android:name="com.wanjishipin.xime.plugin.EXTENSION" />
+28-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:13:17-80
+28-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:13:25-77
+29
+30                <category android:name="android.intent.category.DEFAULT" />
+30-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:14:17-76
+30-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:14:27-73
+31            </intent-filter>
+32        </activity>
+33
+34        <meta-data
+34-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:18:9-20:84
+35            android:name="plugin.entryClass"
+35-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:19:13-45
+36            android:value="com.kingzcheung.xime.plugin.emoji.EmojiStickerPlugin" />
+36-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:20:13-81
+37        <meta-data
+37-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:22:9-24:42
+38            android:name="plugin.description"
+38-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:23:13-46
+39            android:value="提供8个恶搞兔表情包" />
+39-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:24:13-39
+40        <meta-data
+40-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:26:9-28:37
+41            android:name="plugin.type"
+41-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:27:13-39
+42            android:value="emoji" />
+42-->/data/data/com.termux/files/home/Xime/plugins/meme-bunny/src/main/AndroidManifest.xml:28:13-34
+43
+44        <provider
+44-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/95d68544f8f88099b68fc5362a0079a1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+45            android:name="androidx.startup.InitializationProvider"
+45-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/95d68544f8f88099b68fc5362a0079a1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:25:13-67
+46            android:authorities="com.wanjishipin.xime.plugin.emoji.androidx-startup"
+46-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/95d68544f8f88099b68fc5362a0079a1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:26:13-68
+47            android:exported="false" >
+47-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/95d68544f8f88099b68fc5362a0079a1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:27:13-37
+48            <meta-data
+48-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/95d68544f8f88099b68fc5362a0079a1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+49                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+49-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/95d68544f8f88099b68fc5362a0079a1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:30:17-75
+50                android:value="androidx.startup" />
+50-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/95d68544f8f88099b68fc5362a0079a1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:31:17-49
+51            <meta-data
+51-->[androidx.lifecycle:lifecycle-process:2.7.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/865426de4fcf514b950350464398340c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:29:13-31:52
+52                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+52-->[androidx.lifecycle:lifecycle-process:2.7.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/865426de4fcf514b950350464398340c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:30:17-78
+53                android:value="androidx.startup" />
+53-->[androidx.lifecycle:lifecycle-process:2.7.0] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/865426de4fcf514b950350464398340c/transformed/jetified-lifecycle-process-2.7.0/AndroidManifest.xml:31:17-49
+54            <meta-data
+54-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+55                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+55-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+56                android:value="androidx.startup" />
+56-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+57        </provider>
+58
+59        <receiver
+59-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+60            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+60-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+61            android:directBootAware="false"
+61-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+62            android:enabled="true"
+62-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+63            android:exported="true"
+63-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+64            android:permission="android.permission.DUMP" >
+64-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+65            <intent-filter>
+65-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+66                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+66-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+66-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+67            </intent-filter>
+68            <intent-filter>
+68-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+69                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+69-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+69-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+70            </intent-filter>
+71            <intent-filter>
+71-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+72                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+72-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+72-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+73            </intent-filter>
+74            <intent-filter>
+74-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+75                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+75-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+75-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/9.3.1/transforms/dcf368cc1cefb26b3ffd5c6a8c6aaec2/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+76            </intent-filter>
+77        </receiver>
+78    </application>
+79
+80</manifest>

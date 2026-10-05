@@ -1,0 +1,63 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.wanjishipin.xime.plugin.kaomoji"
+4    android:versionCode="6"
+5    android:versionName="2.0.0" >
+6
+7    <uses-sdk
+7-->INJECTED
+8        android:minSdkVersion="28"
+8-->INJECTED
+9        android:targetSdkVersion="35" />
+9-->INJECTED
+10
+11    <application
+11-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:4:5-30:19
+12        android:allowBackup="false"
+12-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:5:9-36
+13        android:debuggable="true"
+14        android:extractNativeLibs="false"
+14-->INJECTED
+15        android:label="@string/app_name"
+15-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:6:9-41
+16        android:supportsRtl="true" >
+16-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:7:9-35
+17        <activity
+17-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:9:9-16:20
+18            android:name="com.kingzcheung.xime.plugin.kaomoji.PluginDeclaration"
+18-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:10:13-46
+19            android:exported="true" >
+19-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:11:13-36
+20            <intent-filter>
+20-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:12:13-15:29
+21                <action android:name="com.wanjishipin.xime.plugin.EXTENSION" />
+21-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:13:17-80
+21-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:13:25-77
+22
+23                <category android:name="android.intent.category.DEFAULT" />
+23-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:14:17-76
+23-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:14:27-73
+24            </intent-filter>
+25        </activity>
+26
+27        <meta-data
+27-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:18:9-20:81
+28            android:name="plugin.entryClass"
+28-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:19:13-45
+29            android:value="com.kingzcheung.xime.plugin.kaomoji.KaomojiPlugin" />
+29-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:20:13-78
+30        <meta-data
+30-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:22:9-24:43
+31            android:name="plugin.description"
+31-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:23:13-46
+32            android:value="提供精选日式颜文字表情" />
+32-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:24:13-40
+33        <meta-data
+33-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:26:9-28:37
+34            android:name="plugin.type"
+34-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:27:13-39
+35            android:value="emoji" />
+35-->/data/data/com.termux/files/home/Xime/plugins/kaomoji/src/main/AndroidManifest.xml:28:13-34
+36    </application>
+37
+38</manifest>

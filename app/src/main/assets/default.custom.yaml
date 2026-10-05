@@ -1,0 +1,156 @@
+# default.custom.yaml —— Xime app 固定配置（不随 assets/rime 方案 submodule 分发）
+# 安装/启动时由 RimeConfigHelper 同步到用户 rime 目录，部署时 patch 到 default.yaml，
+# 经 librime DefaultConfigPlugin 将 menu 等节编入每个方案的编译产物。
+# 注意：schema_list 由 app 按用户启停状态管理（SchemaManager.setEnabledSchemas），
+# 请勿在此手工调整；其余 patch 节为默认配置基线，修改后随 app 更新生效。
+
+patch:
+  schema_list:
+    - schema: wubi86_pinyin
+    - schema: wubi86
+    - schema: wubi86_trad
+    - schema: wubi86_trad_pinyin
+    - schema: pinyin_simp
+
+  # Menu
+  menu:
+    page_size: 20                   # 候选词数量（手机屏一屏放得下，PC 版默认 5 太短）
+  switcher:
+    hotkeys:        # 弹出菜单的快捷键
+      - "Control+0"
+      - "Shift+Control+0"
+    abbreviate_options: true
+    caption: "【 输入法设置 】"
+    option_list_separator: "｜"
+
+  #-----------------------------------------------
+  # 中英文切换自定义
+  #-----------------------------------------------
+  # inline_ascii  在输入法的临时英文编辑区内输入字母，数字，符号，空格等，回车上屏后自动复位到中文
+  # commit_text   已输入的候选文字上屏并切换至英文输入模式
+  # commit_code   已输入的编码字符上屏并切换至英文输入模式
+  # -----------------------------------------------
+  # 参考链接： https://gist.github.com/lotem/2981316
+
+  ascii_composer:
+    good_old_caps_lock: true       # true: 在保持 cap 键原有的特征， false: 点击不会切换大小写
+    switch_key:
+      Caps_Lock: commit_code        # 如果想用 cap 键切换中英文输入，就修改为上面三种的任一一种，否则用 noop
+      Shift_L: commit_code          # macOs 上 shift 键不区别左右，设置参数同上
+      Shift_R: commit_code
+      Control_L: noop
+      Control_R: noop
+
+
+  key_binder:
+    bindings:
+      # 禁止在此绑定分号/单引号选词（如 semicolon → 2、apostrophe → 3）。
+      # key_binder 优先级高于 speller，双拼方案（微软双拼等）用 ; 输入 ing、' 作音节
+      # 分隔符，一旦绑定，has_menu 时按键会被抢占，按 ; 直接选词上屏、无法组码
+      # （issue #884）。选词请用候选栏点击或数字键。
+#      - { when: has_menu, accept: comma, send: 2 }  # 候选2 用逗号选择 （修改的时候不要多加或少加空格，跟前面的对齐就好了）
+#      - { when: has_menu, accept: period, send: 3 } # 候选3 用句号选择
+
+      # 上下翻页 [ ]
+      - { when: has_menu, accept: bracketleft, send: Page_Up }
+      - { when: has_menu, accept: bracketright, send: Page_Down }
+
+      # 上下翻页 - =
+      - { when: has_menu, accept: minus, send: Page_Up }
+      - { when: has_menu, accept: equal, send: Page_Down }
+      -
+      # 上下翻页 tab
+      - { when: has_menu, accept: Shift+Tab, send: Page_Up }
+      - { when: has_menu, accept: Tab, send: Page_Down }
+
+      # 回车清码
+      #- { when: composing, accept: Return, send: Escape }
+
+      # emacs key bindings, copy from https://github.com/rime/rime-prelude/blob/master/key_bindings.yaml
+      - { when: composing, accept: Control+p, send: Up }
+      - { when: composing, accept: Control+n, send: Down }
+      - { when: composing, accept: Control+b, send: Left }
+      - { when: composing, accept: Control+f, send: Right }
+      - { when: composing, accept: Control+a, send: Home }
+      - { when: composing, accept: Control+e, send: End }
+      - { when: composing, accept: Control+d, send: Delete }
+      - { when: composing, accept: Control+k, send: Shift+Delete }
+      - { when: composing, accept: Control+h, send: BackSpace }
+      - { when: composing, accept: Control+g, send: Escape }
+      - { when: composing, accept: Control+bracketleft, send: Escape }
+      - { when: composing, accept: Alt+v, send: Page_Up }
+      - { when: composing, accept: Control+v, send: Page_Down }
+
+  punctuator:
+    full_shape: # 全角符号
+      " ": {commit: "　"}
+      "!": {commit: "！"}
+      "\"": {pair: ["“", "”"]}
+      "#": ["＃", "⌘"]
+      "$": "￥"
+      "%": "％"
+      "&": "＆"
+      "'": {pair: ["‘", "’"]}
+      "(": "（"
+      ")": "）"
+      "*": ["＊", "・", "×"]
+      "+": "＋"
+      ",": {commit: "，"}
+      "-": "－"
+      .: {commit: "。"}
+      "/": ["／", "÷"]
+      ":": {commit: "："}            # commit 的意思是这个符号输入时，会将当前处于第一位的候选词上屏
+      ";": {commit: "；"}
+      "<": ["《", "〈", "«", "‹"]
+      "=": "＝"
+      ">": ["》", "〉", "»", "›"]
+      "?": {commit: "？"}
+      "@": "＠"
+      "[": ["「", "【", "〔", "［"]
+      "\\": ["、", "＼"]
+      "]": ["」", "】", "〕", "］"]
+      "^": {commit: "……"}
+      _: "——"
+      "`": "｀"
+      "{": ["『", "〖", "｛"]
+      "|": ["·", "｜", "§", "¦"]
+      "}": ["』", "〗", "｝"]
+      "~": "～"
+    half_shape: # 半角符号
+      "!": {commit: "！"}
+      "\"": {pair: ["“", "”"]}
+      "#": "#"
+      "$": "￥"
+      "%": ["%", "％", "°", "℃"]
+      "&": "&"
+      "'": {pair: ["‘", "’"]}
+      "(": "（"
+      ")": "）"
+      "*": ["·","×"]
+      "+": "+"
+      ",": {commit: "，"}
+      "-": "-"
+      .: {commit: "。"}
+      "/": {commit: "、"}
+      ":": {commit: "："}
+      ";": {commit: "；"}
+      "<": {commit: "《"}
+      "=": "="
+      ">": {commit: "》"}
+      "?": {commit: "？"}
+      "@": "@"
+      "[": {commit: "【"}
+      "\\": {commit: "、"}
+      "]": {commit: "】"}
+      "^": {commit: "……"}
+      _: "——"
+      "`": "`"
+      "{": "「"
+      "|": "|"
+      "}": "」"
+      "~": "~"
+  recognizer:
+    patterns:  # 一些常见的英文组合，当正则匹配到这些时，都不会生成候选词，而只输入英文
+      email: "^[-_.0-9A-Za-z]+@.*$"
+      uppercase: "[A-Z][-_+.'0-9A-Za-z]*$"
+      url: "^(www[.]|https?:|ftp[.:]|mailto:|file:|localhost).*$|^[a-z]+[.].+$"

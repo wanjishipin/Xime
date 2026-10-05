@@ -1,0 +1,7 @@
+{
+  "id": "com.example.smoke_fixture",
+  "name": "Smoke Fixture",
+  "version": "0.0.1",
+  "type": "tool",
+  "entry": "main.js"
+}

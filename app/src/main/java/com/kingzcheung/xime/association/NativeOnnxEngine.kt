@@ -9,6 +9,11 @@ object NativeOnnxEngine {
     private const val TAG = "NativeOnnxEngine"
     private var nativeLoaded = false
 
+    // 联想模型是自回归、无 KV cache，输出为 [1, seq, 8000]。
+    // 限制输入上下文长度，可约束 seq，避免输出/激活张量与分配器 arena 随
+    // 用户连续输入无限增长导致内存膨胀。下一词预测只需近期上下文。
+    private const val MAX_CONTEXT_LENGTH = 64
+
     fun loadNativeLibrary(context: Context): Boolean {
         val libsToLoad = listOf("libonnxruntime.so", "libonnx_env.so", "libonnx_jni.so")
 
@@ -95,7 +100,12 @@ object NativeOnnxEngine {
     }
 
     fun predict(inputText: String, topK: Int = 20): List<AssociationCandidate> {
-        val inputIds = nativeEncode(inputText) ?: return emptyList()
+        val trimmed = if (inputText.length > MAX_CONTEXT_LENGTH) {
+            inputText.takeLast(MAX_CONTEXT_LENGTH)
+        } else {
+            inputText
+        }
+        val inputIds = nativeEncode(trimmed) ?: return emptyList()
         val result = nativePredict(inputIds, topK) ?: return emptyList()
 
         val candidates = mutableListOf<AssociationCandidate>()

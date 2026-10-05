@@ -73,39 +73,44 @@ jobs:
           fetch-depth: 0
 
       - name: Set up JDK 17
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: 'temurin'
           java-version: '17'
           cache: 'gradle'
+          cache-dependency-path: |
+            gradle/libs.versions.toml
+            **/*.gradle*
+            **/gradle-wrapper.properties
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v4
+        with:
+          packages: platform-tools
 
-      - name: Install NDK
+      - name: Install NDK and SDK platform
         run: |
-          sdkmanager "ndk;28.2.13676358"
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/28.2.13676358" >> $GITHUB_ENV
-          echo "ANDROID_NDK=$ANDROID_HOME/ndk/28.2.13676358" >> $GITHUB_ENV
+          sdkmanager "ndk;29.0.14206865" "platforms;android-37.2"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/29.0.14206865" >> $GITHUB_ENV
+          echo "ANDROID_NDK=$ANDROID_HOME/ndk/29.0.14206865" >> $GITHUB_ENV
 
       - name: Install build tools
         run: |
           sudo apt-get update
           sudo apt-get install -y cmake ninja-build
 
-      - name: Cache sherpa-onnx build
+      - name: Cache native deps
         uses: actions/cache@v6
         with:
           path: |
-            build/sherpa-onnx-*
-            app/src/main/jniLibs/arm64-v8a/libsherpa-onnx-jni.so
-            app/src/main/jniLibs/armeabi-v7a/libsherpa-onnx-jni.so
-          key: sherpa-${{ runner.os }}-1.13.0-${{ hashFiles('build-sherpa-onnx.sh') }}
+            app/src/main/jni/onnxruntime
+            app/src/main/jniLibs/**/libonnxruntime.so
+          key: native-${{ runner.os }}-${{ hashFiles('app/build-logic/tasks-native.gradle.kts') }}
           restore-keys: |
-            sherpa-${{ runner.os }}-
+            native-${{ runner.os }}-
 
-      - name: Download ONNX Runtime and build sherpa-onnx
-        run: ./gradlew downloadOnnx buildSherpaOnnx --no-daemon
+      - name: Download native deps (ONNX Runtime)
+        run: ./gradlew downloadOnnx --no-daemon --refresh-dependencies
 
       - name: Cache CMake build
         uses: actions/cache@v6
@@ -125,12 +130,13 @@ jobs:
         run: |
           DATE=$(date +'%Y%m%d')
           COMMIT=$(git rev-parse --short HEAD)
-          BASE_VERSION=$(grep -oP 'versionName\s*=\s*"\K[^"]+' app/build.gradle.kts)
-          echo "Base version: $BASE_VERSION"
           ./gradlew assembleRelease \
             -PversionCode=$DATE \
-            -PversionName="${BASE_VERSION}-nightly-$DATE-$COMMIT" \
+            -PversionName="nightly-$DATE-$COMMIT" \
             --no-daemon
+
+      - name: Build Plugin XIPKs (Unsigned)
+        run: bash scripts/build-plugins.sh
 
       - name: Sign Main App APKs
         uses: r0adkll/sign-android-release@v1
@@ -142,7 +148,7 @@ jobs:
           keyStorePassword: ${{ secrets.KEY_STORE_PASSWORD }}
           keyPassword: ${{ secrets.KEY_PASSWORD }}
         env:
-          BUILD_TOOLS_VERSION: "34.0.0"
+          BUILD_TOOLS_VERSION: "36.0.0"
 
       - name: Get build info
         id: info
@@ -156,12 +162,12 @@ jobs:
         run: |
           gh release delete nightly --yes --cleanup-tag 2>/dev/null || true
 
-      - name: Create nightly release and upload APKs
+      - name: Create nightly release and upload artifacts
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           APKS=$(find app/build/outputs/apk/release -name "*-signed.apk" -type f | sort | tr '\n' ' ')
-          PLUGIN_APKS=$(find plugins -path "*/build/outputs/apk/release/*-signed.apk" -type f 2>/dev/null | sort | tr '\n' ' ')
+          PLUGIN_XIPKS=$(find build/plugin-release -name "*.xipk" -type f | sort | tr '\n' ' ')
 
           if [ -z "$APKS" ]; then
             echo "::error::No main APKs found!"
@@ -172,10 +178,10 @@ jobs:
             --title "Nightly Build (${{ steps.info.outputs.DATE }})" \
             --notes "## Nightly Build
 
-            - 日期: ${{ steps.info.outputs.DATE }}
-            - Commit: \`${{ steps.info.outputs.COMMIT }}\`
-            - 构建时间: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
+          - 日期: ${{ steps.info.outputs.DATE }}
+          - Commit: \`${{ steps.info.outputs.COMMIT }}\`
+          - 构建时间: $(date -u +'%Y-%m-%d %H:%M:%S UTC')
 
-            ⚠️ 自动每日构建，非稳定版本。" \
+          :warning: 自动每日构建，非稳定版本。" \
             --prerelease \
-            $APKS $PLUGIN_APKS
+            $APKS $PLUGIN_XIPKS

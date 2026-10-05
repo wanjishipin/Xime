@@ -1,0 +1,3647 @@
+loaded 3622 cases
+case [飞] segmented hex: 33 33 34 
+Note: Google Test filter = *Segmented*
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from T9Recall
+[ RUN      ] T9Recall.SegmentedInputRecallsWord
+    dump: preedit=ce shi n=5
+    dump: preedit=shi jian n=5
+    dump: preedit=shi xian n=5
+    dump: preedit=zhi dao n=5
+    dump: preedit=ni hao n=5
+    dump: preedit=zhong guo n=5
+    dump: preedit=wo men n=5
+    dump: preedit=ta men n=5
+    dump: preedit=shen me n=5
+    dump: preedit=zen me n=5
+    dump: preedit=yin wei n=5
+    dump: preedit=suo yi n=5
+    dump: preedit=dan shi n=5
+    dump: preedit=ru guo n=5
+    dump: preedit=xian zai n=5
+    dump: preedit=shi hou n=5
+    dump: preedit=de shi hou n=5
+    dump: preedit=yi ge n=5
+    dump: preedit=mei you n=5
+    dump: preedit=ke yi n=5
+    dump: preedit=zhe ge n=5
+    dump: preedit=he he n=5
+    dump: preedit=zi ji n=5
+    dump: preedit=jiu shi n=5
+    dump: preedit=hui fu ri qi n=5
+    dump: preedit=bu shi n=5
+    dump: preedit=hai shi n=5
+    dump: preedit=wen ti n=5
+    dump: preedit=zhe yang n=5
+    dump: preedit=yi jing n=5
+    dump: preedit=ha ha n=5
+    dump: preedit=gong si n=5
+    dump: preedit=na ge n=5
+    dump: preedit=zhe yang de n=5
+    dump: preedit=jin tian n=5
+    dump: preedit=gong zuo n=5
+    dump: preedit=bu guo n=5
+    dump: preedit=ke neng n=5
+    dump: preedit=wo jue de n=5
+    dump: preedit=ying gai n=5
+    dump: preedit=ni men n=5
+    dump: preedit=yi xia n=5
+    dump: preedit=dou shi n=5
+    dump: preedit=hai you n=5
+    dump: preedit=shi yi ge n=5
+    dump: preedit=jin xing n=5
+    dump: preedit=jue de n=5
+    dump: preedit=xu yao n=5
+    dump: preedit=bu neng n=5
+    dump: preedit=kai shi n=5
+    dump: preedit=dong xi n=5
+    dump: preedit=na me n=5
+    dump: preedit=zhe me n=5
+    dump: preedit=xi huan n=5
+    dump: preedit=bi jiao n=5
+    dump: preedit=ti zhu n=5
+    dump: preedit=qing kuang xia n=5
+    dump: preedit=ran hou n=5
+    dump: preedit=yi xie n=5
+    dump: preedit=bu hui n=5
+    dump: preedit=ta men de n=5
+    dump: preedit=da jia n=5
+    dump: preedit=yi ding yao n=5
+    dump: preedit=hen duo n=5
+    dump: preedit=kan dao n=5
+    dump: preedit=bu yao n=5
+    dump: preedit=yi yang n=5
+    dump: preedit=zhe xie n=5
+    dump: preedit=ye shi n=5
+    dump: preedit=gan jue n=5
+    dump: preedit=guo cheng zhong n=5
+    dump: preedit=kan kan n=5
+    dump: preedit=qi shi n=5
+    dump: preedit=chu lai n=5
+    dump: preedit=peng you n=5
+    dump: preedit=ming tian n=5
+    dump: preedit=zhi shi n=5
+    dump: preedit=yi hou n=5
+    dump: preedit=ying gai shi n=5
+    dump: preedit=zhe li n=5
+    dump: preedit=er qie n=5
+    dump: preedit=xi tong n=5
+    dump: preedit=you hen duo n=5
+    dump: preedit=tong guo n=5
+    dump: preedit=yi ding n=5
+    dump: preedit=shi yong n=5
+    dump: preedit=yi qi n=5
+    dump: preedit=bu tong de n=5
+    dump: preedit=qi ye n=5
+    dump: preedit=you yi ge n=5
+    dump: preedit=huo zhe n=5
+    dump: preedit=you qi shi n=5
+    dump: preedit=fa zhan n=5
+    dump: preedit=shi chang n=5
+    dump: preedit=yi zhi n=5
+    dump: preedit=bei jing n=5
+    dump: preedit=qi ta n=5
+    dump: preedit=hao xiang n=5
+    dump: preedit=li de n=5
+    dump: preedit=chan pin n=5
+    dump: preedit=zhe zhong n=5
+    dump: preedit=shi qing n=5
+    dump: preedit=de ren n=5
+    dump: preedit=wei shen me n=5
+    dump: preedit=fa zhan n=5
+    dump: preedit=di fang n=5
+    dump: preedit=yi yang n=5
+    dump: preedit=zhi you n=5
+    dump: preedit=qing kuang n=5
+    dump: preedit=yao qiu n=5
+    dump: preedit=zhe jiu shi n=5
+    dump: preedit=dian hua n=5
+    dump: preedit=xin xi n=5
+    dump: preedit=ke neng shi n=5
+    dump: preedit=duo shao n=5
+    dump: preedit=ti gong n=5
+    dump: preedit=yi ban n=5
+    dump: preedit=zhu yao shi n=5
+    dump: preedit=zhe xie n=5
+    dump: preedit=ke neng hui n=5
+    dump: preedit=hui lai n=5
+    dump: preedit=zhu yao n=5
+    dump: preedit=bu cuo n=5
+    dump: preedit=sheng huo n=5
+    dump: preedit=shang hai n=5
+    dump: preedit=bing mei you n=5
+    dump: preedit=ye mei you n=5
+    dump: preedit=mu qian n=5
+    dump: preedit=ni ke yi n=5
+    dump: preedit=zhi jie n=5
+    dump: preedit=bu xu yao n=5
+    dump: preedit=suo you n=5
+    dump: preedit=wan shang n=5
+    dump: preedit=dou ke yi n=5
+    dump: preedit=yi ge ren n=5
+    dump: preedit=ji shu n=5
+    dump: preedit=dei dao n=5
+    dump: preedit=fang mian n=5
+    dump: preedit=chu xian n=5
+    dump: preedit=sui ran n=5
+    dump: preedit=zhi chi n=5
+    dump: preedit=wei le n=5
+    dump: preedit=jia ge n=5
+    dump: preedit=mei guo n=5
+    dump: preedit=shi bu shi n=5
+    dump: preedit=wo de n=5
+    dump: preedit=xuan ze n=5
+    dump: preedit=yi qian n=5
+    dump: preedit=xiang mu n=5
+    dump: preedit=fei chang n=5
+    dump: preedit=li mian n=5
+    dump: preedit=bie ren n=5
+    dump: preedit=guo jia n=5
+    dump: preedit=hai ke yi n=5
+    dump: preedit=yi bu fen n=5
+    dump: preedit=ni de n=5
+    dump: preedit=zi ji n=5
+    dump: preedit=tong shi n=5
+    dump: preedit=dui yu n=5
+    dump: preedit=liang ge n=5
+    dump: preedit=zhun bei n=5
+    dump: preedit=dou mei you n=5
+    dump: preedit=guan li n=5
+    dump: preedit=yi dian n=5
+    dump: preedit=ken ding n=5
+    dump: preedit=zhe shi n=5
+    dump: preedit=ren wei n=5
+    dump: preedit=zuo tian n=5
+    dump: preedit=fu wu n=5
+    dump: preedit=cheng wei n=5
+    dump: preedit=zui hou n=5
+    dump: preedit=wang zhan n=5
+    dump: preedit=ye bu shi n=5
+    dump: preedit=shi shen me n=5
+    dump: preedit=na li n=5
+    dump: preedit=qi lai n=5
+    dump: preedit=zuo wei n=5
+    dump: preedit=zhi hou n=5
+    dump: preedit=ji xu n=5
+    dump: preedit=shou ji n=5
+    dump: preedit=zhen de n=5
+    dump: preedit=bu tong n=5
+    dump: preedit=zai zhe li n=5
+    dump: preedit=zhen de shi n=5
+    dump: preedit=you yu n=5
+    dump: preedit=yong hu n=5
+    dump: preedit=jie guo n=5
+    dump: preedit=gu ji n=5
+    dump: preedit=zui jin n=5
+    dump: preedit=ying xiang n=5
+    dump: preedit=xue xiao n=5
+    dump: preedit=hai zi n=5
+    dump: preedit=wo ren wei n=5
+    dump: preedit=wo zi ji n=5
+    dump: preedit=hao de n=5
+    dump: preedit=she ji n=5
+    dump: preedit=ren wu n=5
+    dump: preedit=guan xi n=5
+    dump: preedit=bu fen n=5
+    dump: preedit=huo dong n=5
+    dump: preedit=bi xu n=5
+    dump: preedit=di yi ge n=5
+    dump: preedit=wang luo n=5
+    dump: preedit=yan jiu n=5
+    dump: preedit=zhen zheng de n=5
+    dump: preedit=dang ran n=5
+    dump: preedit=ru he n=5
+    dump: preedit=zhe yi dian n=5
+    dump: preedit=na xie n=5
+    dump: preedit=gong neng n=5
+    dump: preedit=ke shi n=5
+    dump: preedit=xue sheng n=5
+    dump: preedit=bu yi yang n=5
+    dump: preedit=ye bu hui n=5
+    dump: preedit=shu ju n=5
+    dump: preedit=gao su n=5
+    dump: preedit=gei wo n=5
+    dump: preedit=fang shi n=5
+    dump: preedit=nei rong n=5
+    dump: preedit=na li n=5
+    dump: preedit=yi ci n=5
+    dump: preedit=nv ren n=5
+    dump: preedit=wu lun shi n=5
+    dump: preedit=jian dan de n=5
+    dump: preedit=dian nao n=5
+    dump: preedit=shi fou n=5
+    dump: preedit=gei da jia n=5
+    dump: preedit=zuo wei yi ge n=5
+    dump: preedit=yi qi n=5
+    dump: preedit=zai zhe ge n=5
+    dump: preedit=lian xi n=5
+    dump: preedit=you xi n=5
+    dump: preedit=lao shi n=5
+    dump: preedit=yi kai shi n=5
+    dump: preedit=te bie n=5
+    dump: preedit=zhi yao n=5
+    dump: preedit=ge ren n=5
+    dump: preedit=qi shi shi n=5
+    dump: preedit=te bie shi n=5
+    dump: preedit=wen jian n=5
+    dump: preedit=neng gou n=5
+    dump: preedit=you dian n=5
+    dump: preedit=ruan jian n=5
+    dump: preedit=ji ge n=5
+    dump: preedit=guo qu n=5
+    dump: preedit=xue xi n=5
+    dump: preedit=she hui n=5
+    dump: preedit=guo lai n=5
+    dump: preedit=gei ni n=5
+    dump: preedit=nan ren n=5
+    dump: preedit=liao jie n=5
+    dump: preedit=zhi neng n=5
+    dump: preedit=chi fan n=5
+    dump: preedit=da zhu n=5
+    dump: preedit=shi jie n=5
+    dump: preedit=bu hao n=5
+    dump: preedit=bu yong n=5
+    dump: preedit=de hua n=5
+    dump: preedit=biao shi n=5
+    dump: preedit=hei hei n=5
+    dump: preedit=fa sheng n=5
+    dump: preedit=de dao n=5
+    dump: preedit=tong xue n=5
+    dump: preedit=ji ben n=5
+    dump: preedit=chu li n=5
+    dump: preedit=lao po n=5
+    dump: preedit=mei yi ge n=5
+    dump: preedit=zhao pian n=5
+    dump: preedit=ke hu n=5
+    dump: preedit=ke yi shuo n=5
+    dump: preedit=fang fa n=5
+    dump: preedit=wan cheng n=5
+    dump: preedit=yi ge yue n=5
+    dump: preedit=da jia dou n=5
+    dump: preedit=wo hui n=5
+    dump: preedit=guan yu n=5
+    dump: preedit=you xie n=5
+    dump: preedit=fang shi n=5
+    dump: preedit=gang cai n=5
+    dump: preedit=yuan lai n=5
+    dump: preedit=bao kuo n=5
+    dump: preedit=jie jue n=5
+    dump: preedit=zhong de n=5
+    dump: preedit=yi zhong n=5
+    dump: preedit=fan zheng n=5
+    dump: preedit=gen ju n=5
+    dump: preedit=zheng fu n=5
+    dump: preedit=zhong yao n=5
+    dump: preedit=cheng gong n=5
+    dump: preedit=kao lv n=5
+    dump: preedit=xia zai n=5
+    dump: preedit=neng li n=5
+    dump: preedit=guo cheng n=5
+    dump: preedit=fen xi n=5
+    dump: preedit=ta de n=5
+    dump: preedit=qi ta de n=5
+    dump: preedit=ji hui n=5
+    dump: preedit=chu xian le n=5
+    dump: preedit=xia wu n=5
+    dump: preedit=ti gao n=5
+    dump: preedit=ren shi n=5
+    dump: preedit=zhu yi n=5
+    dump: preedit=jie shao n=5
+    dump: preedit=zhi qian n=5
+    dump: preedit=jin ru n=5
+    dump: preedit=ri ben n=5
+    dump: preedit=cun zai n=5
+    dump: preedit=qi zhong n=5
+    dump: preedit=jin nian n=5
+    dump: preedit=zeng jia n=5
+    dump: preedit=da liang de n=5
+    dump: preedit=ji zhe n=5
+    dump: preedit=ken ding shi n=5
+    dump: preedit=chu qu n=5
+    dump: preedit=wu fa n=5
+    dump: preedit=guo nei n=5
+    dump: preedit=chu lai de n=5
+    dump: preedit=yong le n=5
+    dump: preedit=jue ding n=5
+    dump: preedit=shi shi shang n=5
+    dump: preedit=ren jia n=5
+    dump: preedit=xiang guan n=5
+    dump: preedit=zhe ben shu n=5
+    dump: preedit=wan quan n=5
+    dump: preedit=dan wei n=5
+    dump: preedit=zu zhi n=5
+    dump: preedit=you ren n=5
+    dump: preedit=hou de n=5
+    dump: preedit=hai yao n=5
+    dump: preedit=ye wu n=5
+    dump: preedit=hou lai n=5
+    dump: preedit=zheng zai n=5
+    dump: preedit=ren he n=5
+    dump: preedit=zhuan ye n=5
+    dump: preedit=zhi jian n=5
+    dump: preedit=mei tian n=5
+    dump: preedit=chu le n=5
+    dump: preedit=lian xi n=5
+    dump: preedit=lun tan n=5
+    dump: preedit=tou zi n=5
+    dump: preedit=ju you n=5
+    dump: preedit=kong jian n=5
+    dump: preedit=ji hua n=5
+    dump: preedit=cheng wei le n=5
+    dump: preedit=jiu kai shi n=5
+    dump: preedit=bu xing n=5
+    dump: preedit=huo zhe shuo n=5
+    dump: preedit=hai mei you n=5
+    dump: preedit=zhi qian de n=5
+    dump: preedit=yuan yin n=5
+    dump: preedit=kai fa n=5
+    dump: preedit=ke yi zai n=5
+    dump: preedit=jian li n=5
+    dump: preedit=rang wo men n=5
+    dump: preedit=ming zi n=5
+    dump: preedit=hui jia n=5
+    dump: preedit=can jia n=5
+    dump: preedit=ren yuan n=5
+    dump: preedit=quan bu n=5
+    dump: preedit=hui qu n=5
+    dump: preedit=shui jiao n=5
+    dump: preedit=jian she n=5
+    dump: preedit=xian shi n=5
+    dump: preedit=shen zhi n=5
+    dump: preedit=zhao dao n=5
+    dump: preedit=zui hao n=5
+    dump: preedit=wo guo n=5
+    dump: preedit=huo de n=5
+    dump: preedit=bian cheng le n=5
+    dump: preedit=dao le n=5
+    dump: preedit=bu men n=5
+    dump: preedit=zhe ci n=5
+    dump: preedit=ren men n=5
+    dump: preedit=biao zhun n=5
+    dump: preedit=jing ji n=5
+    dump: preedit=kong zhi n=5
+    dump: preedit=wang shang n=5
+    dump: preedit=cheng xu n=5
+    dump: preedit=jian dan n=5
+    dump: preedit=you shen me n=5
+    dump: preedit=rang wo n=5
+    dump: preedit=yi qie n=5
+    dump: preedit=ben lai n=5
+    dump: preedit=xiao guo n=5
+    dump: preedit=shang ban n=5
+    dump: preedit=na ge n=5
+    dump: preedit=cheng shi n=5
+    dump: preedit=you yi xie n=5
+    dump: preedit=zhen shi n=5
+    dump: preedit=dian ying n=5
+    dump: preedit=hao le n=5
+    dump: preedit=ye wu n=5
+    dump: preedit=da dao n=5
+    dump: preedit=yi zhi zai n=5
+    dump: preedit=huo zhe shi n=5
+    dump: preedit=ju ti n=5
+    dump: preedit=su du n=5
+    dump: preedit=fu ze n=5
+    dump: preedit=huan jing n=5
+    dump: preedit=jing chang n=5
+    dump: preedit=xian shi n=5
+    dump: preedit=yin hang n=5
+    dump: preedit=ban fa n=5
+    dump: preedit=zai jia shang n=5
+    dump: preedit=xiao xi n=5
+    dump: preedit=ti chu n=5
+    dump: preedit=sheng chan n=5
+    dump: preedit=shi wei le n=5
+    dump: preedit=shen qing n=5
+    dump: preedit=da xue n=5
+    dump: preedit=kan lai n=5
+    dump: preedit=shuo hua n=5
+    dump: preedit=yin ci n=5
+    dump: preedit=wo men ke yi n=5
+    dump: preedit=wo shi n=5
+    dump: preedit=gei zi ji n=5
+    dump: preedit=lai shuo n=5
+    dump: preedit=xiang xin n=5
+    dump: preedit=xu duo n=5
+    dump: preedit=shuo ming n=5
+    dump: preedit=zai zhong guo n=5
+    dump: preedit=xie yao n=5
+    dump: preedit=zuo yong n=5
+    dump: preedit=an quan n=5
+    dump: preedit=huo de n=5
+    dump: preedit=ge zhong n=5
+    dump: preedit=zhong yu n=5
+    dump: preedit=na me duo n=5
+    dump: preedit=zhen zheng n=5
+    dump: preedit=li de n=5
+    dump: preedit=quan guo n=5
+    dump: preedit=suo yi wo n=5
+    dump: preedit=zheng chang n=5
+    dump: preedit=le ba n=5
+    dump: preedit=tiao zheng n=5
+    dump: preedit=ling dao n=5
+    dump: preedit=cao zuo n=5
+    dump: preedit=mei shi n=5
+    dump: preedit=zi liao n=5
+    dump: preedit=cai yong n=5
+    dump: preedit=bu guan shi n=5
+    dump: preedit=xia lai n=5
+    dump: preedit=yi ge shi n=5
+    dump: preedit=nu li n=5
+    dump: preedit=ling wai n=5
+    dump: preedit=xiu gai n=5
+    dump: preedit=guo ji n=5
+    dump: preedit=hang ye n=5
+    dump: preedit=you guan n=5
+    dump: preedit=tu pian n=5
+    dump: preedit=jie shou n=5
+    dump: preedit=yi shang n=5
+    dump: preedit=rong yi n=5
+    dump: preedit=cai neng n=5
+    dump: preedit=you mei you n=5
+    dump: preedit=she zhi n=5
+    dump: preedit=ma ma n=5
+    dump: preedit=ming bai n=5
+    dump: preedit=chan sheng n=5
+    dump: preedit=yi wei n=5
+    dump: preedit=hai shi yao n=5
+    dump: preedit=you ren shuo n=5
+    dump: preedit=dao xian zai n=5
+    dump: preedit=shang mian n=5
+    dump: preedit=li shi n=5
+    dump: preedit=he zuo n=5
+    dump: preedit=mu biao n=5
+    dump: preedit=dai biao n=5
+    dump: preedit=xu qiu n=5
+    dump: preedit=wo ye n=5
+    dump: preedit=zong shi n=5
+    dump: preedit=kan dao le n=5
+    dump: preedit=zhe yi n=5
+    dump: preedit=di yi n=5
+    dump: preedit=an zhuang n=5
+    dump: preedit=jin xing le n=5
+    dump: preedit=na yang n=5
+    dump: preedit=guang gao n=5
+    dump: preedit=an zhao n=5
+    dump: preedit=hai you yi ge n=5
+    dump: preedit=gu piao n=5
+    dump: preedit=ti gong le n=5
+    dump: preedit=ye you n=5
+    dump: preedit=ye bu n=5
+    dump: preedit=wen hua n=5
+    dump: preedit=bu duan n=5
+    dump: preedit=zai guo nei n=5
+    dump: preedit=xuan ze le n=5
+    dump: preedit=lao shi de n=5
+    dump: preedit=que ding n=5
+    dump: preedit=fu wu qi n=5
+    dump: preedit=hao hao n=5
+    dump: preedit=xiao shou n=5
+    dump: preedit=ma fan n=5
+    dump: preedit=zuo you n=5
+    dump: preedit=zhong xin n=5
+    dump: preedit=ying yong n=5
+    dump: preedit=biao xian n=5
+    dump: preedit=jing yan n=5
+    dump: preedit=ru ci n=5
+    dump: preedit=shuo shi hua n=5
+    dump: preedit=bu shao n=5
+    dump: preedit=gen ben n=5
+    dump: preedit=ba zi ji n=5
+    dump: preedit=ni zi ji n=5
+    dump: preedit=rang zi ji n=5
+    dump: preedit=guan zhu n=5
+    dump: preedit=gao su ni n=5
+    dump: preedit=jing guo n=5
+    dump: preedit=wen zhang n=5
+    dump: preedit=cha bu duo n=5
+    dump: preedit=di zhi n=5
+    dump: preedit=kan de n=5
+    dump: preedit=tiao jian n=5
+    dump: preedit=bi ru n=5
+    dump: preedit=shi de n=5
+    dump: preedit=dou you n=5
+    dump: preedit=bu xi huan n=5
+    dump: preedit=yi ding shi n=5
+    dump: preedit=que shi n=5
+    dump: preedit=xing cheng n=5
+    dump: preedit=zheng ge n=5
+    dump: preedit=ru guo you n=5
+    dump: preedit=bang zhu n=5
+    dump: preedit=jia li n=5
+    dump: preedit=jing shen n=5
+    dump: preedit=shen ti n=5
+    dump: preedit=wo xian zai n=5
+    dump: preedit=shui ping n=5
+    dump: preedit=zi yuan n=5
+    dump: preedit=ma shang n=5
+    dump: preedit=si hu n=5
+    dump: preedit=zhi neng shuo n=5
+    dump: preedit=shi yong de n=5
+    dump: preedit=zhu yi n=5
+    dump: preedit=xiang gang n=5
+    dump: preedit=tu ran n=5
+    dump: preedit=gang gang n=5
+    dump: preedit=shi ge n=5
+    dump: preedit=yi tian n=5
+    dump: preedit=wo dang shi n=5
+    dump: preedit=ming xian n=5
+    dump: preedit=shou dao n=5
+    dump: preedit=bing qie n=5
+    dump: preedit=jiao yu n=5
+    dump: preedit=xing wei n=5
+    dump: preedit=ru guo mei you n=5
+    dump: preedit=que shi shi n=5
+    dump: preedit=dai lai n=5
+    dump: preedit=bu yi ding n=5
+    dump: preedit=yao shi n=5
+    dump: preedit=ji chu shang n=5
+    dump: preedit=ba liao n=5
+    dump: preedit=wan cheng n=5
+    dump: preedit=zai yi qi n=5
+    dump: preedit=qing chu n=5
+    dump: preedit=shang de n=5
+    dump: preedit=fang zi n=5
+    dump: preedit=shen zhen n=5
+    dump: preedit=le yi ge n=5
+    dump: preedit=shen me shi n=5
+    dump: preedit=li yong n=5
+    dump: preedit=jiu hui n=5
+    dump: preedit=da gai n=5
+    dump: preedit=chong xin n=5
+    dump: preedit=jiu yi jing n=5
+    dump: preedit=yin wei ta n=5
+    dump: preedit=an pai n=5
+    dump: preedit=li jie n=5
+    dump: preedit=zi jin n=5
+    dump: preedit=bu dao n=5
+    dump: preedit=bian hua n=5
+    dump: preedit=xian sheng n=5
+    dump: preedit=tui jian n=5
+    dump: preedit=yong you n=5
+    dump: preedit=bo ke n=5
+    dump: preedit=hai xu yao n=5
+    dump: preedit=zhuang tai n=5
+    dump: preedit=bao zheng n=5
+    dump: preedit=mei nv n=5
+    dump: preedit=nan dao n=5
+    dump: preedit=shi zai shi n=5
+    dump: preedit=di er ge n=5
+    dump: preedit=gan ma n=5
+    dump: preedit=bu cun zai n=5
+    dump: preedit=da gai shi n=5
+    dump: preedit=pin pai n=5
+    dump: preedit=da kai n=5
+    dump: preedit=gai bian n=5
+    dump: preedit=bu xiang n=5
+    dump: preedit=zheng que de n=5
+    dump: preedit=yin wei wo n=5
+    dump: preedit=you ge n=5
+    dump: preedit=sheng xia de n=5
+    dump: preedit=bi sai n=5
+    dump: preedit=bao chi n=5
+    dump: preedit=chao guo n=5
+    dump: preedit=wei shen me yao n=5
+    dump: preedit=di qu n=5
+    dump: preedit=guang zhou n=5
+    dump: preedit=xia mian n=5
+    dump: preedit=lou zhu n=5
+    dump: preedit=zhong yao de n=5
+    dump: preedit=gong cheng n=5
+    dump: preedit=chang jian de n=5
+    dump: preedit=shi pin n=5
+    dump: preedit=wei zhi n=5
+    dump: preedit=hui da n=5
+    dump: preedit=de dao le n=5
+    dump: preedit=kan jian n=5
+    dump: preedit=zi ran n=5
+    dump: preedit=yi ban shi n=5
+    dump: preedit=fang bian n=5
+    dump: preedit=kuai le n=5
+    dump: preedit=hai zai n=5
+    dump: preedit=ju da de n=5
+    dump: preedit=jiu ke yi le n=5
+    dump: preedit=gui ding n=5
+    dump: preedit=fen zhong n=5
+    dump: preedit=xin li n=5
+    dump: preedit=sheng yin n=5
+    dump: preedit=xing fu n=5
+    dump: preedit=yin yue n=5
+    dump: preedit=jiu hao le n=5
+    dump: preedit=she bei n=5
+    dump: preedit=mei ti n=5
+    dump: preedit=na shi n=5
+    dump: preedit=piao liang n=5
+    dump: preedit=lao ban n=5
+    dump: preedit=geng xin n=5
+    dump: preedit=kao lv dao n=5
+    dump: preedit=ji jin n=5
+    dump: preedit=shi zai n=5
+    dump: preedit=man man n=5
+    dump: preedit=mi ma n=5
+    dump: preedit=di yi ci n=5
+    dump: preedit=yi ban de n=5
+    dump: preedit=dao zhi n=5
+    dump: preedit=hen hao n=5
+    dump: preedit=tao lun n=5
+    dump: preedit=ban ben n=5
+    dump: preedit=shang wang n=5
+    dump: preedit=zhi qian n=5
+    dump: preedit=tong zhi n=5
+    dump: preedit=ji chu n=5
+    dump: preedit=yi xia n=5
+    dump: preedit=jie guo n=5
+    dump: preedit=jie shu n=5
+    dump: preedit=wei lai n=5
+    dump: preedit=qi shi jiu shi n=5
+    dump: preedit=you na xie n=5
+    dump: preedit=tai duo le n=5
+    dump: preedit=mei ge n=5
+    dump: preedit=fa xian le n=5
+    dump: preedit=wo xiang n=5
+    dump: preedit=zhe bu shi n=5
+    dump: preedit=mei ban fa n=5
+    dump: preedit=ru guo shuo n=5
+    dump: preedit=hai mei n=5
+    dump: preedit=jian cha n=5
+    dump: preedit=zhi jian n=5
+    dump: preedit=ceng jing n=5
+    dump: preedit=sui bian n=5
+    dump: preedit=li kai n=5
+    dump: preedit=zi yuan n=5
+    dump: preedit=ji tuan n=5
+    dump: preedit=shang ci n=5
+    dump: preedit=fa biao n=5
+    dump: preedit=xiang dang n=5
+    dump: preedit=yan zhong n=5
+    dump: preedit=rang ta men n=5
+    dump: preedit=shi ke yi n=5
+    dump: preedit=yi jing shi n=5
+    dump: preedit=yao zhi dao n=5
+    dump: preedit=jiu xing le n=5
+    dump: preedit=zen me yang n=5
+    dump: preedit=she ji de n=5
+    dump: preedit=jiu mei you n=5
+    dump: preedit=zai yi ge n=5
+    dump: preedit=bu jin n=5
+    dump: preedit=yi fu n=5
+    dump: preedit=shu yu n=5
+    dump: preedit=shi ji n=5
+    dump: preedit=zui hou de n=5
+    dump: preedit=gou mai n=5
+    dump: preedit=zheng ce n=5
+    dump: preedit=zhu ce n=5
+    dump: preedit=geng jia n=5
+    dump: preedit=ju ran n=5
+    dump: preedit=zhe bian n=5
+    dump: preedit=wo zhi dao n=5
+    dump: preedit=yi shi dao n=5
+    dump: preedit=bao gao n=5
+    dump: preedit=jia qiang n=5
+    dump: preedit=you xiao n=5
+    dump: preedit=bao hu n=5
+    dump: preedit=bing bu n=5
+    dump: preedit=mu di n=5
+    dump: preedit=ye bu neng n=5
+    dump: preedit=ji lu n=5
+    dump: preedit=wo jiu n=5
+    dump: preedit=zhi liang n=5
+    dump: preedit=zuo yi ge n=5
+    dump: preedit=jian chi n=5
+    dump: preedit=zhong de n=5
+    dump: preedit=lei si de n=5
+    dump: preedit=jiu zhe yang n=5
+    dump: preedit=wo hai shi n=5
+    dump: preedit=you yi ding n=5
+    dump: preedit=er yi n=5
+    dump: preedit=he shi de n=5
+    dump: preedit=ji qi n=5
+    dump: preedit=yu men n=5
+    dump: preedit=bao bao n=5
+    dump: preedit=mo shi n=5
+    dump: preedit=shi shi n=5
+    dump: preedit=hao duo n=5
+    dump: preedit=shi a n=5
+    dump: preedit=gan shou dao n=5
+    dump: preedit=pian yi n=5
+    dump: preedit=rang ren n=5
+    dump: preedit=zen yang n=5
+    dump: preedit=guan jian n=5
+    dump: preedit=hou mian n=5
+    dump: preedit=shuo yi xia n=5
+    dump: preedit=pei xun n=5
+    dump: preedit=chu xian zai n=5
+    dump: preedit=wo xiang xin n=5
+    dump: preedit=gu shi n=5
+    dump: preedit=zi liao n=5
+    dump: preedit=yi ding hui n=5
+    dump: preedit=suo yi shuo n=5
+    dump: preedit=dou hui n=5
+    dump: preedit=ai qing n=5
+    dump: preedit=kan le n=5
+    dump: preedit=tai wan n=5
+    dump: preedit=fa bu n=5
+    dump: preedit=mei ci n=5
+    dump: preedit=fang an n=5
+    dump: preedit=da liang n=5
+    dump: preedit=tong yang n=5
+    dump: preedit=dao di n=5
+    dump: preedit=lao gong n=5
+    dump: preedit=yong yuan n=5
+    dump: preedit=shou dao n=5
+    dump: preedit=ni jue de n=5
+    dump: preedit=you ji hui n=5
+    dump: preedit=kan zhe n=5
+    dump: preedit=jue dui n=5
+    dump: preedit=lai le n=5
+    dump: preedit=ni xu yao n=5
+    dump: preedit=gan qing n=5
+    dump: preedit=yu shi n=5
+    dump: preedit=you xing qu n=5
+    dump: preedit=tai duo n=5
+    dump: preedit=yuan yi n=5
+    dump: preedit=dui fang n=5
+    dump: preedit=sui zhe n=5
+    dump: preedit=ya li n=5
+    dump: preedit=wang you n=5
+    dump: preedit=nan zhu n=5
+    dump: preedit=zhen shi de n=5
+    dump: preedit=ji gou n=5
+    dump: preedit=bu guan n=5
+    dump: preedit=zhi yao ni n=5
+    dump: preedit=lao shi n=5
+    dump: preedit=jiao liu n=5
+    dump: preedit=ran hou zai n=5
+    dump: preedit=bi ye n=5
+    dump: preedit=zhi yi n=5
+    dump: preedit=ju ge li zi n=5
+    dump: preedit=mian fei n=5
+    dump: preedit=jia zhi n=5
+    dump: preedit=chi de n=5
+    dump: preedit=yi nian n=5
+    dump: preedit=pei zhi n=5
+    dump: preedit=ping tai n=5
+    dump: preedit=cheng ben n=5
+    dump: preedit=dang ran shi n=5
+    dump: preedit=ji hu n=5
+    dump: preedit=sheng ming n=5
+    dump: preedit=zhi du n=5
+    dump: preedit=shou xian n=5
+    dump: preedit=bian cheng n=5
+    dump: preedit=ta men n=5
+    dump: preedit=shi mian shang n=5
+    dump: preedit=da suan n=5
+    dump: preedit=sheng ji n=5
+    dump: preedit=yi jia n=5
+    dump: preedit=wen ding n=5
+    dump: preedit=dou bu hui n=5
+    dump: preedit=gong zi n=5
+    dump: preedit=ben zhi shang n=5
+    dump: preedit=tie zi n=5
+    dump: preedit=na jiu n=5
+    dump: preedit=zhuan jia n=5
+    dump: preedit=li shi n=5
+    dump: preedit=xian chang n=5
+    dump: preedit=zhong dian n=5
+    dump: preedit=lian xi n=5
+    dump: preedit=cuo wu n=5
+    dump: preedit=hui chu xian n=5
+    dump: preedit=jin jin shi n=5
+    dump: preedit=shi chang shang n=5
+    dump: preedit=huo de le n=5
+    dump: preedit=cai liao n=5
+    dump: preedit=can yu n=5
+    dump: preedit=tong shi ye n=5
+    dump: preedit=dou xu yao n=5
+    dump: preedit=ji shi shi n=5
+    dump: preedit=diao cha n=5
+    dump: preedit=tong shi n=5
+    dump: preedit=chuan tong n=5
+    dump: preedit=zhe bu fen n=5
+    dump: preedit=ta de n=5
+    dump: preedit=fei yong n=5
+    dump: preedit=jie gou n=5
+    dump: preedit=bu jin jin shi n=5
+    dump: preedit=lei si yu n=5
+    dump: preedit=li hai n=5
+    dump: preedit=er shi n=5
+    dump: preedit=gao su wo n=5
+    dump: preedit=ni hui fa xian n=5
+    dump: preedit=you qi n=5
+    dump: preedit=zuo pin n=5
+    dump: preedit=wo bu zhi dao n=5
+    dump: preedit=di er n=5
+    dump: preedit=tian tian n=5
+    dump: preedit=yang zi n=5
+    dump: preedit=fu mu n=5
+    dump: preedit=que ren n=5
+    dump: preedit=jia ru n=5
+    dump: preedit=wo yi jing n=5
+    dump: preedit=yan jing n=5
+    dump: preedit=yin qi n=5
+    dump: preedit=bei cheng wei n=5
+    dump: preedit=geng duo n=5
+    dump: preedit=xin qing n=5
+    dump: preedit=shen shang n=5
+    dump: preedit=shen me yang de n=5
+    dump: preedit=jia ting n=5
+    dump: preedit=cheng gong de n=5
+    dump: preedit=jiu shi zai n=5
+    dump: preedit=zui zhong n=5
+    dump: preedit=mian dui n=5
+    dump: preedit=wan cheng le n=5
+    dump: preedit=fen bie n=5
+    dump: preedit=yi wei n=5
+    dump: preedit=zhao gong zuo n=5
+    dump: preedit=yi mei yuan n=5
+    dump: preedit=ta men n=5
+    dump: preedit=lai zi n=5
+    dump: preedit=xi huan n=5
+    dump: preedit=bu gou n=5
+    dump: preedit=dan shi zai n=5
+    dump: preedit=dan wei n=5
+    dump: preedit=tui chu n=5
+    dump: preedit=zhi shi n=5
+    dump: preedit=shi jian n=5
+    dump: preedit=ni shi n=5
+    dump: preedit=qu nian n=5
+    dump: preedit=xin wen n=5
+    dump: preedit=zi dong n=5
+    dump: preedit=lai zi yu n=5
+    dump: preedit=jue ding le n=5
+    dump: preedit=da jia ke yi n=5
+    dump: preedit=la ji n=5
+    dump: preedit=wan shang n=5
+    dump: preedit=li shi shang n=5
+    dump: preedit=yi yi n=5
+    dump: preedit=hai hao n=5
+    dump: preedit=ji ji n=5
+    dump: preedit=shi ge n=5
+    dump: preedit=quan mian n=5
+    dump: preedit=zhi xing n=5
+    dump: preedit=ren sheng n=5
+    dump: preedit=zheng shi n=5
+    dump: preedit=jin yi bu n=5
+    dump: preedit=zi shen de n=5
+    dump: preedit=zhao dao le n=5
+    dump: preedit=man zu n=5
+    dump: preedit=shi zhe yang de n=5
+    dump: preedit=yun xing n=5
+    dump: preedit=shou ru n=5
+    dump: preedit=bu zhi n=5
+    dump: preedit=shi fen n=5
+    dump: preedit=dian xing de n=5
+    dump: preedit=liao tian n=5
+    dump: preedit=dai ma n=5
+    dump: preedit=yu dao n=5
+    dump: preedit=yin wei ni n=5
+    dump: preedit=da dao le n=5
+    dump: preedit=qi ta n=5
+    dump: preedit=deng deng n=5
+    dump: preedit=you shi n=5
+    dump: preedit=ha ha ha n=5
+    dump: preedit=qu de n=5
+    dump: preedit=qu le n=5
+    dump: preedit=yuan yin shi n=5
+    dump: preedit=fang xiang n=5
+    dump: preedit=li shi n=5
+    dump: preedit=zhao bu dao n=5
+    dump: preedit=na ni n=5
+    dump: preedit=suo yi zai n=5
+    dump: preedit=bu guai n=5
+    dump: preedit=bu zai n=5
+    dump: preedit=you duo shao n=5
+    dump: preedit=you jian n=5
+    dump: preedit=jie jie n=5
+    dump: preedit=xi lie n=5
+    dump: preedit=fan wei nei n=5
+    dump: preedit=pu tong n=5
+    dump: preedit=jie shi n=5
+    dump: preedit=jing ji n=5
+    dump: preedit=zai ci n=5
+    dump: preedit=sha de n=5
+    dump: preedit=nin de n=5
+    dump: preedit=feng xian n=5
+    dump: preedit=ling yu n=5
+    dump: preedit=hui yi n=5
+    dump: preedit=tong yi n=5
+    dump: preedit=ke yi qu n=5
+    dump: preedit=lai le n=5
+    dump: preedit=quan qiu n=5
+    dump: preedit=xing shi n=5
+    dump: preedit=si xiang n=5
+    dump: preedit=wu lun n=5
+    dump: preedit=nong min n=5
+    dump: preedit=ji tian n=5
+    dump: preedit=yuan gong n=5
+    dump: preedit=chan sheng le n=5
+    dump: preedit=zhe ge shi n=5
+    dump: preedit=she ji dao n=5
+    dump: preedit=duan xin n=5
+    dump: preedit=ta zi ji n=5
+    dump: preedit=jin ru n=5
+    dump: preedit=wei yi de n=5
+    dump: preedit=bu rong yi n=5
+    dump: preedit=shi jie shang n=5
+    dump: preedit=yin wei ta n=5
+    dump: preedit=zeng zhang n=5
+    dump: preedit=zeng jia le n=5
+    dump: preedit=ben ren n=5
+    dump: preedit=xian shi n=5
+    dump: preedit=wo mei you n=5
+    dump: preedit=suo wei n=5
+    dump: preedit=shua ti n=5
+    dump: preedit=jiu xu yao n=5
+    dump: preedit=bu ran n=5
+    dump: preedit=fa lv n=5
+    dump: preedit=kai xin n=5
+    dump: preedit=jiu yao n=5
+    dump: preedit=zi dong n=5
+    dump: preedit=gan xing qu de n=5
+    dump: preedit=yu ming n=5
+    dump: preedit=jiu bu hui n=5
+    dump: preedit=nong cun n=5
+    dump: preedit=kai zhan n=5
+    dump: preedit=he tong n=5
+    dump: preedit=shi dai n=5
+    dump: preedit=tong yi n=5
+    dump: preedit=gong ju n=5
+    dump: preedit=qi che n=5
+    dump: preedit=xiang dao n=5
+    dump: preedit=nv hai n=5
+    dump: preedit=zhong yu n=5
+    dump: preedit=xiang fa n=5
+    dump: preedit=xiang dui yu n=5
+    dump: preedit=zi you n=5
+    dump: preedit=jue dui shi n=5
+    dump: preedit=dian shi n=5
+    dump: preedit=er yi n=5
+    dump: preedit=you wen ti n=5
+    dump: preedit=wo fa xian n=5
+    dump: preedit=huan ying n=5
+    dump: preedit=wen zi n=5
+    dump: preedit=bu yuan yi n=5
+    dump: preedit=wu liao n=5
+    dump: preedit=yi hui n=5
+    dump: preedit=dan xin n=5
+    dump: preedit=ting shuo n=5
+    dump: preedit=jing li le n=5
+    dump: preedit=you xiao de n=5
+    dump: preedit=yi ge wen ti n=5
+    dump: preedit=gong tong n=5
+    dump: preedit=xian xiang n=5
+    dump: preedit=wo men jiu n=5
+    dump: preedit=xia qu n=5
+    dump: preedit=shi shi n=5
+    dump: preedit=li lun n=5
+    dump: preedit=shi fei chang n=5
+    dump: preedit=ren min n=5
+    dump: preedit=san ge n=5
+    dump: preedit=zhe yang yi ge n=5
+    dump: preedit=fa sheng le n=5
+    dump: preedit=yi zhang n=5
+    dump: preedit=qian mian n=5
+    dump: preedit=jiu suan shi n=5
+    dump: preedit=de shi n=5
+    dump: preedit=jian shao n=5
+    dump: preedit=shuo wo n=5
+    dump: preedit=xuan chuan n=5
+    dump: preedit=wei lai de n=5
+    dump: preedit=liao jie n=5
+    dump: preedit=jing ran n=5
+    dump: preedit=wo men yao n=5
+    dump: preedit=gan dao n=5
+    dump: preedit=li liang n=5
+    dump: preedit=xiao fei zhe n=5
+    dump: preedit=ma jia n=5
+    dump: preedit=jiu zhi dao n=5
+    dump: preedit=tui jian de n=5
+    dump: preedit=hai bu ru n=5
+    dump: preedit=jie duan n=5
+    dump: preedit=ban gong shi n=5
+    dump: preedit=hui fu n=5
+    dump: preedit=jian kang n=5
+    dump: preedit=xu yao n=5
+    dump: preedit=tong yi ge n=5
+    dump: preedit=fang zai n=5
+    dump: preedit=hui you n=5
+    dump: preedit=shi zai n=5
+    dump: preedit=ye mian n=5
+    dump: preedit=ye jiu n=5
+    dump: preedit=tong yang shi n=5
+    dump: preedit=zheng ming n=5
+    dump: preedit=dui xiang n=5
+    dump: preedit=yi sheng n=5
+    dump: preedit=zai na li n=5
+    dump: preedit=zhen dui n=5
+    dump: preedit=zhou mo n=5
+    dump: preedit=yao bu n=5
+    dump: preedit=reng ran n=5
+    dump: preedit=shu liang n=5
+    dump: preedit=yun dong n=5
+    dump: preedit=bu shi he n=5
+    dump: preedit=bao dao n=5
+    dump: preedit=dou zai n=5
+    dump: preedit=rang ni n=5
+    dump: preedit=wo zai n=5
+    dump: preedit=shi bai n=5
+    dump: preedit=mao si n=5
+    dump: preedit=zai wang shang n=5
+    dump: preedit=ju you n=5
+    dump: preedit=xiang dui n=5
+    dump: preedit=xing cheng le n=5
+    dump: preedit=bi jing n=5
+    dump: preedit=gan ma n=5
+    dump: preedit=xia ci n=5
+    dump: preedit=ze ren n=5
+    dump: preedit=qi jian n=5
+    dump: preedit=mei shen me n=5
+    dump: preedit=yi qian de n=5
+    dump: preedit=yi tian n=5
+    dump: preedit=bu hao n=5
+    dump: preedit=hui fu n=5
+    dump: preedit=chang qi n=5
+    dump: preedit=bu jin n=5
+    dump: preedit=suan le n=5
+    dump: preedit=bu ru n=5
+    dump: preedit=shan chu n=5
+    dump: preedit=xue de n=5
+    dump: preedit=zuo you de n=5
+    dump: preedit=xin li n=5
+    dump: preedit=wang ji n=5
+    dump: preedit=shu ru n=5
+    dump: preedit=bing bu neng n=5
+    dump: preedit=wo gan jue n=5
+    dump: preedit=shi shi n=5
+    dump: preedit=zai shuo n=5
+    dump: preedit=ken ding hui n=5
+    dump: preedit=zhi zuo n=5
+    dump: preedit=ke yi n=5
+    dump: preedit=zhi you yi ge n=5
+    dump: preedit=xiang shou n=5
+    dump: preedit=zhu ming de n=5
+    dump: preedit=jing ying n=5
+    dump: preedit=xia ban n=5
+    dump: preedit=cheng le n=5
+    dump: preedit=zhi you n=5
+    dump: preedit=dou yao n=5
+    dump: preedit=shi qu le n=5
+    dump: preedit=wo yi zhi n=5
+    dump: preedit=ming xian de n=5
+    dump: preedit=you qu de n=5
+    dump: preedit=hen kuai n=5
+    dump: preedit=jie he n=5
+    dump: preedit=wei hu n=5
+    dump: preedit=shen bian n=5
+    dump: preedit=zui da n=5
+    dump: preedit=yao zhu yi n=5
+    dump: preedit=zuo zhe n=5
+    dump: preedit=fou ze n=5
+    dump: preedit=nan jing n=5
+    dump: preedit=gu shi n=5
+    dump: preedit=wei zi ji n=5
+    dump: preedit=mu qin n=5
+    dump: preedit=deng lu n=5
+    dump: preedit=jin guan n=5
+    dump: preedit=ye hui n=5
+    dump: preedit=ben shen n=5
+    dump: preedit=jia qiang n=5
+    dump: preedit=zui zhong n=5
+    dump: preedit=sou suo n=5
+    dump: preedit=wai mian n=5
+    dump: preedit=wen wen n=5
+    dump: preedit=you xian gong si n=5
+    dump: preedit=ye zhi shi n=5
+    dump: preedit=ting dao n=5
+    dump: preedit=ke ai n=5
+    dump: preedit=ping shi n=5
+    dump: preedit=li yi n=5
+    dump: preedit=hen da n=5
+    dump: preedit=zuo hao n=5
+    dump: preedit=ke ji n=5
+    dump: preedit=cha xun n=5
+    dump: preedit=li lun shang n=5
+    dump: preedit=nei bu n=5
+    dump: preedit=ying yu n=5
+    dump: preedit=ren zhen n=5
+    dump: preedit=ye yao n=5
+    dump: preedit=bao bei n=5
+    dump: preedit=he he n=5
+    dump: preedit=wan shan n=5
+    dump: preedit=zui kai shi n=5
+    dump: preedit=fei chang de n=5
+    dump: preedit=hang zhou n=5
+    dump: preedit=hen nan n=5
+    dump: preedit=ji suan n=5
+    dump: preedit=xia yi ge n=5
+    dump: preedit=ru guo bu shi n=5
+    dump: preedit=wo ke yi n=5
+    dump: preedit=fang wen n=5
+    dump: preedit=fu qin n=5
+    dump: preedit=dao di shi n=5
+    dump: preedit=jin tian de n=5
+    dump: preedit=wo yao n=5
+    dump: preedit=jiu xiang n=5
+    dump: preedit=yin su n=5
+    dump: preedit=shang wu n=5
+    dump: preedit=ming que n=5
+    dump: preedit=peng you quan n=5
+    dump: preedit=zhen shi n=5
+    dump: preedit=shi mei you n=5
+    dump: preedit=gei wo men n=5
+    dump: preedit=zui zhong yao de shi n=5
+    dump: preedit=fan ying n=5
+    dump: preedit=fu he n=5
+    dump: preedit=gan shou n=5
+    dump: preedit=mei you ren n=5
+    dump: preedit=mei li n=5
+    dump: preedit=yue lai yue n=5
+    dump: preedit=jin le n=5
+    dump: preedit=ri zi n=5
+    dump: preedit=yi bian n=5
+    dump: preedit=ye xu yao n=5
+    dump: preedit=ling wai yi ge n=5
+    dump: preedit=qi dong n=5
+    dump: preedit=xing qu n=5
+    dump: preedit=shu ju ku n=5
+    dump: preedit=gan xie n=5
+    dump: preedit=da dian hua n=5
+    dump: preedit=dou bu n=5
+    dump: preedit=guo wai n=5
+    dump: preedit=wang wang n=5
+    dump: preedit=wen ti shi n=5
+    dump: preedit=te dian n=5
+    dump: preedit=wo bu n=5
+    dump: preedit=bi yao n=5
+    dump: preedit=fang qi n=5
+    dump: preedit=da le n=5
+    dump: preedit=neng kan dao n=5
+    dump: preedit=she qu n=5
+    dump: preedit=shu xi n=5
+    dump: preedit=wo xi huan n=5
+    dump: preedit=zhuan men n=5
+    dump: preedit=ji suan ji n=5
+    dump: preedit=xi wang neng n=5
+    dump: preedit=zheng zhi n=5
+    dump: preedit=dai lai le n=5
+    dump: preedit=hai shi you n=5
+    dump: preedit=yi fen n=5
+    dump: preedit=dian zi n=5
+    dump: preedit=bu ying gai n=5
+    dump: preedit=fu za n=5
+    dump: preedit=hui yuan n=5
+    dump: preedit=mei mei n=5
+    dump: preedit=qu yu n=5
+    dump: preedit=xing qi n=5
+    dump: preedit=cheng du n=5
+    dump: preedit=zi ran n=5
+    dump: preedit=ren he yi ge n=5
+    dump: preedit=zheng ti n=5
+    dump: preedit=dou zhi dao n=5
+    dump: preedit=wei yi n=5
+    dump: preedit=ji zhong n=5
+    dump: preedit=huan le n=5
+    dump: preedit=tou ru n=5
+    dump: preedit=qian ti xia n=5
+    dump: preedit=dui le n=5
+    dump: preedit=lei xing n=5
+    dump: preedit=xian zhi n=5
+    dump: preedit=bang wo n=5
+    dump: preedit=tong ji n=5
+    dump: preedit=han guo n=5
+    dump: preedit=zheng que n=5
+    dump: preedit=zuo le n=5
+    dump: preedit=wo ji de n=5
+    dump: preedit=zong de lai shuo n=5
+    dump: preedit=zan men n=5
+    dump: preedit=guan xin n=5
+    dump: preedit=shang shi n=5
+    dump: preedit=na pa shi n=5
+    dump: preedit=cai qu n=5
+    dump: preedit=gui hua n=5
+    dump: preedit=shi xian le n=5
+    dump: preedit=zhuang bei n=5
+    dump: preedit=ba ba n=5
+    dump: preedit=nian qing n=5
+    dump: preedit=zai xian n=5
+    dump: preedit=hen shao n=5
+    dump: preedit=bu de n=5
+    dump: preedit=mian fei de n=5
+    dump: preedit=wan quan shi n=5
+    dump: preedit=liang hao n=5
+    dump: preedit=gou tong n=5
+    dump: preedit=yao shi n=5
+    dump: preedit=shuo ta n=5
+    dump: preedit=yi jing bei n=5
+    dump: preedit=fang qi le n=5
+    dump: preedit=bie de n=5
+    dump: preedit=he li de n=5
+    dump: preedit=cheng ji n=5
+    dump: preedit=bang mang n=5
+    dump: preedit=shuang fang n=5
+    dump: preedit=zui hao n=5
+    dump: preedit=ji bian shi n=5
+    dump: preedit=hai shi hui n=5
+    dump: preedit=fu jin n=5
+    dump: preedit=lei si n=5
+    dump: preedit=xiao xin n=5
+    dump: preedit=shu xi n=5
+    dump: preedit=mai le n=5
+    dump: preedit=dian ji n=5
+    dump: preedit=lai kan n=5
+    dump: preedit=ge wei n=5
+    dump: preedit=ta men de n=5
+    dump: preedit=nv er n=5
+    dump: preedit=shi qu n=5
+    dump: preedit=ren lei n=5
+    dump: preedit=ju xing n=5
+    dump: preedit=ren wu n=5
+    dump: preedit=shi yi zhong n=5
+    dump: preedit=ye ke neng n=5
+    dump: preedit=ti sheng n=5
+    dump: preedit=ke xue n=5
+    dump: preedit=cheng du n=5
+    dump: preedit=qing xiang yu n=5
+    dump: preedit=ju da n=5
+    dump: preedit=dang wo men n=5
+    dump: preedit=ji hu shi n=5
+    dump: preedit=tai du n=5
+    dump: preedit=ji qi n=5
+    dump: preedit=cheng ji n=5
+    dump: preedit=yan se n=5
+    dump: preedit=dui zi ji de n=5
+    dump: preedit=ping jia n=5
+    dump: preedit=na le n=5
+    dump: preedit=feng ge n=5
+    dump: preedit=wo bu shi n=5
+    dump: preedit=na wo n=5
+    dump: preedit=xiong di n=5
+    dump: preedit=shuo de shi n=5
+    dump: preedit=jie jue le n=5
+    dump: preedit=kun nan n=5
+    dump: preedit=shao le n=5
+    dump: preedit=chan ye n=5
+    dump: preedit=geng duo de n=5
+    dump: preedit=jiu shi yin wei n=5
+    dump: preedit=mei ren n=5
+    dump: preedit=hai bu cuo n=5
+    dump: preedit=ke yi ba n=5
+    dump: preedit=liao jie n=5
+    dump: preedit=jiao shi n=5
+    dump: preedit=you li yu n=5
+    dump: preedit=zhe li mian n=5
+    dump: preedit=fan ying n=5
+    dump: preedit=feng fu n=5
+    dump: preedit=zhi de n=5
+    dump: preedit=zhong wen n=5
+    dump: preedit=yi zhi shi n=5
+    dump: preedit=jiu shi ni n=5
+    dump: preedit=zhi shi yi ge n=5
+    dump: preedit=gai nian n=5
+    dump: preedit=yi ran shi n=5
+    dump: preedit=qing wen n=5
+    dump: preedit=chu lai le n=5
+    dump: preedit=dang di n=5
+    dump: preedit=mian qian n=5
+    dump: preedit=guan dian n=5
+    dump: preedit=ren de n=5
+    dump: preedit=you le n=5
+    dump: preedit=pei he n=5
+    dump: preedit=jiao yu n=5
+    dump: preedit=zhu ti n=5
+    dump: preedit=yu dao le n=5
+    dump: preedit=du li n=5
+    dump: preedit=na zhong n=5
+    dump: preedit=nei zhong n=5
+    dump: preedit=li jie wei n=5
+    dump: preedit=zhong guo ren n=5
+    dump: preedit=tong zhi n=5
+    dump: preedit=dai li n=5
+    dump: preedit=jiang di n=5
+    dump: preedit=wang wang shi n=5
+    dump: preedit=zhi ye n=5
+    dump: preedit=cong lai n=5
+    dump: preedit=guo qu le n=5
+    dump: preedit=ping lun n=5
+    dump: preedit=ji ke n=5
+    dump: preedit=xiang ying n=5
+    dump: preedit=wo cong n=5
+    dump: preedit=zhe fang mian n=5
+    dump: preedit=nv sheng n=5
+    dump: preedit=jing ji n=5
+    dump: preedit=yue fen n=5
+    dump: preedit=jiu shi ge n=5
+    dump: preedit=wang ke n=5
+    dump: preedit=xing neng n=5
+    dump: preedit=zong he n=5
+    dump: preedit=xuan ze n=5
+    dump: preedit=ni ke neng n=5
+    dump: preedit=you bu shao n=5
+    dump: preedit=fang mian n=5
+    dump: preedit=gai ge n=5
+    dump: preedit=cong er n=5
+    dump: preedit=neng zuo dao n=5
+    dump: preedit=ying wen n=5
+    dump: preedit=mei nian n=5
+    dump: preedit=tong ku n=5
+    dump: preedit=yi shu n=5
+    dump: preedit=zhe yi n=5
+    dump: preedit=yi shi n=5
+    dump: preedit=da de n=5
+    dump: preedit=sheng huo de n=5
+    dump: preedit=xiao fei n=5
+    dump: preedit=ying guo n=5
+    dump: preedit=jie mu n=5
+    dump: preedit=shang lai n=5
+    dump: preedit=hai neng n=5
+    dump: preedit=shang pin n=5
+    dump: preedit=mu di shi n=5
+    dump: preedit=na bian n=5
+    dump: preedit=nei bian n=5
+    dump: preedit=shi wo men n=5
+    dump: preedit=ti shi n=5
+    dump: preedit=dou yi jing n=5
+    dump: preedit=he li n=5
+    dump: preedit=wo kan dao n=5
+    dump: preedit=yong yu n=5
+    dump: preedit=ying dang n=5
+    dump: preedit=wo jiu shi n=5
+    dump: preedit=fa sheng zai n=5
+    dump: preedit=deng dai n=5
+    dump: preedit=xing dong n=5
+    dump: preedit=ying xiang n=5
+    dump: preedit=xue le n=5
+    dump: preedit=ta men shi n=5
+    dump: preedit=gan shen me n=5
+    dump: preedit=zui da de n=5
+    dump: preedit=bei jing n=5
+    dump: preedit=ta de n=5
+    dump: preedit=lai dao n=5
+    dump: preedit=li you n=5
+    dump: preedit=zhong jian n=5
+    dump: preedit=fan yi n=5
+    dump: preedit=jiu zai n=5
+    dump: preedit=ji qi xue xi n=5
+    dump: preedit=fa hui n=5
+    dump: preedit=hui dao n=5
+    dump: preedit=chi xu n=5
+    dump: preedit=shi ye n=5
+    dump: preedit=ti chu le n=5
+    dump: preedit=lao da n=5
+    dump: preedit=zhi ding n=5
+    dump: preedit=zhui qiu n=5
+    dump: preedit=pi fu n=5
+    dump: preedit=liu xia n=5
+    dump: preedit=ji ran n=5
+    dump: preedit=sheng huo zhong n=5
+    dump: preedit=gong bu n=5
+    dump: preedit=bu hao yi si n=5
+    dump: preedit=rang da jia n=5
+    dump: preedit=bu tai n=5
+    dump: preedit=da bu fen n=5
+    dump: preedit=ban li n=5
+    dump: preedit=he shi n=5
+    dump: preedit=jiu suan n=5
+    dump: preedit=cheng shu n=5
+    dump: preedit=dang qian n=5
+    dump: preedit=duo le n=5
+    dump: preedit=tian jia n=5
+    dump: preedit=jiao shou n=5
+    dump: preedit=jing zheng n=5
+    dump: preedit=ru guo ni xiang n=5
+    dump: preedit=bi ye hou n=5
+    dump: preedit=nv xing n=5
+    dump: preedit=kan guo n=5
+    dump: preedit=ke yi rang n=5
+    dump: preedit=jia you n=5
+    dump: preedit=shi yong le n=5
+    dump: preedit=bu dong n=5
+    dump: preedit=pang bian n=5
+    dump: preedit=gao xing n=5
+    dump: preedit=chuang xin n=5
+    dump: preedit=nei cun n=5
+    dump: preedit=xin ku n=5
+    dump: preedit=jian dan n=5
+    dump: preedit=guan jian shi n=5
+    dump: preedit=shi de n=5
+    dump: preedit=bu dei n=5
+    dump: preedit=bu jin shi n=5
+    dump: preedit=hui dao n=5
+    dump: preedit=hu lian wang n=5
+    dump: preedit=shi yong yu n=5
+    dump: preedit=wei xin gong zhong hao n=5
+    dump: preedit=ran hou jiu n=5
+    dump: preedit=ni yao n=5
+    dump: preedit=zheng shi n=5
+    dump: preedit=chong qing n=5
+    dump: preedit=ying pan n=5
+    dump: preedit=ren she n=5
+    dump: preedit=gong ji n=5
+    dump: preedit=zuo dao n=5
+    dump: preedit=xiang xi n=5
+    dump: preedit=dan shi ta n=5
+    dump: preedit=ben lai jiu n=5
+    dump: preedit=ji ben shi n=5
+    dump: preedit=tian ya n=5
+    dump: preedit=jian zhi shi n=5
+    dump: preedit=dang ran le n=5
+    dump: preedit=ren cai n=5
+    dump: preedit=bi ji ben n=5
+    dump: preedit=wen ding de n=5
+    dump: preedit=ke yi kan n=5
+    dump: preedit=guan zhong n=5
+    dump: preedit=ke lian n=5
+    dump: preedit=you le n=5
+    dump: preedit=you shi n=5
+    dump: preedit=cai shi n=5
+    dump: preedit=you shi n=5
+    dump: preedit=xun zhao n=5
+    dump: preedit=you bang zhu n=5
+    dump: preedit=ru guo yao n=5
+    dump: preedit=da pan n=5
+    dump: preedit=huo xu n=5
+    dump: preedit=zhu dong n=5
+    dump: preedit=kai shi le n=5
+    dump: preedit=yi jing you n=5
+    dump: preedit=bing du n=5
+    dump: preedit=te shu n=5
+    dump: preedit=zhi dao n=5
+    dump: preedit=jiu zhe me n=5
+    dump: preedit=gai shan n=5
+    dump: preedit=xun su n=5
+    dump: preedit=xia jiang n=5
+    dump: preedit=bi li n=5
+    dump: preedit=jie chu dao n=5
+    dump: preedit=hao jiu n=5
+    dump: preedit=shang ye n=5
+    dump: preedit=cuo shi n=5
+    dump: preedit=geng shi n=5
+    dump: preedit=ting le n=5
+    dump: preedit=ming nian n=5
+    dump: preedit=fang jian n=5
+    dump: preedit=jing dian n=5
+    dump: preedit=jiu neng n=5
+    dump: preedit=shang qu n=5
+    dump: preedit=you xiu n=5
+    dump: preedit=bu ru n=5
+    dump: preedit=jin zhang n=5
+    dump: preedit=sui ran shi n=5
+    dump: preedit=qun zhong n=5
+    dump: preedit=qi guai n=5
+    dump: preedit=you xiao n=5
+    dump: preedit=ti qian n=5
+    dump: preedit=chu yu n=5
+    dump: preedit=dan shi n=5
+    dump: preedit=tou zi zhe n=5
+    dump: preedit=bu zu n=5
+    dump: preedit=di que n=5
+    dump: preedit=hao ba n=5
+    dump: preedit=shang hai n=5
+    dump: preedit=ke yi cong n=5
+    dump: preedit=qi dai n=5
+    dump: preedit=yi yi n=5
+    dump: preedit=yi lai n=5
+    dump: preedit=bu ke n=5
+    dump: preedit=dai zhe n=5
+    dump: preedit=ni zhi dao n=5
+    dump: preedit=ji zhong zai n=5
+    dump: preedit=jing li guo n=5
+    dump: preedit=gui mo n=5
+    dump: preedit=biao da n=5
+    dump: preedit=ye bu cuo n=5
+    dump: preedit=ju shuo n=5
+    dump: preedit=na yang de n=5
+    dump: preedit=jin liang n=5
+    dump: preedit=jiu dian n=5
+    dump: preedit=bing bu shi n=5
+    dump: preedit=jiu shi wei le n=5
+    dump: preedit=jie kou n=5
+    dump: preedit=you yi dian n=5
+    dump: preedit=mei yuan n=5
+    dump: preedit=jiao du n=5
+    dump: preedit=wo men hui n=5
+    dump: preedit=dong zuo n=5
+    dump: preedit=ji neng n=5
+    dump: preedit=dan shi ni n=5
+    dump: preedit=bu liao n=5
+    dump: preedit=pan duan n=5
+    dump: preedit=xiao shuo n=5
+    dump: preedit=guang dong n=5
+    dump: preedit=zi shen n=5
+    dump: preedit=bu liao jie n=5
+    dump: preedit=you zi ji n=5
+    dump: preedit=gui ze n=5
+    dump: preedit=ge zhong n=5
+    dump: preedit=qu bie n=5
+    dump: preedit=dian de n=5
+    dump: preedit=shou xian yao n=5
+    dump: preedit=de guo n=5
+    dump: preedit=jin lai n=5
+    dump: preedit=zheng li n=5
+    dump: preedit=ti xi n=5
+    dump: preedit=ti xian n=5
+    dump: preedit=ni shuo n=5
+    dump: preedit=qing song n=5
+    dump: preedit=shou duan n=5
+    dump: preedit=fa sheng de n=5
+    dump: preedit=wan cheng le n=5
+    dump: preedit=zhi yu n=5
+    dump: preedit=can kao n=5
+    dump: preedit=you xiang n=5
+    dump: preedit=you shi hou n=5
+    dump: preedit=bi jiao gao n=5
+    dump: preedit=zhan lue n=5
+    dump: preedit=zhang wo n=5
+    dump: preedit=chu kou n=5
+    dump: preedit=fang xin n=5
+    dump: preedit=xian zai shi n=5
+    dump: preedit=zhang hao n=5
+    dump: preedit=hao kan n=5
+    dump: preedit=yi duan n=5
+    dump: preedit=rang ta n=5
+    dump: preedit=chuang zao n=5
+    dump: preedit=shi qi n=5
+    dump: preedit=wo men shi n=5
+    dump: preedit=wan mei de n=5
+    dump: preedit=na dao le n=5
+    dump: preedit=bi mian n=5
+    dump: preedit=jie chu n=5
+    dump: preedit=zhe ge guo cheng n=5
+    dump: preedit=shi xing n=5
+    dump: preedit=si kao n=5
+    dump: preedit=zai ni n=5
+    dump: preedit=zhe ge jie duan n=5
+    dump: preedit=bian de n=5
+    dump: preedit=tui guang n=5
+    dump: preedit=ye xu shi n=5
+    dump: preedit=ye mei n=5
+    dump: preedit=er qie shi n=5
+    dump: preedit=xin zhong n=5
+    dump: preedit=chong fen n=5
+    dump: preedit=zi wo n=5
+    dump: preedit=zhao kai n=5
+    dump: preedit=gei ta men n=5
+    dump: preedit=zhong yang n=5
+    dump: preedit=gen ben bu n=5
+    dump: preedit=tu di n=5
+    dump: preedit=he shi n=5
+    dump: preedit=jian yi da jia n=5
+    dump: preedit=jiu yao n=5
+    dump: preedit=xian zai n=5
+    dump: preedit=gu ding de n=5
+    dump: preedit=pei yang n=5
+    dump: preedit=ju li n=5
+    dump: preedit=ming cheng n=5
+    dump: preedit=liang ren n=5
+    dump: preedit=ou zhou n=5
+    dump: preedit=jia ban n=5
+    dump: preedit=yang guang n=5
+    dump: preedit=jia ru le n=5
+    dump: preedit=hao xiang shi n=5
+    dump: preedit=jiang le n=5
+    dump: preedit=yi zhong n=5
+    dump: preedit=xie ye n=5
+    dump: preedit=xiao jie n=5
+    dump: preedit=reng ran shi n=5
+    dump: preedit=kuai su n=5
+    dump: preedit=xiang qi n=5
+    dump: preedit=yi ju n=5
+    dump: preedit=bu zen me n=5
+    dump: preedit=zhi du n=5
+    dump: preedit=wo shuo n=5
+    dump: preedit=ti dao le n=5
+    dump: preedit=qiang diao n=5
+    dump: preedit=ji ben shang n=5
+    dump: preedit=zhe yi qie n=5
+    dump: preedit=zhi lei n=5
+    dump: preedit=wu han n=5
+    dump: preedit=dao zui hou n=5
+    dump: preedit=bu zai n=5
+    dump: preedit=fu jian n=5
+    dump: preedit=xian dai n=5
+    dump: preedit=yi dan n=5
+    dump: preedit=bu zhi shi n=5
+    dump: preedit=ru guo bu n=5
+    dump: preedit=yi bian n=5
+    dump: preedit=bu jiu shi n=5
+    dump: preedit=ni qu n=5
+    dump: preedit=tui jin n=5
+    dump: preedit=tui dong n=5
+    dump: preedit=qian de n=5
+    dump: preedit=bu chao guo n=5
+    dump: preedit=li xiang n=5
+    dump: preedit=bu dai biao n=5
+    dump: preedit=yi si shi n=5
+    dump: preedit=bi jing shi n=5
+    dump: preedit=fei ji n=5
+    dump: preedit=ren shi n=5
+    dump: preedit=zhe dong xi n=5
+    dump: preedit=jiu bu neng n=5
+    dump: preedit=lun wen n=5
+    dump: preedit=jin ri n=5
+    dump: preedit=zai yu n=5
+    dump: preedit=bao zhang n=5
+    dump: preedit=zhu ren n=5
+    dump: preedit=she ji n=5
+    dump: preedit=xian zai yi jing n=5
+    dump: preedit=jiu hao xiang n=5
+    dump: preedit=di wei n=5
+    dump: preedit=ci ci n=5
+    dump: preedit=wang ye n=5
+    dump: preedit=zi ji shi n=5
+    dump: preedit=jiu bu yao n=5
+    dump: preedit=gei ta n=5
+    dump: preedit=jia le n=5
+    dump: preedit=bian ji n=5
+    dump: preedit=wang ke n=5
+    dump: preedit=jian zhu n=5
+    dump: preedit=ju jue n=5
+    dump: preedit=yi chang n=5
+    dump: preedit=ye bu yao n=5
+    dump: preedit=xiang xiang n=5
+    dump: preedit=ming que de n=5
+    dump: preedit=jiu xing n=5
+    dump: preedit=li mian you n=5
+    dump: preedit=ge ren gan jue n=5
+    dump: preedit=xiao hai n=5
+    dump: preedit=zhi chu n=5
+    dump: preedit=zhu jian n=5
+    dump: preedit=tuan dui n=5
+    dump: preedit=jin kuai n=5
+    dump: preedit=zai dang shi n=5
+    dump: preedit=chu le n=5
+    dump: preedit=yi kuai n=5
+    dump: preedit=yi ben shu n=5
+    dump: preedit=min zu n=5
+    dump: preedit=li run n=5
+    dump: preedit=wen dang n=5
+    dump: preedit=bu da n=5
+    dump: preedit=tong chang n=5
+    dump: preedit=ni jiu n=5
+    dump: preedit=guang da n=5
+    dump: preedit=qiang lie n=5
+    dump: preedit=cheng dan n=5
+    dump: preedit=shang zhang n=5
+    dump: preedit=ji shi nian n=5
+    dump: preedit=zui hao shi n=5
+    dump: preedit=ping lun n=5
+    dump: preedit=fa zhan n=5
+    dump: preedit=gan ma n=5
+    dump: preedit=jiu bu n=5
+    dump: preedit=jiu you n=5
+    dump: preedit=zuo dao le n=5
+    dump: preedit=he he n=5
+    dump: preedit=zuo chu n=5
+    dump: preedit=tu po n=5
+    dump: preedit=gong kai n=5
+    dump: preedit=xian shi n=5
+    dump: preedit=yi qian n=5
+    dump: preedit=zhuan qian n=5
+    dump: preedit=shu fu n=5
+    dump: preedit=you xie n=5
+    dump: preedit=zhu yi dao n=5
+    dump: preedit=zai jia n=5
+    dump: preedit=da an shi n=5
+    dump: preedit=fa guo n=5
+    dump: preedit=zi xun n=5
+    dump: preedit=wan mei n=5
+    dump: preedit=fa lv n=5
+    dump: preedit=bu duo n=5
+    dump: preedit=chong man n=5
+    dump: preedit=jiu zhi jie n=5
+    dump: preedit=jiu hao n=5
+    dump: preedit=zheng hao n=5
+    dump: preedit=bu yun xu n=5
+    dump: preedit=tian qi n=5
+    dump: preedit=zuo zai n=5
+    dump: preedit=ni xian zai n=5
+    dump: preedit=ji zhi n=5
+    dump: preedit=xiao de n=5
+    dump: preedit=zai li mian n=5
+    dump: preedit=huan zhe n=5
+    dump: preedit=bu qing chu n=5
+    dump: preedit=bao cun n=5
+    dump: preedit=bian ji n=5
+    dump: preedit=shang shu n=5
+    dump: preedit=yun xu n=5
+    dump: preedit=bi li n=5
+    dump: preedit=cong shi n=5
+    dump: preedit=zhang wo le n=5
+    dump: preedit=cai yong le n=5
+    dump: preedit=wei le rang n=5
+    dump: preedit=zai xue xiao n=5
+    dump: preedit=zhuang kuang n=5
+    dump: preedit=tian jin n=5
+    dump: preedit=que fa n=5
+    dump: preedit=fu ze ren n=5
+    dump: preedit=chong man le n=5
+    dump: preedit=zuo chu n=5
+    dump: preedit=di tu n=5
+    dump: preedit=lao zi n=5
+    dump: preedit=ji xu n=5
+    dump: preedit=ru xia n=5
+    dump: preedit=su she n=5
+    dump: preedit=zi ji zai n=5
+    dump: preedit=huai yi n=5
+    dump: preedit=bu shuo le n=5
+    dump: preedit=deng fang mian n=5
+    dump: preedit=da xing n=5
+    dump: preedit=hen you n=5
+    dump: preedit=qiang da n=5
+    dump: preedit=wei zhu n=5
+    dump: preedit=shi ji n=5
+    dump: preedit=dian xin n=5
+    dump: preedit=ma fan n=5
+    dump: preedit=liu cheng n=5
+    dump: preedit=wei shen me bu n=5
+    dump: preedit=dui wo lai shuo n=5
+    dump: preedit=pai she n=5
+    dump: preedit=ding yi n=5
+    dump: preedit=nan yi n=5
+    dump: preedit=bu hui you n=5
+    dump: preedit=liang tian n=5
+    dump: preedit=guo le n=5
+    dump: preedit=jin wan n=5
+    dump: preedit=zhe wei n=5
+    dump: preedit=you neng li n=5
+    dump: preedit=zhe wan yi n=5
+    dump: preedit=gao su n=5
+    dump: preedit=zong jie n=5
+    dump: preedit=kai fang n=5
+    dump: preedit=zhong da n=5
+    dump: preedit=jin ru le n=5
+    dump: preedit=bao han le n=5
+    dump: preedit=jiu zhi neng n=5
+    dump: preedit=guan cha n=5
+    dump: preedit=gan jin n=5
+    dump: preedit=wo men ye n=5
+    dump: preedit=jiu shi yao n=5
+    dump: preedit=biao ming n=5
+    dump: preedit=ti jiao n=5
+    dump: preedit=hai you ge n=5
+    dump: preedit=jiu cheng le n=5
+    dump: preedit=yi zhi n=5
+    dump: preedit=zhuan qian de n=5
+    dump: preedit=mu lu n=5
+    dump: preedit=cheng yuan n=5
+    dump: preedit=wei ruan n=5
+    dump: preedit=cheng zhang n=5
+    dump: preedit=you kong n=5
+    dump: preedit=dao zhe li n=5
+    dump: preedit=ba suo you n=5
+    dump: preedit=mao dun n=5
+    dump: preedit=bang zhu ni n=5
+    dump: preedit=mou xie n=5
+    dump: preedit=que bao n=5
+    dump: preedit=jiu ying gai n=5
+    dump: preedit=xiang bi n=5
+    dump: preedit=shi jian n=5
+    dump: preedit=lian he n=5
+    dump: preedit=hui bu hui n=5
+    dump: preedit=yi ge ren de n=5
+    dump: preedit=zai ri ben n=5
+    dump: preedit=xiao de n=5
+    dump: preedit=qu xiao n=5
+    dump: preedit=quan li n=5
+    dump: preedit=bu ke yi n=5
+    dump: preedit=men kou n=5
+    dump: preedit=yi ban n=5
+    dump: preedit=fa song n=5
+    dump: preedit=yi jing zai n=5
+    dump: preedit=ti xing n=5
+    dump: preedit=can shu n=5
+    dump: preedit=yi tao n=5
+    dump: preedit=wan jia n=5
+    dump: preedit=wei dao n=5
+    dump: preedit=jue se n=5
+    dump: preedit=fei chang duo n=5
+    dump: preedit=shang sheng n=5
+    dump: preedit=hui ying xiang n=5
+    dump: preedit=zhi yao shi n=5
+    dump: preedit=xiao de n=5
+    dump: preedit=da bu fen de n=5
+    dump: preedit=gao ji n=5
+    dump: preedit=shen ru n=5
+    dump: preedit=shi xing n=5
+    dump: preedit=ni ye ke yi n=5
+    dump: preedit=jian li zai n=5
+    dump: preedit=xiang yao n=5
+    dump: preedit=zai na li n=5
+    dump: preedit=miao shu n=5
+    dump: preedit=shen me shi hou n=5
+    dump: preedit=ji ji n=5
+    dump: preedit=lu shang n=5
+    dump: preedit=liao jie dao n=5
+    dump: preedit=xun lian n=5
+    dump: preedit=zhong shi n=5
+    dump: preedit=sun shi n=5
+    dump: preedit=che di n=5
+    dump: preedit=yi ming n=5
+    dump: preedit=jiu zai yu n=5
+    dump: preedit=ling ren n=5
+    dump: preedit=lang fei n=5
+    dump: preedit=yin xiang n=5
+    dump: preedit=zui jin de n=5
+    dump: preedit=yi ran shi n=5
+    dump: preedit=xue yuan n=5
+    dump: preedit=bu zai shi n=5
+    dump: preedit=zhu ming n=5
+    dump: preedit=zui ji ben n=5
+    dump: preedit=dao li n=5
+    dump: preedit=gu ding n=5
+    dump: preedit=kuo da n=5
+    dump: preedit=shen fen n=5
+    dump: preedit=kan le n=5
+    dump: preedit=zhao le n=5
+    dump: preedit=shang wu n=5
+    dump: preedit=shi ji shang n=5
+    dump: preedit=ye yi yang n=5
+    dump: preedit=fa chu n=5
+    dump: preedit=cheng ren n=5
+    dump: preedit=yi zhi n=5
+    dump: preedit=zhe liang nian n=5
+    dump: preedit=ta hai n=5
+    dump: preedit=xian shi n=5
+    dump: preedit=di san ge n=5
+    dump: preedit=liang hao de n=5
+    dump: preedit=cha kan n=5
+    dump: preedit=qi shi ye n=5
+    dump: preedit=you bi yao n=5
+    dump: preedit=shuo le n=5
+    dump: preedit=ying xiong n=5
+    dump: preedit=bai du n=5
+    dump: preedit=xian shi n=5
+    dump: preedit=xiang tong n=5
+    dump: preedit=zhi yao n=5
+    dump: preedit=gao su wo men n=5
+    dump: preedit=bu fu he n=5
+    dump: preedit=mian shi n=5
+    dump: preedit=zhi wai n=5
+    dump: preedit=wan yuan n=5
+    dump: preedit=xue hui n=5
+    dump: preedit=zhi zhong n=5
+    dump: preedit=zai zhe zhong n=5
+    dump: preedit=jiao tong n=5
+    dump: preedit=jin jin n=5
+    dump: preedit=jing cha n=5
+    dump: preedit=wo ceng jing n=5
+    dump: preedit=wo yi qian n=5
+    dump: preedit=shuo shen me n=5
+    dump: preedit=da de n=5
+    dump: preedit=bu kao lv n=5
+    dump: preedit=te se n=5
+    dump: preedit=gen wo n=5
+    dump: preedit=wu yi shi n=5
+    dump: preedit=zai bei jing n=5
+    dump: preedit=biao qing n=5
+    dump: preedit=da an n=5
+    dump: preedit=dan wo men n=5
+    dump: preedit=shi ji shang shi n=5
+    dump: preedit=zhi dao le n=5
+    dump: preedit=ru guo neng n=5
+    dump: preedit=qing chu n=5
+    dump: preedit=zui duo n=5
+    dump: preedit=yin wei shi n=5
+    dump: preedit=xue ba n=5
+    dump: preedit=du shu n=5
+    dump: preedit=liang nian n=5
+    dump: preedit=gan dong n=5
+    dump: preedit=zhong duo n=5
+    dump: preedit=cheng wei yi ge n=5
+    dump: preedit=qi zhong yi ge n=5
+    dump: preedit=wo zhi shi n=5
+    dump: preedit=nv zi n=5
+    dump: preedit=ba zhe ge n=5
+    dump: preedit=shou fei n=5
+    dump: preedit=man man de n=5
+    dump: preedit=bu shuo n=5
+    dump: preedit=dou neng n=5
+    dump: preedit=shi yan n=5
+    dump: preedit=wo xi wang n=5
+    dump: preedit=zhao ge n=5
+    dump: preedit=zheng qu n=5
+    dump: preedit=hai zi men n=5
+    dump: preedit=gao du n=5
+    dump: preedit=xi zao n=5
+    dump: preedit=shi ji n=5
+    dump: preedit=na xie n=5
+    dump: preedit=you suo n=5
+    dump: preedit=wo men zhi dao n=5
+    dump: preedit=bi jiao shao n=5
+    dump: preedit=zu cheng n=5
+    dump: preedit=tai yang n=5
+    dump: preedit=zhuan zai n=5
+    dump: preedit=zhou wei n=5
+    dump: preedit=xiang xi de n=5
+    dump: preedit=hei se n=5
+    dump: preedit=jin ri n=5
+    dump: preedit=mian lin n=5
+    dump: preedit=nian ling n=5
+    dump: preedit=xing ge n=5
+    dump: preedit=hao ji ge n=5
+    dump: preedit=nan yi n=5
+    dump: preedit=qu shi n=5
+    dump: preedit=shun li n=5
+    dump: preedit=zui hou yi ge n=5
+    dump: preedit=dao yan n=5
+    dump: preedit=ge yue n=5
+    dump: preedit=jian ce n=5
+    dump: preedit=wo jian yi n=5
+    dump: preedit=xuan le n=5
+    dump: preedit=duo ge n=5
+    dump: preedit=gu ji n=5
+    dump: preedit=wei yu n=5
+    dump: preedit=yi jing kai shi n=5
+    dump: preedit=shang ke n=5
+    dump: preedit=shi zhong n=5
+    dump: preedit=shi shang n=5
+    dump: preedit=ba zhe xie n=5
+    dump: preedit=tiao jian xia n=5
+    dump: preedit=shi wo n=5
+    dump: preedit=zeng qiang n=5
+    dump: preedit=wei sha n=5
+    dump: preedit=cong lai bu n=5
+    dump: preedit=ye bi jiao n=5
+    dump: preedit=jiang hui n=5
+    dump: preedit=te bie de n=5
+    dump: preedit=dai kuan n=5
+    dump: preedit=lao da n=5
+    dump: preedit=nv peng you n=5
+    dump: preedit=bu ying xiang n=5
+    dump: preedit=zhe ge shi qing n=5
+    dump: preedit=hai hui n=5
+    dump: preedit=ji bie n=5
+    dump: preedit=qing xu n=5
+    dump: preedit=ren min bi n=5
+    dump: preedit=da duo shi n=5
+    dump: preedit=wen le n=5
+    dump: preedit=wo zhi neng n=5
+    dump: preedit=da ji n=5
+    dump: preedit=tu chu n=5
+    dump: preedit=lou shang n=5
+    dump: preedit=zhi biao n=5
+    dump: preedit=yi sheng n=5
+    dump: preedit=bu tong yu n=5
+    dump: preedit=yong yuan shi n=5
+    dump: preedit=li yi n=5
+    dump: preedit=bu dui n=5
+    dump: preedit=hen jiu n=5
+    dump: preedit=ju bei n=5
+    dump: preedit=xuan bu n=5
+    dump: preedit=ti yan n=5
+    dump: preedit=er yan n=5
+    dump: preedit=nong ye n=5
+    dump: preedit=jin zhi n=5
+    dump: preedit=xiao zhao n=5
+    dump: preedit=ge fang mian n=5
+    dump: preedit=ye bu yong n=5
+    dump: preedit=yi sheng n=5
+    dump: preedit=gong ye n=5
+    dump: preedit=zhi ding n=5
+    dump: preedit=biao da de n=5
+    dump: preedit=ke neng you n=5
+    dump: preedit=dui wo n=5
+    dump: preedit=you shi jian n=5
+    dump: preedit=mo kuai n=5
+    dump: preedit=wo hai n=5
+    dump: preedit=hai shi zai n=5
+    dump: preedit=neng fou n=5
+    dump: preedit=sheng qi n=5
+    dump: preedit=kai de n=5
+    dump: preedit=zui chang jian n=5
+    dump: preedit=tou fa n=5
+    dump: preedit=sheng qi n=5
+    dump: preedit=shou gou n=5
+    dump: preedit=dui bu qi n=5
+    dump: preedit=jiu jue de n=5
+    dump: preedit=duo ci n=5
+    dump: preedit=lao ren n=5
+    dump: preedit=xiao lv n=5
+    dump: preedit=ji da de n=5
+    dump: preedit=yan ge n=5
+    dump: preedit=bu chong n=5
+    dump: preedit=ding wei n=5
+    dump: preedit=dui yu n=5
+    dump: preedit=fang jia n=5
+    dump: preedit=shou ci n=5
+    dump: preedit=zao dian n=5
+    dump: preedit=zuo de n=5
+    dump: preedit=zhe yang de ren n=5
+    dump: preedit=duo nian n=5
+    dump: preedit=tian xia n=5
+    dump: preedit=sheng yi n=5
+    dump: preedit=gao ding n=5
+    dump: preedit=shi min n=5
+    dump: preedit=hen duo ren n=5
+    dump: preedit=hua de n=5
+    dump: preedit=xin shang n=5
+    dump: preedit=si le n=5
+    dump: preedit=gai bian le n=5
+    dump: preedit=bang ni n=5
+    dump: preedit=hui yi n=5
+    dump: preedit=cai fang n=5
+    dump: preedit=wan le n=5
+    dump: preedit=wu qi n=5
+    dump: preedit=jing chang hui n=5
+    dump: preedit=jiao xue n=5
+    dump: preedit=wei shen me hui n=5
+    dump: preedit=wan le n=5
+    dump: preedit=ba wo n=5
+    dump: preedit=ke cheng n=5
+    dump: preedit=chang chang n=5
+    dump: preedit=yu ji n=5
+    dump: preedit=wei xian n=5
+    dump: preedit=da xue sheng n=5
+    dump: preedit=nian dai n=5
+    dump: preedit=gen ni n=5
+    dump: preedit=ju ban n=5
+    dump: preedit=zi mei ti n=5
+    dump: preedit=guo ran n=5
+    dump: preedit=hua ti n=5
+    dump: preedit=er dui yu n=5
+    dump: preedit=ying xiang dao n=5
+    dump: preedit=fan hui n=5
+    dump: preedit=jiang lai n=5
+    dump: preedit=le ne n=5
+    dump: preedit=zhi dao n=5
+    dump: preedit=bu zhong yao n=5
+    dump: preedit=ye kai shi n=5
+    dump: preedit=wan an n=5
+    dump: preedit=xin hao n=5
+    dump: preedit=er bu shi n=5
+    dump: preedit=li kai le n=5
+    dump: preedit=ban sui zhe n=5
+    dump: preedit=can jia n=5
+    dump: preedit=bao xian n=5
+    dump: preedit=di san n=5
+    dump: preedit=duo jiu n=5
+    dump: preedit=jia da n=5
+    dump: preedit=zhong xin n=5
+    dump: preedit=yi qie dou n=5
+    dump: preedit=yi shi n=5
+    dump: preedit=hui rang ni n=5
+    dump: preedit=li shi de n=5
+    dump: preedit=yi ge hao de n=5
+    dump: preedit=ru guo zai n=5
+    dump: preedit=ping tai shang n=5
+    dump: preedit=dou mei n=5
+    dump: preedit=ri zi n=5
+    dump: preedit=qi pa n=5
+    dump: preedit=bu neng shuo n=5
+    dump: preedit=ming xing n=5
+    dump: preedit=ji dian n=5
+    dump: preedit=jie mian n=5
+    dump: preedit=zhi hao n=5
+    dump: preedit=yi yi n=5
+    dump: preedit=zuo yong n=5
+    dump: preedit=meng xiang n=5
+    dump: preedit=ti xian zai n=5
+    dump: preedit=zui jia n=5
+    dump: preedit=fan er n=5
+    dump: preedit=zhuan zhu yu n=5
+    dump: preedit=ban nian n=5
+    dump: preedit=mo xing n=5
+    dump: preedit=shu xing n=5
+    dump: preedit=wan zheng n=5
+    dump: preedit=cao pi n=5
+    dump: preedit=tou lu n=5
+    dump: preedit=shuo fa n=5
+    dump: preedit=yi zhi dao n=5
+    dump: preedit=hua mian n=5
+    dump: preedit=qu dao n=5
+    dump: preedit=nv hai zi n=5
+    dump: preedit=zhe yi wei zhe n=5
+    dump: preedit=fen xiang n=5
+    dump: preedit=dang chu n=5
+    dump: preedit=zen me ban n=5
+    dump: preedit=zhe me shuo n=5
+    dump: preedit=bao ming n=5
+    dump: preedit=tao yan n=5
+    dump: preedit=hui tou n=5
+    dump: preedit=jia ren n=5
+    dump: preedit=chuang jian n=5
+    dump: preedit=jie shao le n=5
+    dump: preedit=dong wu n=5
+    dump: preedit=zuo wan n=5
+    dump: preedit=zhe xie nian n=5
+    dump: preedit=ni zai n=5
+    dump: preedit=fen pei n=5
+    dump: preedit=zu gou n=5
+    dump: preedit=ying pian n=5
+    dump: preedit=yi ge xiao shi n=5
+    dump: preedit=bu dui n=5
+    dump: preedit=jia kuai n=5
+    dump: preedit=tong chang shi n=5
+    dump: preedit=gan shou n=5
+    dump: preedit=you qian n=5
+    dump: preedit=pu bian n=5
+    dump: preedit=zhuan yong n=5
+    dump: preedit=zhu bu n=5
+    dump: preedit=ru guo zhen de n=5
+    dump: preedit=zai guo wai n=5
+    dump: preedit=du le n=5
+    dump: preedit=zuo chu le n=5
+    dump: preedit=lian shang n=5
+    dump: preedit=he xie n=5
+    dump: preedit=jin hou n=5
+    dump: preedit=si chuan n=5
+    dump: preedit=jiu hao bi n=5
+    dump: preedit=jiu shi ba n=5
+    dump: preedit=neng zhao dao n=5
+    dump: preedit=qu dong n=5
+    dump: preedit=wu suo wei n=5
+    dump: preedit=chu fei ni n=5
+    dump: preedit=sui shi n=5
+    dump: preedit=ren wei shi n=5
+    dump: preedit=jiu bi xu n=5
+    dump: preedit=tiao zhan n=5
+    dump: preedit=guang fan n=5
+    dump: preedit=yi ba n=5
+    dump: preedit=xian shi zhong n=5
+    dump: preedit=zhuan hua wei n=5
+    dump: preedit=kuai di n=5
+    dump: preedit=si wang n=5
+    dump: preedit=zai jia li n=5
+    dump: preedit=wei da n=5
+    dump: preedit=zhe shi yin wei n=5
+    dump: preedit=da xing n=5
+    dump: preedit=ta shuo n=5
+    dump: preedit=liang ci n=5
+    dump: preedit=shang chuan n=5
+    dump: preedit=mei you le n=5
+    dump: preedit=he xin de n=5
+    dump: preedit=zu he n=5
+    dump: preedit=dao lu n=5
+    dump: preedit=xie tiao n=5
+    dump: preedit=zhao kai n=5
+    dump: preedit=zi liao n=5
+    dump: preedit=wang ba n=5
+    dump: preedit=ye wu fa n=5
+    dump: preedit=yue du n=5
+    dump: preedit=kai hui n=5
+    dump: preedit=jian mian n=5
+    dump: preedit=zhe jiang n=5
+    dump: preedit=bu na me n=5
+    dump: preedit=yi bu n=5
+    dump: preedit=ta zai n=5
+    dump: preedit=zhu yao hai shi n=5
+    dump: preedit=qi ci shi n=5
+    dump: preedit=xian jin n=5
+    dump: preedit=yu le n=5
+    dump: preedit=rang hai zi n=5
+    dump: preedit=fang zhi n=5
+    dump: preedit=shuo guo n=5
+    dump: preedit=za zhi n=5
+    dump: preedit=er zhe xie n=5
+    dump: preedit=biao yan n=5
+    dump: preedit=ming ling n=5
+    dump: preedit=luo shi n=5
+    dump: preedit=biao mian n=5
+    dump: preedit=jiao da n=5
+    dump: preedit=jing tou n=5
+    dump: preedit=yao qing n=5
+    dump: preedit=gong xiang n=5
+    dump: preedit=yan zhong de n=5
+    dump: preedit=da ge n=5
+    dump: preedit=jiu xing n=5
+    dump: preedit=jie jin n=5
+    dump: preedit=xia zhou n=5
+    dump: preedit=xiao qu n=5
+    dump: preedit=suan shi n=5
+    dump: preedit=bao liu n=5
+    dump: preedit=li liang n=5
+    dump: preedit=ran er n=5
+    dump: preedit=re qing n=5
+    dump: preedit=yi yi shang n=5
+    dump: preedit=jiao du lai shuo n=5
+    dump: preedit=yi wai de n=5
+    dump: preedit=chang shi n=5
+    dump: preedit=shi pin n=5
+    dump: preedit=you hua n=5
+    dump: preedit=cuo ti n=5
+    dump: preedit=fan er shi n=5
+    dump: preedit=yi ban dou n=5
+    dump: preedit=san ti n=5
+    dump: preedit=dou bu neng n=5
+    dump: preedit=you xiao de n=5
+    dump: preedit=feng kuang n=5
+    dump: preedit=wo zhe li n=5
+    dump: preedit=zai shang mian n=5
+    dump: preedit=ban tian n=5
+    dump: preedit=cai gou n=5
+    dump: preedit=huai le n=5
+    dump: preedit=na shi n=5
+    dump: preedit=zuo ye n=5
+    dump: preedit=cong ming n=5
+    dump: preedit=shang lai shuo n=5
+    dump: preedit=bai se n=5
+    dump: preedit=fu kuan n=5
+    dump: preedit=jiang li n=5
+    dump: preedit=jing cai n=5
+    dump: preedit=yong lai n=5
+    dump: preedit=wang wang hui n=5
+    dump: preedit=da da n=5
+    dump: preedit=nan sheng n=5
+    dump: preedit=jian zhi n=5
+    dump: preedit=shi wu n=5
+    dump: preedit=zai bu tong n=5
+    dump: preedit=ge xing n=5
+    dump: preedit=xin tai n=5
+    dump: preedit=zhi jin n=5
+    dump: preedit=suo zai n=5
+    dump: preedit=kan bu dao n=5
+    dump: preedit=zui hao de n=5
+    dump: preedit=bu wen ding n=5
+    dump: preedit=fa yan n=5
+    dump: preedit=zhun que n=5
+    dump: preedit=bi ran n=5
+    dump: preedit=guan bi n=5
+    dump: preedit=zhao gu n=5
+    dump: preedit=ben di n=5
+    dump: preedit=mei hao n=5
+    dump: preedit=zhuan yi n=5
+    dump: preedit=gan jue dao n=5
+    dump: preedit=zui zhong de n=5
+    dump: preedit=xian you n=5
+    dump: preedit=chu fa n=5
+    dump: preedit=mian ji n=5
+    dump: preedit=pi zhun n=5
+    dump: preedit=po huai n=5
+    dump: preedit=ge lei n=5
+    dump: preedit=ci shi n=5
+    dump: preedit=ao yun n=5
+    dump: preedit=lai dao le n=5
+    dump: preedit=na wo men n=5
+    dump: preedit=fa shi n=5
+    dump: preedit=gong xian n=5
+    dump: preedit=ying xiao n=5
+    dump: preedit=zhuang tai xia n=5
+    dump: preedit=bi ru ni n=5
+    dump: preedit=gu fen n=5
+    dump: preedit=er shi n=5
+    dump: preedit=chi le n=5
+    dump: preedit=chu chai n=5
+    dump: preedit=ru jin n=5
+    dump: preedit=hai bu n=5
+    dump: preedit=suan shi n=5
+    dump: preedit=zuo de shi qing n=5
+    dump: preedit=neng da dao n=5
+    dump: preedit=ri qi n=5
+    dump: preedit=yao me n=5
+    dump: preedit=gong zuo ren yuan n=5
+    dump: preedit=te zheng n=5
+    dump: preedit=li mian n=5
+    dump: preedit=zhan zheng n=5
+    dump: preedit=yin yong n=5
+    dump: preedit=ni ying gai n=5
+    dump: preedit=dao de n=5
+    dump: preedit=jin rong n=5
+    dump: preedit=shen me yang n=5
+    dump: preedit=jian li le n=5
+    dump: preedit=guan jun n=5
+    dump: preedit=jia zhang n=5
+    dump: preedit=te bie hao n=5
+    dump: preedit=ding tou n=5
+    dump: preedit=shuo chu lai n=5
+    dump: preedit=bao gao n=5
+    dump: preedit=dong li n=5
+    dump: preedit=qiu yuan n=5
+    dump: preedit=fei chang hao de n=5
+    dump: preedit=hong se n=5
+    dump: preedit=xi lie n=5
+    dump: preedit=bu de bu n=5
+    dump: preedit=nian du n=5
+    dump: preedit=jian guo n=5
+    dump: preedit=dui ba n=5
+    dump: preedit=da duo shu n=5
+    dump: preedit=pin zhong n=5
+    dump: preedit=mei guan xi n=5
+    dump: preedit=wang hong n=5
+    dump: preedit=zong shang n=5
+    dump: preedit=geng hao n=5
+    dump: preedit=kan qi lai n=5
+    dump: preedit=ben ci n=5
+    dump: preedit=kong tiao n=5
+    dump: preedit=yi shang shi n=5
+    dump: preedit=fan dui n=5
+    dump: preedit=wei yuan hui n=5
+    dump: preedit=gong zuo zhong n=5
+    dump: preedit=he ni n=5
+    dump: preedit=wo dou n=5
+    dump: preedit=gen zhe n=5
+    dump: preedit=gong gao n=5
+    dump: preedit=xie de n=5
+    dump: preedit=hai you ren n=5
+    dump: preedit=zhi shi zai n=5
+    dump: preedit=ni ye n=5
+    dump: preedit=she hui zhu yi n=5
+    dump: preedit=chao guo le n=5
+    dump: preedit=yao qiu de n=5
+    dump: preedit=qi shi wo n=5
+    dump: preedit=ce lue n=5
+    dump: preedit=zui shi he n=5
+    dump: preedit=ting hao de n=5
+    dump: preedit=shu chu n=5
+    dump: preedit=zuo fa n=5
+    dump: preedit=di di n=5
+    dump: preedit=xiang hu n=5
+    dump: preedit=fen lei n=5
+    dump: preedit=duo zhong n=5
+    dump: preedit=dou jue de n=5
+    dump: preedit=lai shuo shuo n=5
+    dump: preedit=gong ying n=5
+    dump: preedit=shou yi n=5
+    dump: preedit=wei da de n=5
+    dump: preedit=lv se n=5
+    dump: preedit=ren kou n=5
+    dump: preedit=zhi bu guo shi n=5
+    dump: preedit=you zu gou n=5
+    dump: preedit=liu xia le n=5
+    dump: preedit=duo me n=5
+    dump: preedit=chuang ye n=5
+    dump: preedit=yu qi ta n=5
+    dump: preedit=shan dong n=5
+    dump: preedit=bu fen de n=5
+    dump: preedit=yi jing cheng wei n=5
+    dump: preedit=zhong yao de shi n=5
+    dump: preedit=ping mu n=5
+    dump: preedit=chang shang n=5
+    dump: preedit=wu nai n=5
+    dump: preedit=gei hai zi n=5
+    dump: preedit=jiao du n=5
+    dump: preedit=cheng wei n=5
+    dump: preedit=sheng cheng n=5
+    dump: preedit=hai ji de n=5
+    dump: preedit=diao le n=5
+    dump: preedit=jie shu hou n=5
+    dump: preedit=hao xiang n=5
+    dump: preedit=xian ran n=5
+    dump: preedit=ni ba n=5
+    dump: preedit=wu fei shi n=5
+    dump: preedit=ping heng n=5
+    dump: preedit=dao chu n=5
+    dump: preedit=dian chi n=5
+    dump: preedit=dui shou n=5
+    dump: preedit=bi yao de n=5
+    dump: preedit=wo di yi ci n=5
+    dump: preedit=si wei dao tu n=5
+    dump: preedit=you de shi hou n=5
+    dump: preedit=ye fei chang n=5
+    dump: preedit=zhe fang mian de n=5
+    dump: preedit=da yin n=5
+    dump: preedit=wei he n=5
+    dump: preedit=yi hui er n=5
+    dump: preedit=zhe yang de hua n=5
+    dump: preedit=qu yi yuan n=5
+    dump: preedit=bi ru wo n=5
+    dump: preedit=dang zhong n=5
+    dump: preedit=gao zhong n=5
+    dump: preedit=hai pa n=5
+    dump: preedit=hu xiang n=5
+    dump: preedit=zhu yi n=5
+    dump: preedit=zhi shi de n=5
+    dump: preedit=jiao du lai kan n=5
+    dump: preedit=ni zen me n=5
+    dump: preedit=you ren he n=5
+    dump: preedit=que shi n=5
+    dump: preedit=xiang xiang n=5
+    dump: preedit=e luo si n=5
+    dump: preedit=dan wo n=5
+    dump: preedit=du zhe n=5
+    dump: preedit=lv shi n=5
+    dump: preedit=ge di n=5
+    dump: preedit=chuang kou n=5
+    dump: preedit=yan jiu n=5
+    dump: preedit=liang zhong n=5
+    dump: preedit=zhuan huan n=5
+    dump: preedit=zhuang xiu n=5
+    dump: preedit=yi zhang n=5
+    dump: preedit=xiao huo ban men n=5
+    dump: preedit=hen shi he n=5
+    dump: preedit=ren shi dao n=5
+    dump: preedit=jie guo shi n=5
+    dump: preedit=ben zhan n=5
+    dump: preedit=fu chu n=5
+    dump: preedit=wo qu n=5
+    dump: preedit=zai wei lai n=5
+    dump: preedit=zhi zuo de n=5
+    dump: preedit=ji qing n=5
+    dump: preedit=jin bu n=5
+    dump: preedit=mei you yi ge n=5
+    dump: preedit=dai biao zhe n=5
+    dump: preedit=li ru n=5
+    dump: preedit=chu fei n=5
+    dump: preedit=cai wu n=5
+    dump: preedit=jiao gao de n=5
+    dump: preedit=wei da jia n=5
+    dump: preedit=shou cang n=5
+    dump: preedit=bai tian n=5
+    dump: preedit=zheng ge n=5
+    dump: preedit=shi tou n=5
+    dump: preedit=jiu suan le n=5
+    dump: preedit=zheng shi yin wei n=5
+    dump: preedit=fu zhi n=5
+    dump: preedit=liang ge ren n=5
+    dump: preedit=na er n=5
+    dump: preedit=nei zhong n=5
+    dump: preedit=you xi zhong n=5
+    dump: preedit=gou cheng n=5
+    dump: preedit=si le n=5
+    dump: preedit=qing bei n=5
+    dump: preedit=bao zhuang n=5
+    dump: preedit=ji xu n=5
+    dump: preedit=bu duan de n=5
+    dump: preedit=fang jia n=5
+    dump: preedit=tao bao n=5
+    dump: preedit=jiu jing n=5
+    dump: preedit=ni zhe n=5
+    dump: preedit=cha de n=5
+    dump: preedit=tui chu le n=5
+    dump: preedit=bian tai n=5
+    dump: preedit=ti hui n=5
+    dump: preedit=chong fu n=5
+    dump: preedit=cheng nuo n=5
+    dump: preedit=nan peng you n=5
+    dump: preedit=zheng ming le n=5
+    dump: preedit=bei ren n=5
+    dump: preedit=zhong hua n=5
+    dump: preedit=yin du n=5
+    dump: preedit=you shi n=5
+    dump: preedit=jian yi shi n=5
+    dump: preedit=qing nian n=5
+    dump: preedit=shi ji nian n=5
+    dump: preedit=tai da n=5
+    dump: preedit=ting zhi n=5
+    dump: preedit=gan bu n=5
+    dump: preedit=zu zhi n=5
+    dump: preedit=guan fang n=5
+    dump: preedit=ge qu n=5
+    dump: preedit=hao chu n=5
+    dump: preedit=si ge n=5
+    dump: preedit=ban xiao shi n=5
+    dump: preedit=che liang n=5
+    dump: preedit=zui zhong yao n=5
+    dump: preedit=zai bi ru n=5
+    dump: preedit=zhe ge fang fa n=5
+    dump: preedit=pang da de n=5
+    dump: preedit=shun bian n=5
+    dump: preedit=yi chang n=5
+    dump: preedit=wo yi ge n=5
+    dump: preedit=cun zai zhe n=5
+    dump: preedit=shou quan n=5
+    dump: preedit=ju min n=5
+    dump: preedit=qian ming n=5
+    dump: preedit=huo xu shi n=5
+    dump: preedit=he ta men n=5
+    dump: preedit=zhao yi ge n=5
+    dump: preedit=li du n=5
+    dump: preedit=yu ce n=5
+    dump: preedit=xian ran shi n=5
+    dump: preedit=zhong ji xian n=5
+    dump: preedit=xiang xiang de n=5
+    dump: preedit=you xu duo n=5
+    dump: preedit=de shuo n=5
+    dump: preedit=na tian n=5
+    dump: preedit=mei tian n=5
+    dump: preedit=ye ji n=5
+    dump: preedit=de n=5
+    dump: preedit=le n=5
+    dump: preedit=wo n=5
+    dump: preedit=shi n=5
+    dump: preedit=zai n=5
+    dump: preedit=ni n=5
+    dump: preedit=he n=5
+    dump: preedit=you n=5
+    dump: preedit=bu n=5
+    dump: preedit=jiu n=5
+    dump: preedit=ye n=5
+    dump: preedit=dou n=5
+    dump: preedit=yao n=5
+    dump: preedit=ba n=5
+    dump: preedit=hao n=5
+    dump: preedit=ta n=5
+    dump: preedit=shuo n=5
+    dump: preedit=qu n=5
+    dump: preedit=dao n=5
+    dump: preedit=mei n=5
+    dump: preedit=shang n=5
+    dump: preedit=dui n=5
+    dump: preedit=hai n=5
+    dump: preedit=na n=5
+    dump: preedit=ren n=5
+    dump: preedit=he n=5
+    dump: preedit=kan n=5
+    dump: preedit=zhong n=5
+    dump: preedit=ne n=5
+    dump: preedit=lai n=5
+    dump: preedit=na n=5
+    dump: preedit=wei n=5
+    dump: preedit=hui n=5
+    dump: preedit=ta n=5
+    dump: preedit=yu n=5
+    dump: preedit=gei n=5
+    dump: preedit=deng n=5
+    dump: preedit=zhe n=5
+    dump: preedit=yong n=5
+    dump: preedit=ba n=5
+    dump: preedit=xia n=5
+    dump: preedit=dou n=5
+    dump: preedit=neng n=5
+    dump: preedit=hen n=5
+    dump: preedit=duo n=5
+    dump: preedit=zuo n=5
+    dump: preedit=xiang n=5
+    dump: preedit=bei n=5
+    dump: preedit=dian n=5
+    dump: preedit=er n=5
+    dump: preedit=hou n=5
+    dump: preedit=yi n=5
+    dump: preedit=you n=5
+    dump: preedit=cong n=5
+    dump: preedit=zai n=5
+    dump: preedit=jiang n=5
+    dump: preedit=shi n=5
+    dump: preedit=dao n=5
+    dump: preedit=guo n=5
+    dump: preedit=ne n=5
+    dump: preedit=da n=5
+    dump: preedit=da n=5
+    dump: preedit=nian n=5
+    dump: preedit=la n=5
+    dump: preedit=di n=5
+    dump: preedit=yi n=5
+    dump: preedit=mai n=5
+    dump: preedit=li n=5
+    dump: preedit=rang n=5
+    dump: preedit=xiao n=5
+    dump: preedit=zhe n=5
+    dump: preedit=xiao n=5
+    dump: preedit=a n=5
+    dump: preedit=guo n=5
+    dump: preedit=ya n=5
+    dump: preedit=bing n=5
+    dump: preedit=xiao n=5
+    dump: preedit=zhong n=5
+    dump: preedit=li n=5
+    dump: preedit=de n=5
+    dump: preedit=hen n=5
+    dump: preedit=yu n=5
+    dump: preedit=tai n=5
+    dump: preedit=na n=5
+    dump: preedit=hao n=5
+    dump: preedit=ri n=5
+    dump: preedit=cai n=5
+    dump: preedit=da n=5
+    dump: preedit=le n=5
+    dump: preedit=bi n=5
+    dump: preedit=yao n=5
+    dump: preedit=men n=5
+    dump: preedit=zui n=5
+    dump: preedit=yue n=5
+    dump: preedit=chi n=5
+    dump: preedit=zhen n=5
+    dump: preedit=ta n=5
+    dump: preedit=ri n=5
+    dump: preedit=hua n=5
+    dump: preedit=qing n=5
+    dump: preedit=qian n=5
+    dump: preedit=jiao n=5
+    dump: preedit=chu n=5
+    dump: preedit=lai n=5
+    dump: preedit=ha n=5
+    dump: preedit=dang n=5
+    dump: preedit=jia n=5
+    dump: preedit=xiang n=5
+    dump: preedit=wen n=5
+    dump: preedit=zhi n=5
+    dump: preedit=geng n=5
+    dump: preedit=hai n=5
+    dump: preedit=bie n=5
+    dump: preedit=you n=5
+    dump: preedit=kuai n=5
+    dump: preedit=qian n=5
+    dump: preedit=you n=5
+    dump: preedit=hao n=5
+    dump: preedit=nin n=5
+    dump: preedit=jia n=5
+    dump: preedit=tian n=5
+    dump: preedit=suo n=5
+    dump: preedit=que n=5
+    dump: preedit=yi n=5
+    dump: preedit=shui n=5
+    dump: preedit=mei n=5
+    dump: preedit=zhe n=5
+    dump: preedit=sha n=5
+    dump: preedit=kan n=5
+    dump: preedit=hao n=5
+    dump: preedit=shi n=5
+    dump: preedit=zhi n=5
+    dump: preedit=na n=5
+    dump: preedit=dai n=5
+    dump: preedit=qu n=5
+    dump: preedit=ri n=5
+    dump: preedit=xing n=5
+    dump: preedit=mai n=5
+    dump: preedit=zuo n=5
+    dump: preedit=de n=5
+    dump: preedit=xiang n=5
+    dump: preedit=shi n=5
+    dump: preedit=gang n=5
+    dump: preedit=cheng n=5
+    dump: preedit=huan n=5
+    dump: preedit=yu n=5
+    dump: preedit=n n=5
+    dump: preedit=dou n=5
+    dump: preedit=ni n=5
+    dump: preedit=na n=5
+    dump: preedit=hui n=5
+    dump: preedit=bi n=5
+    dump: preedit=ting n=5
+    dump: preedit=qian n=5
+    dump: preedit=yuan n=5
+    dump: preedit=la n=5
+    dump: preedit=kan n=5
+    dump: preedit=bang n=5
+    dump: preedit=suan n=5
+    dump: preedit=zhe n=5
+    dump: preedit=mang n=5
+    dump: preedit=ri n=5
+    dump: preedit=he n=5
+    dump: preedit=fen n=5
+    dump: preedit=yue n=5
+    dump: preedit=yong n=5
+    dump: preedit=ye n=5
+    dump: preedit=shui n=5
+    dump: preedit=hai n=5
+    dump: preedit=lo n=5
+    dump: preedit=bi n=5
+    dump: preedit=xiang n=5
+    dump: preedit=san n=5
+    dump: preedit=jiao n=5
+    dump: preedit=jiao n=5
+    dump: preedit=dang n=5
+    dump: preedit=bie n=5
+    dump: preedit=yao n=5
+    dump: preedit=suan n=5
+    dump: preedit=cong n=5
+    dump: preedit=qu n=5
+    dump: preedit=yao n=5
+    dump: preedit=la n=5
+    dump: preedit=ou n=5
+    dump: preedit=ben n=5
+    dump: preedit=ye n=5
+    dump: preedit=jin n=5
+    dump: preedit=xing n=5
+    dump: preedit=nong n=5
+    dump: preedit=di n=5
+    dump: preedit=yao n=5
+    dump: preedit=tong n=5
+    dump: preedit=yi n=5
+    dump: preedit=hua n=5
+    dump: preedit=pa n=5
+    dump: preedit=ou n=5
+    dump: preedit=jiang n=5
+    dump: preedit=sha n=5
+    dump: preedit=yu n=5
+    dump: preedit=hao n=5
+    dump: preedit=cuo n=5
+    dump: preedit=zhe n=5
+    dump: preedit=zhu n=5
+    dump: preedit=san n=5
+    dump: preedit=ming n=5
+    dump: preedit=bi n=5
+    dump: preedit=shui n=5
+    dump: preedit=wang n=5
+    dump: preedit=zhuang n=5
+    dump: preedit=ting n=5
+    dump: preedit=dian n=5
+    dump: preedit=wang n=5
+    dump: preedit=tu n=5
+    dump: preedit=zheng n=5
+    dump: preedit=lu n=5
+    dump: preedit=zai n=5
+    dump: preedit=er n=5
+    dump: preedit=sheng n=5
+    dump: preedit=tou n=5
+    dump: preedit=xing n=5
+    dump: preedit=zhong n=5
+    dump: preedit=zhong n=5
+    dump: preedit=yi n=5
+    dump: preedit=shang n=5
+    dump: preedit=zuo n=5
+    dump: preedit=lei n=5
+    dump: preedit=song n=5
+    dump: preedit=mei n=5
+    dump: preedit=shu n=5
+    dump: preedit=guai n=5
+    dump: preedit=da n=5
+    dump: preedit=pai n=5
+    dump: preedit=biao n=5
+    dump: preedit=shi n=5
+    dump: preedit=pa n=5
+    dump: preedit=zhi n=5
+    dump: preedit=jie n=5
+    dump: preedit=mei n=5
+    dump: preedit=wei n=5
+    dump: preedit=ban n=5
+    dump: preedit=fei n=5
+    dump: preedit=bi n=5
+    dump: preedit=li n=5
+    dump: preedit=li n=5
+    dump: preedit=bi n=5
+    dump: preedit=ban n=5
+    dump: preedit=fu n=5
+    dump: preedit=cha n=5
+    dump: preedit=cong n=5
+    dump: preedit=shou n=5
+    dump: preedit=nan n=5
+    dump: preedit=jiao n=5
+    dump: preedit=yi n=5
+    dump: preedit=gu n=5
+    dump: preedit=li n=5
+    dump: preedit=kan n=5
+    dump: preedit=jiang n=5
+    dump: preedit=zhuan n=5
+    dump: preedit=kuai n=5
+    dump: preedit=xiao n=5
+    dump: preedit=zhou n=5
+    dump: preedit=shou n=5
+    dump: preedit=dao n=5
+    dump: preedit=huang n=5
+    dump: preedit=biao n=5
+    dump: preedit=ni n=5
+    dump: preedit=jiao n=5
+    dump: preedit=zhu n=5
+    dump: preedit=qu n=5
+    dump: preedit=ya n=5
+    dump: preedit=di n=5
+    dump: preedit=nan n=5
+    dump: preedit=n n=5
+    dump: preedit=er n=5
+    dump: preedit=ban n=5
+    dump: preedit=shou n=5
+    dump: preedit=a n=5
+    dump: preedit=he n=5
+    dump: preedit=cai n=5
+    dump: preedit=jin n=5
+    dump: preedit=huan n=5
+    dump: preedit=jin n=5
+    dump: preedit=ri n=5
+    dump: preedit=ding n=5
+    dump: preedit=hou n=5
+    dump: preedit=men n=5
+    dump: preedit=jiao n=5
+    dump: preedit=wang n=5
+    dump: preedit=li n=5
+    dump: preedit=xiao n=5
+    dump: preedit=chuan n=5
+    dump: preedit=yi n=5
+    dump: preedit=biao n=5
+    dump: preedit=nan n=5
+    dump: preedit=gei n=5
+    dump: preedit=qi ta n=5
+    dump: preedit=xing n=5
+    dump: preedit=chuan n=5
+    dump: preedit=yue n=5
+    dump: preedit=wei n=5
+    dump: preedit=hui n=5
+    dump: preedit=chang n=5
+    dump: preedit=bu n=5
+    dump: preedit=fei n=5
+    dump: preedit=lu n=5
+    dump: preedit=niu n=5
+    dump: preedit=guai n=5
+    dump: preedit=chu n=5
+    dump: preedit=yuan n=5
+    dump: preedit=xiao n=5
+    dump: preedit=dao n=5
+    dump: preedit=sheng n=5
+    dump: preedit=tan n=5
+    dump: preedit=cheng n=5
+    dump: preedit=tai n=5
+    dump: preedit=suo n=5
+    dump: preedit=hao n=5
+    dump: preedit=lei n=5
+    dump: preedit=jing n=5
+    dump: preedit=xiang n=5
+    dump: preedit=cha n=5
+    dump: preedit=biao n=5
+    dump: preedit=ban n=5
+    dump: preedit=shu n=5
+    dump: preedit=he n=5
+    dump: preedit=nian n=5
+    dump: preedit=hong n=5
+    dump: preedit=chen n=5
+    dump: preedit=yu n=5
+    dump: preedit=dang n=5
+    dump: preedit=ding n=5
+    dump: preedit=lou n=5
+    dump: preedit=fu n=5
+    dump: preedit=mou n=5
+    dump: preedit=luan n=5
+    dump: preedit=na n=5
+    dump: preedit=tian n=5
+    dump: preedit=yuan n=5
+    dump: preedit=hai n=5
+    dump: preedit=dao n=5
+    dump: preedit=xiang n=5
+    dump: preedit=huang n=5
+    dump: preedit=re n=5
+    dump: preedit=qie n=5
+    dump: preedit=zhong n=5
+    dump: preedit=ya n=5
+    dump: preedit=hua n=5
+    dump: preedit=deng n=5
+    dump: preedit=jin n=5
+    dump: preedit=nan n=5
+    dump: preedit=e n=5
+    dump: preedit=shei n=5
+    dump: preedit=hua n=5
+    dump: preedit=ban n=5
+    dump: preedit=di n=5
+    dump: preedit=xiang n=5
+    dump: preedit=dian n=5
+    dump: preedit=huan n=5
+    dump: preedit=li n=5
+    dump: preedit=cong n=5
+    dump: preedit=zuo n=5
+    dump: preedit=e n=5
+    dump: preedit=h n=5
+/home/kkch/vscode/Xime/app/src/main/jni/librime-t9/test_engine/t9_engine_test.cc:181: Failure
+Value of: Contains(candidates, c.text)
+  Actual: false
+Expected: true
+带分词输入 334 的前 50 个候选中没有目标词; 前5候选: 和/好/还/个/会
+Google Test trace:
+/home/kkch/vscode/Xime/app/src/main/jni/librime-t9/test_engine/t9_engine_test.cc:178: 「飞」(top_single) 输入 334
+
+    dump: preedit=fu n=5
+    dump: preedit=yue n=5
+    dump: preedit=jiu n=5
+    dump: preedit=he n=5
+    dump: preedit=ban n=5
+    dump: preedit=zhong n=5
+    dump: preedit=suo n=5
+    dump: preedit=yuan n=5
+    dump: preedit=dao n=5
+    dump: preedit=yao n=5
+    dump: preedit=wen n=5
+    dump: preedit=jiang n=5
+    dump: preedit=cuo n=5
+    dump: preedit=shi n=5
+    dump: preedit=kong n=5
+    dump: preedit=nan n=5
+    dump: preedit=qian n=5
+    dump: preedit=jing n=5
+    dump: preedit=zhu n=5
+    dump: preedit=da n=5
+    dump: preedit=jiao n=5
+    dump: preedit=qu n=5
+    dump: preedit=tie n=5
+    dump: preedit=xiao n=5
+    dump: preedit=san n=5
+    dump: preedit=shuang n=5
+    dump: preedit=zhuan n=5
+    dump: preedit=wang n=5
+    dump: preedit=dui n=5
+    dump: preedit=wang n=5
+    dump: preedit=qian n=5
+    dump: preedit=hou n=5
+    dump: preedit=fei n=5
+    dump: preedit=guo n=5
+    dump: preedit=guai n=5
+    dump: preedit=sui n=5
+    dump: preedit=yue n=5
+    dump: preedit=li n=5
+    dump: preedit=yi n=5
+    dump: preedit=kong n=5
+    dump: preedit=hong n=5
+    dump: preedit=ming n=5
+    dump: preedit=na n=5
+    dump: preedit=biao n=5
+    dump: preedit=jun n=5
+    dump: preedit=ri n=5
+    dump: preedit=qie n=5
+    dump: preedit=xiao n=5
+    dump: preedit=da n=5
+    dump: preedit=jiu n=5
+    dump: preedit=te n=5
+    dump: preedit=dong n=5
+    dump: preedit=ri n=5
+    dump: preedit=nian n=5
+    dump: preedit=he n=5
+    dump: preedit=qi dong n=5
+    dump: preedit=hao n=5
+    dump: preedit=jiao n=5
+    dump: preedit=neng n=5
+    dump: preedit=nan n=5
+    dump: preedit=yu n=5
+    dump: preedit=xiang n=5
+    dump: preedit=zhi n=5
+    dump: preedit=yu n=5
+    dump: preedit=na n=5
+    dump: preedit=pei n=5
+    dump: preedit=li n=5
+    dump: preedit=lu n=5
+    dump: preedit=zhen n=5
+    dump: preedit=jiao n=5
+    dump: preedit=yi n=5
+    dump: preedit=li n=5
+    dump: preedit=dong n=5
+    dump: preedit=shuang n=5
+    dump: preedit=lou n=5
+    dump: preedit=zhi n=5
+    dump: preedit=die n=5
+    dump: preedit=reng n=5
+    dump: preedit=guo n=5
+    dump: preedit=shu n=5
+    dump: preedit=jiao n=5
+    dump: preedit=dong n=5
+    dump: preedit=ti n=5
+    dump: preedit=qing n=5
+    dump: preedit=yi n=5
+    dump: preedit=chu n=5
+    dump: preedit=tong n=5
+    dump: preedit=zuo n=5
+    dump: preedit=jiu n=5
+    dump: preedit=chong n=5
+    dump: preedit=e n=5
+    dump: preedit=nan n=5
+    dump: preedit=qian n=5
+    dump: preedit=mie n=5
+    dump: preedit=jia n=5
+    dump: preedit=jiu n=5
+    dump: preedit=bing n=5
+    dump: preedit=jiu n=5
+    dump: preedit=hua n=5
+    dump: preedit=zhua n=5
+    dump: preedit=bei n=5
+    dump: preedit=ceng n=5
+    dump: preedit=qing n=5
+    dump: preedit=duan n=5
+    dump: preedit=li n=5
+    dump: preedit=tan n=5
+    dump: preedit=le n=5
+    dump: preedit=yao n=5
+    dump: preedit=ban n=5
+    dump: preedit=ren n=5
+    dump: preedit=li n=5
+    dump: preedit=cheng n=5
+    dump: preedit=jun n=5
+    dump: preedit=jing n=5
+    dump: preedit=guo n=5
+    dump: preedit=chang n=5
+    dump: preedit=yu n=5
+    dump: preedit=zuo n=5
+    dump: preedit=wo n=5
+    dump: preedit=kan n=5
+    dump: preedit=shang n=5
+    dump: preedit=chang n=5
+    dump: preedit=cai n=5
+    dump: preedit=re n=5
+    dump: preedit=xiao n=5
+    dump: preedit=guo n=5
+    dump: preedit=li n=5
+    dump: preedit=hao n=5
+    dump: preedit=guo n=5
+    dump: preedit=ban n=5
+    dump: preedit=hao n=5
+    dump: preedit=jiao n=5
+    dump: preedit=tui n=5
+    dump: preedit=dang n=5
+    dump: preedit=nan n=5
+    dump: preedit=jiao n=5
+    dump: preedit=song n=5
+    dump: preedit=fei chang shi he n=5
+    dump: preedit=zhi shi wei le n=5
+    dump: preedit=zhe ge gai nian n=5
+    dump: preedit=hu lian wang gong si n=5
+    dump: preedit=yin wei mei you n=5
+    dump: preedit=ni jiu ke yi n=5
+    dump: preedit=yi ge xin de n=5
+    dump: preedit=hui da yi xia n=5
+    dump: preedit=wo ye bu zhi dao n=5
+    dump: preedit=shen du xue xi n=5
+    dump: preedit=yi jing you le n=5
+    dump: preedit=dan shi zhe ge n=5
+    dump: preedit=shi zui hao de n=5
+    dump: preedit=dan shi xian zai n=5
+    dump: preedit=mei you shen me n=5
+    dump: preedit=jiu shi zhe ge n=5
+    dump: preedit=yi fang mian shi n=5
+    dump: preedit=ke yi zuo dao n=5
+    dump: preedit=cha bu duo le n=5
+    dump: preedit=zhe zhong wen ti n=5
+    dump: preedit=da bu fen dou shi n=5
+    dump: preedit=yi ban qing kuang xia n=5
+    dump: preedit=zen me shuo ne n=5
+    dump: preedit=bi jiao jian dan n=5
+    dump: preedit=bu shi wei le n=5
+    dump: preedit=liang zi li xue n=5
+    dump: preedit=jiu xiang dang yu n=5
+    dump: preedit=bu shi yin wei n=5
+    dump: preedit=yi duan shi jian n=5
+    dump: preedit=te bie xi huan n=5
+    dump: preedit=dan shi ta men n=5
+    dump: preedit=ye bu yi ding n=5
+    dump: preedit=zhe ge shi jie shang n=5
+    dump: preedit=hen da cheng du shang n=5
+    dump: preedit=dan shi yin wei n=5
+    dump: preedit=ha ha ha ha n=5
+    dump: preedit=ye mei shen me n=5
+    dump: preedit=wo men xue xiao n=5
+    dump: preedit=zhi de yi ti de shi n=5
+    dump: preedit=ni shi bu shi n=5
+    dump: preedit=sui ran mei you n=5
+    dump: preedit=fei chang da de n=5
+    dump: preedit=ke yi chang shi n=5
+    dump: preedit=shang shi gong si n=5
+    dump: preedit=zhe ge gong neng n=5
+    dump: preedit=xian shi shi jie n=5
+    dump: preedit=ru guo zhi shi n=5
+    dump: preedit=zhi shi yin wei n=5
+    dump: preedit=jie shi yi xia n=5
+    dump: preedit=fei chang fei chang n=5
+    dump: preedit=qi shi dou shi n=5
+    dump: preedit=zhe ge wen ti n=5
+    dump: preedit=you jia zhi de n=5
+    dump: preedit=you guan bu men n=5
+    dump: preedit=zhe ge hua ti n=5
+    dump: preedit=na ge nian dai n=5
+    dump: preedit=zai zhe zhong qing kuang xia n=5
+    dump: preedit=wei le bi mian n=5
+    dump: preedit=xu yao yi ge n=5
+    dump: preedit=zi wo jie shao n=5
+    dump: preedit=ru guo ni jue de n=5
+    dump: preedit=ye shi yin wei n=5
+    dump: preedit=bu zhi dao zen me n=5
+    dump: preedit=ru guo da jia n=5
+    dump: preedit=gan shou yi xia n=5
+    dump: preedit=wo shi yi ge n=5
+    dump: preedit=kua jing dian shang n=5
+    dump: preedit=suo xu yao de n=5
+    dump: preedit=na ge shi dai n=5
+    dump: preedit=gen ben bu shi n=5
+    dump: preedit=bi jiao gao de n=5
+    dump: preedit=dou cha bu duo n=5
+    dump: preedit=xia mian zhe ge n=5
+    dump: preedit=bu tai yi yang n=5
+    dump: preedit=zuo chu lai de n=5
+    dump: preedit=kan dao yi ge n=5
+    dump: preedit=zai yi ding cheng du shang n=5
+    dump: preedit=geng duo de ren n=5
+    dump: preedit=mei you tai duo n=5
+    dump: preedit=hen duo peng you n=5
+    dump: preedit=wo hen xi huan n=5
+    dump: preedit=zui zhong yao de n=5
+    dump: preedit=mei ge ren dou you n=5
+    dump: preedit=yi zhi dou shi n=5
+    dump: preedit=kao yan zheng zhi n=5
+    dump: preedit=yue lai yue duo n=5
+    dump: preedit=wo men ying gai n=5
+    dump: preedit=dan wo jue de n=5
+    dump: preedit=yi jing bu shi n=5
+    dump: preedit=bu tong de shi n=5
+    dump: preedit=yao me jiu shi n=5
+    dump: preedit=de ji chu shang n=5
+    dump: preedit=jiu yi wei zhe n=5
+    dump: preedit=wang yi yun yin yue n=5
+    dump: preedit=zhi shi ti xi n=5
+    dump: preedit=yi ge xing qi n=5
+    dump: preedit=wei shen me ne n=5
+    dump: preedit=da bu fen shi n=5
+    dump: preedit=ji hu dou shi n=5
+    dump: preedit=jian chi xia qu n=5
+    dump: preedit=mei you ren he n=5
+    dump: preedit=you geng duo de n=5
+    dump: preedit=na me duo ren n=5
+    dump: preedit=guo cheng zhong de n=5
+    dump: preedit=dou shi wei le n=5
+    dump: preedit=dan shi mei you n=5
+    dump: preedit=yi si jiu shi n=5
+    dump: preedit=you guan gui ding n=5
+    dump: preedit=he wo yi yang n=5
+    dump: preedit=chuang ye gong si n=5
+    dump: preedit=gao zhi liang de n=5
+    dump: preedit=wo men zi ji n=5
+    dump: preedit=shi bu tong de n=5
+    dump: preedit=jing ji fa zhan n=5
+    dump: preedit=hen duo di fang n=5
+    dump: preedit=hen ke neng shi n=5
+    dump: preedit=na shi yin wei n=5
+    dump: preedit=kan dao zhe ge n=5
+    dump: preedit=zhe bing bu shi n=5
+    dump: preedit=hai shi ke yi n=5
+    dump: preedit=dou shi ke yi n=5
+    dump: preedit=shu ju fen xi shi n=5
+    dump: preedit=you hei you jing n=5
+    dump: preedit=huang deng deng n=5
+    dump: preedit=ji ji n=5
+    dump: preedit=fu qing n=5
+    dump: preedit=dian lan n=5
+    dump: preedit=da du shi n=5
+    dump: preedit=ren ren bai bu n=5
+    dump: preedit=zao yi n=5
+    dump: preedit=zhi de n=5
+    dump: preedit=tou zi fei yong n=5
+    dump: preedit=zheng ding n=5
+    dump: preedit=xiao sa mo n=5
+    dump: preedit=mo fa jiao shi n=5
+    dump: preedit=song chu n=5
+    dump: preedit=sai cheng n=5
+    dump: preedit=shi ting n=5
+    dump: preedit=ci shen n=5
+    dump: preedit=dang tuan huo dong n=5
+    dump: preedit=shi you bei jing n=5
+    dump: preedit=xiu gai cao an n=5
+    dump: preedit=luo ma n=5
+    dump: preedit=wen chang di jun n=5
+    dump: preedit=ceng ji n=5
+    dump: preedit=yuan cheng fu wu n=5
+    dump: preedit=zou zai qian n=5
+    dump: preedit=tou shang jiao xia n=5
+    dump: preedit=min jing men n=5
+    dump: preedit=cu yan lan yu n=5
+    dump: preedit=pu zai di shang n=5
+    dump: preedit=xiao jian guo n=5
+    dump: preedit=hai ting n=5
+    dump: preedit=bai qiu n=5
+    dump: preedit=an quan wei zhu n=5
+    dump: preedit=zi wo tui jian n=5
+    dump: preedit=mo ni shou ji n=5
+    dump: preedit=jia shu qu n=5
+    dump: preedit=gai kuo de n=5
+    dump: preedit=er yang hua liu n=5
+    dump: preedit=chuan lian zi n=5
+    dump: preedit=ji wei n=5
+    dump: preedit=ya ou n=5
+    dump: preedit=she zhao n=5
+    dump: preedit=kuan chang ming liang n=5
+    dump: preedit=yi nei n=5
+    dump: preedit=jing nei dong mai n=5
+    dump: preedit=jian she xian dai hua n=5
+    dump: preedit=xu wu yi de n=5
+    dump: preedit=fang di chan quan shu n=5
+    dump: preedit=shang shi n=5
+    dump: preedit=qin lin yi xian n=5
+    dump: preedit=tiao chuan n=5
+    dump: preedit=chuang ye ban n=5
+    dump: preedit=ku long yan n=5
+    dump: preedit=yao qing n=5
+    dump: preedit=wan mei nv ren n=5
+    dump: preedit=gu gu jing n=5
+    dump: preedit=yi xue wei sheng wu xue n=5
+    dump: preedit=yi bi tou n=5
+    dump: preedit=jiu hu lu n=5
+    dump: preedit=xi tong fu wu n=5
+    dump: preedit=bu xia qu n=5
+    dump: preedit=zui yu ai n=5
+    dump: preedit=shou lei n=5
+    dump: preedit=si bi n=5
+    dump: preedit=yao ye n=5
+    dump: preedit=da yuan zi n=5
+    dump: preedit=hong ma n=5
+    dump: preedit=zi mu n=5
+    dump: preedit=dang zheng ling dao gan bu n=5
+    dump: preedit=song qian n=5
+    dump: preedit=kuang dao di tie n=5
+    dump: preedit=gai lv xiao n=5
+    dump: preedit=si yue n=5
+    dump: preedit=ying zi n=5
+    dump: preedit=ju ni xing shi n=5
+    dump: preedit=ba shi wan ren n=5
+    dump: preedit=kan bu n=5
+    dump: preedit=jin se yang guang n=5
+    dump: preedit=chi ruan bu chi ying n=5
+    dump: preedit=zhe xia zi n=5
+    dump: preedit=fei ding xiang jiu ye n=5
+    dump: preedit=zu lin she bei n=5
+    dump: preedit=zhong guo jing ji shi bao n=5
+    dump: preedit=yu shu yan n=5
+    dump: preedit=wen xun n=5
+    dump: preedit=yan dian ying n=5
+    dump: preedit=ying xiong nan guo mei ren guan n=5
+    dump: preedit=bei bu qi lai n=5
+    dump: preedit=tei ruo n=2
+    dump: preedit=diao gu zhan chang wen n=5
+    dump: preedit=cai ban n=5
+    dump: preedit=ping shang n=5
+    dump: preedit=kuai jie tong dao n=5
+    dump: preedit=fen pei shi jian n=5
+    dump: preedit=you jian chuan di n=5
+    dump: preedit=zhou xuan wang n=5
+    dump: preedit=wei gan ran n=5
+    dump: preedit=cong shang wang xia n=5
+    dump: preedit=zhong jian ban n=5
+    dump: preedit=huan shi zhi ji n=5
+    dump: preedit=guan dian n=5
+    dump: preedit=dai li lv shi n=5
+    dump: preedit=ma sheng n=5
+    dump: preedit=heng liang shang n=5
+    dump: preedit=long tou yu n=5
+    dump: preedit=fei ma n=5
+    dump: preedit=liang xing n=5
+    dump: preedit=chong wu shang dian n=5
+    dump: preedit=wo yao dui n=5
+    dump: preedit=gen ni n=5
+    dump: preedit=chu dong le n=5
+    dump: preedit=yun xia chu hai shu n=5
+    dump: preedit=shi hui n=5
+    dump: preedit=lin ran zheng qi n=5
+    dump: preedit=you wang wang n=5
+    dump: preedit=qie qiang n=5
+    dump: preedit=gong gong zheng ce n=5
+    dump: preedit=fang huo long n=5
+    dump: preedit=ri shen yi ri n=5
+    dump: preedit=diu gei n=5
+    dump: preedit=wen dang nei rong n=5
+    dump: preedit=tiao kong shou duan n=5
+    dump: preedit=dan ka n=5
+    dump: preedit=xiang gang ji ben fa n=5
+    dump: preedit=nan quan n=5
+    dump: preedit=xian zai xue n=5
+    dump: preedit=jiu ren n=5
+    dump: preedit=jiu kan ni n=5
+    dump: preedit=cong jian li n=5
+    dump: preedit=da xue ying yu n=5
+    dump: preedit=shu de n=5
+    dump: preedit=shen zang bing n=5
+    dump: preedit=chou dao n=5
+    dump: preedit=tan xing n=5
+    dump: preedit=ban zhao lian n=5
+    dump: preedit=zai ni mian qian n=5
+    dump: preedit=yi tu shi n=5
+    dump: preedit=an wei yi huo n=5
+    dump: preedit=zhi wu jing hua n=5
+    dump: preedit=mo hu kong jian n=5
+    dump: preedit=yin qi n=5
+    dump: preedit=hui wei n=5
+    dump: preedit=lao li n=5
+    dump: preedit=la man n=5
+    dump: preedit=xin li ji de n=5
+    dump: preedit=quan zheng shu n=5
+    dump: preedit=tai qiang le n=5
+    dump: preedit=du shu zhe n=5
+    dump: preedit=wang bei n=5
+    dump: preedit=dou shi n=5
+    dump: preedit=zhi tong pian n=5
+    dump: preedit=zao wang ye n=5
+    dump: preedit=zhi ze wei n=5
+    dump: preedit=tian lang n=5
+    dump: preedit=fei cheng zhong qiang n=5
+    dump: preedit=you man n=5
+    dump: preedit=jia shi cang n=5
+    dump: preedit=jian jie shui n=5
+    dump: preedit=hu lai n=5
+    dump: preedit=nian zhu jun bing n=5
+    dump: preedit=ai xin bu xin n=5
+    dump: preedit=qi zi er nv n=5
+    dump: preedit=bei zhu n=5
+    dump: preedit=fan tan ke n=5
+    dump: preedit=shi lai n=5
+    dump: preedit=bian jiao n=5
+    dump: preedit=shou la hu lu n=5
+    dump: preedit=wai xing n=5
+    dump: preedit=yi qi you xian gong si n=5
+    dump: preedit=guang liu liu n=5
+    dump: preedit=you ge n=5
+    dump: preedit=shou kuan ping zheng n=5
+    dump: preedit=yan chi jia zai n=5
+    dump: preedit=ceng xuan bu n=5
+    dump: preedit=zai fei ji shang n=5
+    dump: preedit=ke ke fen n=5
+    dump: preedit=ba da wei ya n=5
+    dump: preedit=tiao xin de n=5
+    dump: preedit=tan chu shen n=5
+    dump: preedit=ba nian n=5
+    dump: preedit=ying fei n=5
+    dump: preedit=huan shou n=5
+    dump: preedit=shao yin bing n=5
+    dump: preedit=ji wei n=5
+    dump: preedit=kai xuan men n=5
+    dump: preedit=jiu ting hao n=5
+    dump: preedit=han wei zhe n=5
+    dump: preedit=di san shi wu zhang n=5
+    dump: preedit=gong yuan n=5
+    dump: preedit=di xi ya n=5
+    dump: preedit=wo ye shui n=5
+    dump: preedit=yan jiu n=5
+    dump: preedit=zhun xu n=5
+    dump: preedit=shang liang n=5
+    dump: preedit=pian yi n=5
+    dump: preedit=tan le n=5
+    dump: preedit=shi jie bei n=5
+    dump: preedit=you ru he n=5
+    dump: preedit=zai wang qian zou n=5
+    dump: preedit=rou tiao n=5
+    dump: preedit=wa wa bing n=5
+    dump: preedit=bai tao wei n=5
+    dump: preedit=fang kuan xin n=5
+    dump: preedit=tai gan xie le n=5
+    dump: preedit=zuo fa n=5
+    dump: preedit=mo xi ge zong n=5
+    dump: preedit=chou kai shen n=5
+    dump: preedit=tian tong n=5
+    dump: preedit=zhu li zhe n=5
+    dump: preedit=chang chun jian n=5
+    dump: preedit=he nan dao n=5
+    dump: preedit=liu le yi quan n=5
+    dump: preedit=zhen lang man n=5
+    dump: preedit=yuan cheng fang fa diao yong n=5
+    dump: preedit=ke huai yi n=5
+    dump: preedit=nv ren a n=5
+    dump: preedit=si fen wei shu jian ju n=5
+    dump: preedit=qi pan wen ti n=5
+    dump: preedit=hao duo ren n=5
+    dump: preedit=dong mai shuan se n=5
+    dump: preedit=da le ge yan se n=5
+    dump: preedit=li du n=5
+    dump: preedit=li zhuan n=5
+    dump: preedit=jie guo n=5
+    dump: preedit=xiao fang dui zhang n=5
+    dump: preedit=wang lao ji liang cha n=5
+    dump: preedit=fan chuan n=5
+    dump: preedit=xiao fei she hui n=5
+    dump: preedit=cu jin ye wu n=5
+    dump: preedit=bian ju n=5
+    dump: preedit=wei guang n=5
+    dump: preedit=duan shou n=5
+    dump: preedit=yin hang he bing n=5
+    dump: preedit=kuai xiao n=5
+    dump: preedit=dai kuan li xi n=5
+    dump: preedit=jing xuan n=5
+    dump: preedit=qing li n=5
+    dump: preedit=huo sun n=5
+    dump: preedit=wang tan n=5
+    dump: preedit=shui dian xue yuan n=5
+    dump: preedit=di liu ming n=5
+    dump: preedit=hao ba n=5
+    dump: preedit=zhe ge pai zi n=5
+    dump: preedit=shang dan n=5
+    dump: preedit=chu zhong shi n=5
+    dump: preedit=tiao shui huang hou n=5
+    dump: preedit=dong jing you chang n=5
+    dump: preedit=wu jue n=5
+    dump: preedit=xi la dui n=5
+    dump: preedit=ren wang n=5
+    dump: preedit=dian kong n=5
+    dump: preedit=ren xing n=5
+    dump: preedit=ma ge na si n=5
+    dump: preedit=bu shao guo jia n=5
+    dump: preedit=shi sui n=5
+    dump: preedit=you le n=5
+    dump: preedit=wai ren n=5
+    dump: preedit=neng kong zhi zhu n=5
+    dump: preedit=jin kou huo wu n=5
+    dump: preedit=mou yi di fang n=5
+    dump: preedit=mao xian ren n=5
+    dump: preedit=quan mian n=5
+    dump: preedit=li an n=5
+    dump: preedit=zheng fu xiao zhang n=5
+    dump: preedit=yue nao yue xiong n=5
+    dump: preedit=yu guo qu n=5
+    dump: preedit=zong bi n=5
+    dump: preedit=huan huan n=5
+    dump: preedit=lu qiao yin n=5
+    dump: preedit=jia ke shan n=5
+    dump: preedit=er qian n=5
+    dump: preedit=dong xi a n=5
+    dump: preedit=bu tan xin n=5
+    dump: preedit=bu rong xing n=5
+    dump: preedit=tian di ben wu xin n=5
+    dump: preedit=pu la ke n=5
+    dump: preedit=shen shou bu fan n=5
+    dump: preedit=mo er n=5
+    dump: preedit=bo fang chang pian n=5
+    dump: preedit=gan bu chu qu n=5
+    dump: preedit=qing tong se n=5
+    dump: preedit=dou niu wu n=5
+    dump: preedit=xi zhuang n=5
+    dump: preedit=peng jia mu n=5
+    dump: preedit=zai jiang n=5
+    dump: preedit=yi dan n=5
+    dump: preedit=tong zhuo n=5
+    dump: preedit=yue da yue rong yi n=5
+    dump: preedit=ting gong ting chan n=5
+    dump: preedit=hen dou n=5
+    dump: preedit=sheng ji n=5
+    dump: preedit=deng yu n=5
+    dump: preedit=ban ge duo yue n=5
+    dump: preedit=lv you gong si n=5
+    dump: preedit=shang hai hua n=5
+    dump: preedit=san zhou nian n=5
+    dump: preedit=chu ren ming n=5
+    dump: preedit=long ren n=5
+    dump: preedit=hui yi n=5
+    dump: preedit=bai nian feng yun n=5
+    dump: preedit=kua qi n=5
+    dump: preedit=bao tan n=5
+    dump: preedit=li zhu sha cao wu shang n=5
+    dump: preedit=fang mu chang n=5
+    dump: preedit=qian li n=5
+    dump: preedit=ge shi chang n=5
+    dump: preedit=mo ta n=5
+    dump: preedit=zi guang ge n=5
+    dump: preedit=wang zhen n=5
+    dump: preedit=wan le n=5
+    dump: preedit=shang shu fang n=5
+    dump: preedit=wan quan bu tong n=5
+    dump: preedit=bu qiang diao n=5
+    dump: preedit=guan si n=5
+    dump: preedit=chun wan jie mu n=5
+    dump: preedit=guo you n=5
+    dump: preedit=xia ji n=5
+    dump: preedit=tong hua shi jian n=5
+    dump: preedit=huo shao n=5
+    dump: preedit=hei long chi n=5
+    dump: preedit=he he n=5
+    dump: preedit=ting xia n=5
+    dump: preedit=xiang cun si yue xian ren shao n=5
+    dump: preedit=ruan jian ding yi wang luo n=5
+    dump: preedit=shi shi nan ce n=5
+    dump: preedit=tan wei qian n=5
+    dump: preedit=ai guo zhu yi zhe n=5
+    dump: preedit=hao hao n=5
+    dump: preedit=shou mei shou n=5
+    dump: preedit=zhong dian n=5
+    dump: preedit=bu duan gai jin n=5
+    dump: preedit=pi jiu n=5
+    dump: preedit=xin hao dian lan n=5
+    dump: preedit=ju zhong n=5
+    dump: preedit=zheng yi zhi yan n=5
+    dump: preedit=de zhang n=5
+    dump: preedit=kun huo n=5
+    dump: preedit=hao bu hao n=5
+    dump: preedit=wu hei se n=5
+    dump: preedit=ding suan ding zhi n=5
+    dump: preedit=xia du shou n=5
+    dump: preedit=xin dai yuan n=5
+    dump: preedit=duo ha n=5
+    dump: preedit=yi ci neng yuan n=5
+    dump: preedit=zun jing n=5
+    dump: preedit=mie jun ji shu n=5
+    dump: preedit=zai guan zhu n=5
+    dump: preedit=xian zhi le n=5
+    dump: preedit=wo hui pei ni n=5
+    dump: preedit=suan shu yun suan fu n=5
+    dump: preedit=hong luo bo pai gu tang n=5
+    dump: preedit=fa mo ti ding n=5
+    dump: preedit=chao yue n=5
+    dump: preedit=zhe me pi n=5
+    dump: preedit=hen chao n=5
+    dump: preedit=di nuo n=5
+    dump: preedit=fang ruo n=5
+    dump: preedit=lin suan gan you n=5
+    dump: preedit=bu wu kong ming n=5
+    dump: preedit=zhen ke n=5
+    dump: preedit=wu chen n=5
+    dump: preedit=gui shei n=5
+    dump: preedit=shang la n=5
+    dump: preedit=hong hua huang n=5
+    dump: preedit=zhao pian n=5
+    dump: preedit=fa guo n=5
+    dump: preedit=qiao mian he le n=5
+    dump: preedit=yi ge chi huo n=5
+    dump: preedit=wen wu quan cai n=5
+    dump: preedit=bu gua n=5
+    dump: preedit=zhe ben n=5
+    dump: preedit=tian shi di li ren he n=5
+    dump: preedit=chu kou di n=5
+    dump: preedit=shi zhi ruo jing n=5
+    dump: preedit=fang mu n=5
+    dump: preedit=dun ji ju ji n=5
+    dump: preedit=jiao xue cai liao n=5
+    dump: preedit=qi su n=5
+    dump: preedit=dian zi jing cha n=5
+    dump: preedit=kai sai lin n=5
+    dump: preedit=ge ren cun kuan n=5
+    dump: preedit=ai ni n=5
+    dump: preedit=nv shi xiang shui n=5
+    dump: preedit=tong xin she bei you xian gong si n=5
+    dump: preedit=zui liang n=5
+    dump: preedit=guo lv fa n=5
+    dump: preedit=zan zhu n=5
+    dump: preedit=yue xia yue da n=5
+    dump: preedit=tai shao le ba n=5
+    dump: preedit=chi qiu n=5
+    dump: preedit=zhao shang lai n=5
+    dump: preedit=wang ping cun n=5
+    dump: preedit=gui ding bi li n=5
+    dump: preedit=zeng zhi n=5
+    dump: preedit=yi fu n=5
+    dump: preedit=hui yu yi dan n=5
+    dump: preedit=fang di chan bao xian n=5
+    dump: preedit=bao zha an n=5
+    dump: preedit=wen du n=5
+    dump: preedit=wang bei n=5
+    dump: preedit=e xing jing zheng n=5
+    dump: preedit=feng yang xian n=5
+    dump: preedit=gao ge er n=5
+    dump: preedit=xuan yi ge n=5
+    dump: preedit=chong man re qing n=5
+    dump: preedit=jian jue di zhi n=5
+    dump: preedit=chao ji la n=5
+    dump: preedit=zhou duan ye chang n=5
+    dump: preedit=ying pai yue ye che n=5
+    dump: preedit=fan zui da shi n=5
+    dump: preedit=shi you jin kou n=5
+    dump: preedit=qian zhe n=5
+    dump: preedit=du nai n=5
+    dump: preedit=tu wu n=5
+    dump: preedit=shang hu n=5
+    dump: preedit=ying pian ge shi n=5
+    dump: preedit=mou ye n=5
+    dump: preedit=fu yun shen n=5
+    dump: preedit=sheng shi n=5
+    dump: preedit=ci shu n=5
+    dump: preedit=ji jia zhan shi n=5
+    dump: preedit=bu ke li yu n=5
+    dump: preedit=yong yi quan n=5
+    dump: preedit=fa zhi ti xi n=5
+    dump: preedit=ba dao zong cai wen n=5
+    dump: preedit=pei ben sheng yi n=5
+    dump: preedit=wan hu zhi shou zui n=5
+    dump: preedit=zuo ku gong n=5
+    dump: preedit=nan fang you niao yan n=5
+    dump: preedit=wei zhi zuo biao n=5
+    dump: preedit=dan ga n=5
+    dump: preedit=lao de la n=5
+    dump: preedit=zi ji n=5
+    dump: preedit=zhu yao ban shi chu n=5
+    dump: preedit=yu min tong le n=5
+    dump: preedit=tu ci n=5
+    dump: preedit=du zuo n=5
+    dump: preedit=kai kai xin xin de n=5
+    dump: preedit=xiao shi diao n=5
+    dump: preedit=wan shang kai che n=5
+    dump: preedit=yi bu zhi yao n=5
+    dump: preedit=mei cheng n=5
+    dump: preedit=sui yi shang n=5
+    dump: preedit=quan wei n=5
+    dump: preedit=hang ye yong hu n=5
+    dump: preedit=ju lei suan fa n=5
+    dump: preedit=duo wei n=5
+    dump: preedit=jing gai n=5
+    dump: preedit=chong bu chu qu n=5
+    dump: preedit=zhi zuo n=5
+    dump: preedit=dou ji chang n=5
+    dump: preedit=zhao cheng chen n=5
+    dump: preedit=yan mo n=5
+    dump: preedit=jin gong fan gui n=5
+    dump: preedit=wei xia yi bu n=5
+    dump: preedit=lv yin yin n=5
+    dump: preedit=yi fa qu di n=5
+    dump: preedit=you hui zheng ce n=5
+    dump: preedit=di chen n=5
+    dump: preedit=ba ru cai wei san jie n=5
+    dump: preedit=bi xiao pu n=5
+    dump: preedit=mei guo da shi n=5
+    dump: preedit=lei tong n=5
+    dump: preedit=bian yi can shu n=5
+    dump: preedit=ji dian jian yi n=5
+    dump: preedit=mei da guo n=5
+    dump: preedit=zhe san ren n=5
+    dump: preedit=dong qu n=5
+    dump: preedit=fei chen n=5
+    dump: preedit=an mie n=5
+    dump: preedit=zou xiang wo n=5
+    dump: preedit=xu huang n=5
+    dump: preedit=lai yi shi n=5
+    dump: preedit=dian wang n=5
+    dump: preedit=ren dao n=5
+    dump: preedit=da cong n=5
+    dump: preedit=cha ru shen du n=5
+    dump: preedit=qing che jian cong n=5
+    dump: preedit=jiao zheng fang fa n=5
+    dump: preedit=hai mei chu li n=5
+    dump: preedit=da yi xian n=5
+    dump: preedit=da dui ren ma n=5
+    dump: preedit=lu bo n=5
+    dump: preedit=zai xian ting yin yue n=5
+    dump: preedit=bu yi jun zi hu n=5
+    dump: preedit=liu guang di n=5
+    dump: preedit=hui yi zi liao n=5
+    dump: preedit=gan bu ren shi n=5
+    dump: preedit=shang xian n=5
+    dump: preedit=gan ji er bei zhe yi n=5
+    dump: preedit=jie jiu xiao chou n=5
+    dump: preedit=you qi chang n=5
+    dump: preedit=shu chu fu du n=5
+    dump: preedit=liu suan an n=5
+    dump: preedit=zhi quan fan wei n=5
+    dump: preedit=tian chong se n=5
+    dump: preedit=ji ben jing yan n=5
+    dump: preedit=ni lian n=5
+    dump: preedit=bao ming biao n=5
+    dump: preedit=da tan n=5
+[  FAILED  ] T9Recall.SegmentedInputRecallsWord (79789 ms)
+[----------] 1 test from T9Recall (79789 ms total)
+
+[----------] Global test environment tear-down
+[==========] 1 test from 1 test suite ran. (84299 ms total)
+[  PASSED  ] 0 tests.
+[  FAILED  ] 1 test, listed below:
+[  FAILED  ] T9Recall.SegmentedInputRecallsWord
+
+ 1 FAILED TEST

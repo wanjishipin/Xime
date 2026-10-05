@@ -1,0 +1,31 @@
+{
+  // 插件源码类型检查（IDE 语言服务 / tsc --noEmit）
+  //
+  // 标准名 tsconfig.json：IDE 从 plugins/**/*.ts 向上查找可命中，提供代码补全。
+  // 用法：
+  //   npx tsc -p tsconfig.json --noEmit
+  //
+  // 覆盖仓库内所有插件（plugins/*/main.ts 与 libs/*.ts），SDK 类型来自
+  // tools/xime-plugin/templates/xime-plugin.d.ts（单一来源）。
+  // 编译（含类型剥离与打包）由 Rust CLI 完成，本配置仅用于类型检查。
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2020"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": []
+  },
+  "include": [
+    "plugins/**/*.ts",
+    "tools/xime-plugin/templates/xime-plugin.d.ts"
+  ],
+  "exclude": [
+    "build/**",
+    "tools/xime-plugin/target/**",
+    "web/**"
+  ]
+}

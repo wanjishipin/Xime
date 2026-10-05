@@ -152,6 +152,6 @@ keyboard:
       n: { tap: "n", swipe_up: "%", long_press: { display: "bubble", values: ["n", "N"] } }
       m: { tap: "m", swipe_up: "#", long_press: { display: "bubble", values: ["m", "M"] } }
       # 逗号键
-      "'": { tap: { label: ",", value: "," }, swipe_up: { label: ".", value: "." } }
+      comma: { tap: { label: ",", value: "," }, swipe_up: { label: ".", value: "." } }
       # 中/英切换键
       earth: { tap: { label: "@language", action: "toggle_ascii" } }

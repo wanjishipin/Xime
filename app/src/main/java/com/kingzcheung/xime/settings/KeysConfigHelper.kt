@@ -3,17 +3,27 @@ package com.kingzcheung.xime.settings
 import android.content.Context
 import android.util.Log
 import com.charleskorn.kaml.Yaml
-import com.charleskorn.kaml.YamlException
 import com.charleskorn.kaml.YamlConfiguration
+import com.charleskorn.kaml.YamlContentPolymorphicSerializer
+import com.charleskorn.kaml.YamlException
+import com.charleskorn.kaml.YamlInput
+import com.charleskorn.kaml.YamlList
 import com.charleskorn.kaml.YamlMap
 import com.charleskorn.kaml.YamlNode
 import com.charleskorn.kaml.YamlScalar
-import com.charleskorn.kaml.YamlList
 import com.kingzcheung.xime.BuildConfig
 import com.kingzcheung.xime.keyboard.GestureAction
 import androidx.compose.runtime.mutableStateOf
+import kotlinx.serialization.DeserializationStrategy
+import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerialName
+import kotlinx.serialization.descriptors.PrimitiveKind
+import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -42,33 +52,27 @@ enum class ButtonLayout(val value: String) {
     }
 }
 
-data class GestureDef(
-    val label: String = "",
-    /** 多行标签（YAML 数组格式），每行作为独立字符串，用于多行显示 */
-    val labels: List<String> = emptyList(),
-    val action: GestureAction? = GestureAction.COMMIT,
-    val value: String = "",
-    val icon: String = "",
-    val display: DisplayMode = DisplayMode.BOTH,
-)
-
-data class LongPressConfig(
-    val display: String = "key", // "key"（默认）显示在按键上, "bubble" 气泡弹出
-    val values: List<GestureDef> = emptyList(),
-)
-
-data class KeyGestureConfig(
-    val tap: GestureDef? = null,
-    val swipeUp: GestureDef? = null,
-    /** Shift 激活时的上滑字符集（第二套字符，扩展可输入符号如 []{}） */
-    val shiftSwipeUp: GestureDef? = null,
-    val swipeDown: GestureDef? = null,
-    val longPress: LongPressConfig? = null,
-)
-
-data class KeyboardConfig(
-    val keys: Map<String, KeyGestureConfig> = emptyMap(),
-)
+/**
+ * 把滑动手势定义转换为布局层回调（九键/笔画布局共用，26 键在 KeyboardLayout 内联处理）。
+ *
+ * - COMMIT 走 [onCommitText]：落点由布局决定（九键直接上屏数字——T9 模式 onKeyPress(数字)
+ *   会进拼音数字码组合，笔画则沿用按键路由保持原语义）；
+ * - NONE 视为未绑定；
+ * - 其余动作（复制/粘贴/光标移动/面板切换等）走 [onGestureAction]（UI 拦截层 → 动作分发）。
+ */
+internal fun swipeHandlerFor(
+    def: KeyAction?,
+    onCommitText: (String) -> Unit,
+    onGestureAction: ((GestureAction, String) -> Unit)?,
+): (() -> Unit)? {
+    val action = def?.action ?: return null
+    if (action == GestureAction.NONE) return null
+    val value = def.value.ifEmpty { def.label }
+    return {
+        if (action == GestureAction.COMMIT) onCommitText(value)
+        else onGestureAction?.invoke(action, value)
+    }
+}
 
 /**
  * 键盘行布局配置，从 xime.yaml keyboard.<section>.layout 加载。
@@ -88,149 +92,285 @@ data class KeyboardShadowConfig(
 )
 
 /**
+ * 单个键盘的间距覆盖配置。
+ */
+data class KeyboardSpacingConfig(
+    val spacingX: Float? = null,
+    val spacingY: Float? = null,
+)
+
+/**
  * 键盘按键配置，从 xime.yaml keyboard.key 加载。
  */
 data class KeyboardKeyConfig(
     val cornerRadius: Int = 8,
-)
+    /** 按键横向间距（dp），未配置时各布局使用自身默认值 */
+    val spacingX: Float? = null,
+    /** 按键竖向间距（dp），未配置时各布局使用自身默认值 */
+    val spacingY: Float? = null,
+    /** 各键盘单独覆盖的间距，key 为键盘名（qwerty/t9/number/stroke/symbol） */
+    val spacingOverrides: Map<String, KeyboardSpacingConfig> = emptyMap(),
+) {
+    /**
+     * 获取指定键盘的有效间距（覆盖值优先，回退全局值）。
+     * @return Pair(横向, 竖向)，null 表示未配置
+     */
+    fun spacingFor(keyboard: String): Pair<Float?, Float?> {
+        val override = spacingOverrides[keyboard]
+        val sx = override?.spacingX ?: spacingX
+        val sy = override?.spacingY ?: spacingY
+        return sx to sy
+    }
+}
 
 /**
  * 键盘颜色配置，从 xime.yaml keyboard.colors 加载。
  * 所有颜色值为 0xRRGGBB 格式（不含 alpha）。
  */
+/** 全局键盘颜色后备，背景色已由 color_schemes 的 keyboard_background 接管。 */
 data class KeyboardColorsConfig(
-    val keyboardBgColor: Long = 0xE3E4E8,
-    val keyboardBgColorDark: Long = 0x202020,
     val keyBgColor: Long = 0xFFFFFF,
     val keyBgColorDark: Long = 0x4A4A4A,
     val specialKeyBgColor: Long? = null,
     val specialKeyBgColorDark: Long? = null,
-    val candidateBarBgColor: Long = 0xE3E4E8,
-    val candidateBarBgColorDark: Long = 0x202020,
     val keyTextColor: Long = 0x202124,
     val keyTextColorDark: Long = 0xE8EAED,
     val candidateTextColor: Long = 0x1A73E8,
     val candidateTextColorDark: Long = 0x8AB4F8,
-)
-
-/**
- * 从 YAML node 解析 KeyboardConfig。
- *
- * 支持两种格式：
- * - 字符串 `"q"` → 等价于 GestureDef(label="q", action="commit", value="q")
- * - 对象 `{ label: "复制", action: "copy" }` → 完整定义
- */
-private fun parseKeyboardConfig(raw: com.charleskorn.kaml.YamlMap?): KeyboardConfig? {
-    if (raw == null) return null
-    val keysNode = raw["keys"] as? com.charleskorn.kaml.YamlMap ?: return KeyboardConfig()
-    val keys = mutableMapOf<String, KeyGestureConfig>()
-    for ((keyNode, valueNode) in keysNode.entries) {
-        val key = (keyNode as? com.charleskorn.kaml.YamlScalar)?.content ?: continue
-        val gestureMap = valueNode as? com.charleskorn.kaml.YamlMap ?: continue
-        keys[key] = parseKeyGestureConfig(gestureMap)
+    val candidateBarBgColor: Long = 0xE3E4E8,
+    val candidateBarBgColorDark: Long = 0x202020,
+) {
+    companion object {
+        /** 键盘背景后备色，仅当 color_schemes 无 keyboard_background 时使用。 */
+        const val FALLBACK_BG_LIGHT: Long = 0xE3E4E8
+        const val FALLBACK_BG_DARK: Long = 0x202020
     }
-    return KeyboardConfig(keys)
 }
 
-private fun parseKeyGestureConfig(map: com.charleskorn.kaml.YamlMap): KeyGestureConfig {
-    var tap: GestureDef? = null
-    var swipeUp: GestureDef? = null
-    var shiftSwipeUp: GestureDef? = null
-    var swipeDown: GestureDef? = null
-    var longPress: LongPressConfig? = null
+/**
+ * 解析一个键的手势绑定表（`keyboard.<section>.keys.<keyId>`）。
+ *
+ * 槽位：tap / double_tap / long_press / swipe_up / swipe_down / swipe_left / swipe_right，
+ * 另有键级 `width`（列宽权重）。
+ *
+ * @param presets `keyboard.actions` 定义的可复用动作预设
+ */
+internal fun parseKeyBinding(
+    map: com.charleskorn.kaml.YamlMap,
+    presets: Map<String, KeyAction> = emptyMap(),
+): KeyBinding {
+    var tap: KeyAction? = null
+    var doubleTap: KeyAction? = null
+    var longPress: LongPressAction? = null
+    var swipeUp: KeyAction? = null
+    var shiftSwipeUp: KeyAction? = null
+    var swipeDown: KeyAction? = null
+    var swipeLeft: KeyAction? = null
+    var swipeRight: KeyAction? = null
+    var width: Float? = null
     for ((kNode, vNode) in map.entries) {
         val name = (kNode as? com.charleskorn.kaml.YamlScalar)?.content ?: continue
         when (name) {
-            "tap" -> tap = parseGestureNode(vNode)
-            "swipe_up" -> swipeUp = parseGestureNode(vNode)
-            "shift_swipe_up" -> shiftSwipeUp = parseGestureNode(vNode)
-            "swipe_down" -> swipeDown = parseGestureNode(vNode)
-            "long_press" -> longPress = parseLongPress(vNode)
+            "tap" -> tap = parseKeyAction(vNode, GestureAction.SEND_RIME, presets)
+            "double_tap" -> doubleTap = parseKeyAction(vNode, GestureAction.COMMIT, presets)
+            "long_press" -> longPress = parseLongPress(vNode, presets)
+            "swipe_up" -> swipeUp = parseKeyAction(vNode, GestureAction.COMMIT, presets)
+            "shift_swipe_up" -> shiftSwipeUp = parseKeyAction(vNode, GestureAction.COMMIT, presets)
+            "swipe_down" -> swipeDown = parseKeyAction(vNode, GestureAction.COMMIT, presets)
+            "swipe_left" -> swipeLeft = parseKeyAction(vNode, GestureAction.COMMIT, presets)
+            "swipe_right" -> swipeRight = parseKeyAction(vNode, GestureAction.COMMIT, presets)
+            "width" -> width = (vNode as? com.charleskorn.kaml.YamlScalar)?.content?.toFloatOrNull()
         }
     }
-    return KeyGestureConfig(tap, swipeUp, shiftSwipeUp, swipeDown, longPress)
+    return KeyBinding(tap, doubleTap, longPress, swipeUp, shiftSwipeUp, swipeDown, swipeLeft, swipeRight, width)
 }
 
 /**
- * 解析 long_press，支持两种格式：
- *   新格式（推荐）：{ display: "bubble", values: ["q", "Q"] }
- *   旧格式（兼容）：["q", "Q"]
+ * 解析 long_press。统一为一种形式：`{ display?, values: [...] }`。
+ *
+ * - [display] 缺省为 `bubble`（长按弹出气泡滑动选择）；设为 `key` 则显示在键面，不弹气泡；
+ * - [values] 为候选动作列表（单动作也写成单元素列表）。
  */
-private fun parseLongPress(node: com.charleskorn.kaml.YamlNode): LongPressConfig? {
-    // 旧格式：纯数组 → 默认 display="key"
-    if (node is YamlList) {
-        val values = node.items.map { parseGestureNode(it) }.take(10)
-        return LongPressConfig(display = "key", values = values)
-    }
-    // 新格式：对象 { display, values }
-    if (node is com.charleskorn.kaml.YamlMap) {
-        var display = "key"
-        var values: List<GestureDef> = emptyList()
-        for ((k, v) in node.entries) {
-            val key = (k as? com.charleskorn.kaml.YamlScalar)?.content ?: continue
-            when (key) {
-                "display" -> display = (v as? com.charleskorn.kaml.YamlScalar)?.content ?: "key"
-                "values" -> if (v is YamlList) values = v.items.map { parseGestureNode(it) }.take(10)
-            }
+/** 长按气泡最多展示的候选数（气泡按此宽度布局）。 */
+private const val MAX_LONG_PRESS_VALUES = 10
+
+private fun parseLongPress(
+    node: com.charleskorn.kaml.YamlNode,
+    presets: Map<String, KeyAction>,
+): LongPressAction? {
+    if (node !is com.charleskorn.kaml.YamlMap) {
+        if (node is YamlList) {
+            Log.w("KeysConfigHelper", "long_press 需写成 { display, values: [...] } 形式，数组简写已不再支持")
         }
-        return LongPressConfig(display = display, values = values)
+        return null
     }
-    return null
+    val valuesNode = node.opt<YamlList>("values") ?: return null
+    var display = node.opt<YamlScalar>("display")?.content
+        ?.let { DisplayMode.fromValue(it) }
+        ?: DisplayMode.BUBBLE
+    if (display != DisplayMode.BUBBLE) {
+        // 长按的键面绘制尚未实现（v1 曾有「键面显示前 2 个候选」）：一律按气泡处理，
+        // 否则 display: key/both 会让长按候选既不画键面、也不弹气泡 —— 完全不可达。
+        Log.w("KeysConfigHelper", "long_press 的 display 只支持 bubble：键面绘制未实现，已按 bubble 处理")
+        display = DisplayMode.BUBBLE
+    }
+    if (valuesNode.items.size > MAX_LONG_PRESS_VALUES) {
+        Log.w(
+            "KeysConfigHelper",
+            "long_press.values 最多 $MAX_LONG_PRESS_VALUES 项，已忽略多余 ${valuesNode.items.size - MAX_LONG_PRESS_VALUES} 项"
+        )
+    }
+    val values = valuesNode.items.map { parseKeyAction(it, GestureAction.COMMIT, presets) }.take(MAX_LONG_PRESS_VALUES)
+    if (values.any { it.label.ifEmpty { it.value }.isEmpty() }) {
+        Log.w("KeysConfigHelper", "long_press 存在既无 label 也无 value 的项：该项无法在气泡中展示，也不会生效")
+    }
+    return LongPressAction(
+        display = display,
+        values = values,
+    )
 }
 
-private fun parseGestureNode(node: com.charleskorn.kaml.YamlNode): GestureDef {
-    // 字符串 → commit
+/**
+ * 解析单个手势槽位为 [KeyAction]。
+ *
+ * 取值形式：
+ * - 字符串 `"q"` → 字面简写（按槽位默认动作 + value=文本）
+ * - 对象 `{ label: "复制", action: copy }` → 内联动作
+ * - 对象 `{ use: 预设名 }` → 引用 `keyboard.actions` 预设
+ *
+ * [defaultAction] 为槽位语义默认：tap → SEND_RIME，swipe/double_tap/long_press → COMMIT。
+ */
+private fun parseKeyAction(
+    node: com.charleskorn.kaml.YamlNode,
+    defaultAction: GestureAction,
+    presets: Map<String, KeyAction>,
+): KeyAction {
     if (node is com.charleskorn.kaml.YamlScalar) {
         val text = node.content
         val icon = if (text.startsWith("@")) text.removePrefix("@") else ""
         val cleanLabel = if (icon.isNotEmpty()) "" else text
-        return GestureDef(label = cleanLabel, action = GestureAction.COMMIT, value = text, icon = icon)
+        return KeyAction(action = defaultAction, value = text, label = cleanLabel, icon = icon)
     }
-    // 映射 → 完整定义
     if (node is com.charleskorn.kaml.YamlMap) {
+        // 预设引用：{ use: 名称 }
+        val use = node.opt<YamlScalar>("use")?.content
+        if (!use.isNullOrEmpty()) {
+            val preset = presets[use]
+            if (preset == null) {
+                Log.w("KeysConfigHelper", "手势配置引用了未知动作预设: \"$use\"")
+                return KeyAction()
+            }
+            return preset
+        }
         var label = ""
-        var labels: List<String> = emptyList()
-        var action: GestureAction? = GestureAction.COMMIT
+        var iconName = ""
+        var action: GestureAction? = defaultAction
         var value = ""
         var display = "key"
+        var bubble = true
         for ((k, v) in node.entries) {
             val key = (k as? com.charleskorn.kaml.YamlScalar)?.content ?: continue
             when (key) {
                 "label" -> {
                     if (v is YamlList) {
-                        labels = v.items.mapNotNull { (it as? YamlScalar)?.content }
-                        label = labels.joinToString("\n")
+                        // 数组 label 按多行显示：join 后就是显示文本
+                        label = v.items.mapNotNull { (it as? YamlScalar)?.content }.joinToString("\n")
                     } else {
-                        val vStr = (v as? YamlScalar)?.content ?: continue
-                        label = vStr
+                        label = (v as? YamlScalar)?.content ?: continue
                     }
                 }
                 "action" -> {
-                    val vStr = (v as? YamlScalar)?.content ?: continue
-                    action = if (vStr == "null") null else GestureAction.fromValue(vStr)
+                    val vStr = (v as? YamlScalar)?.content
+                    if (vStr == null || vStr == "null") {
+                        action = null
+                    } else {
+                        action = GestureAction.fromValue(vStr)
+                        if (action == null) {
+                            Log.w("KeysConfigHelper", "手势配置包含未知 action: \"$vStr\"，该手势将不生效")
+                        }
+                    }
                 }
-                "value" -> {
-                    val vStr = (v as? YamlScalar)?.content ?: continue
-                    value = vStr
-                }
-                "display" -> {
-                    val vStr = (v as? YamlScalar)?.content ?: continue
-                    display = vStr
-                }
+                "value" -> (v as? YamlScalar)?.content?.let { value = it }
+                "display" -> (v as? YamlScalar)?.content?.let { display = it }
+                "bubble" -> bubble = (v as? YamlScalar)?.content?.toBooleanStrictOrNull() ?: true
+                // 图标名：`icon: mic` 与历史写法 `label: "@mic"` 等价
+                "icon" -> (v as? YamlScalar)?.content?.takeIf { it.isNotBlank() }?.let { iconName = it.removePrefix("@") }
+                // 简写：`send: "Escape"` 等价 `{ action: send, value: "Escape" }`
                 "send" -> {
-                    val vStr = (v as? YamlScalar)?.content ?: continue
-                    action = GestureAction.SEND_KEY; value = vStr
+                    (v as? YamlScalar)?.content?.let {
+                        action = GestureAction.SEND_KEY; value = it
+                    }
                 }
+                else -> Log.w("KeysConfigHelper", "手势配置含未知字段 \"$key\"（多为拼写错误），已忽略")
             }
         }
-        val icon = if (label.startsWith("@")) label.removePrefix("@") else ""
-        val cleanLabel = if (icon.isNotEmpty()) "" else label
-        return GestureDef(label = cleanLabel, labels = labels, action = action, value = value, icon = icon, display = DisplayMode.fromValue(display))
+        val iconFromLabel = if (label.startsWith("@")) label.removePrefix("@") else ""
+        val icon = iconName.ifEmpty { iconFromLabel }
+        val cleanLabel = if (iconFromLabel.isNotEmpty()) "" else label
+        return KeyAction(
+            action = action,
+            value = value,
+            label = cleanLabel,
+            icon = icon,
+            display = DisplayMode.fromValue(display),
+            bubble = bubble,
+        )
     }
-    return GestureDef()
+    return KeyAction(action = null)
 }
 
 // ── 原有配置类 ──
+
+/**
+ * 背景配置，支持纯色/渐变/图片三种类型。
+ *
+ * YAML 示例：
+ * ```yaml
+ * # 纯色
+ * keyboard_background:
+ *   type: solid
+ *   color: 0x8F73E2
+ *   color_dark: 0x4A3F7A   # 可选，不指定则自动暗化
+ *
+ * # 渐变
+ * keyboard_background:
+ *   type: gradient
+ *   colors: [0x8F73E2, 0xE8DEF8]        # 亮色渐变断点
+ *   colors_dark: [0x4A3F7A, 0x2D2040]    # 暗色渐变断点（可选）
+ *   angle: 135  # 角度制，0=左→右，90=下→上，180=右→左，270=上→下
+ *
+ * # 图片
+ * keyboard_background:
+ *   type: image
+ *   src: "themes/lavender_bg.png"          # 相对于 assets/
+ *   src_dark: "themes/lavender_bg_dark.png" # 暗色变体（可选）
+ *   fit: cover  # cover | contain | fill | fit_width | fit_height | none
+ * ```
+ */
+@Serializable
+data class BackgroundConfig(
+    val type: String = "solid",
+    // solid
+    val color: Long? = null,
+    @SerialName("color_dark")
+    val colorDark: Long? = null,
+    // gradient
+    val colors: List<Long>? = null,
+    @SerialName("colors_dark")
+    val colorsDark: List<Long>? = null,
+    val angle: Int? = null,
+    // image
+    val src: String? = null,
+    @SerialName("src_dark")
+    val srcDark: String? = null,
+    val fit: String? = null,
+    /** 图片背景遮罩：半透明黑色覆盖层降低背景亮度（0~1，如 0.35 表示压暗 35%）。 */
+    @SerialName("overlay_alpha")
+    val overlayAlpha: Float? = null,
+    /** 暗色模式下的遮罩强度，未配置时沿用 [overlayAlpha]。 */
+    @SerialName("overlay_alpha_dark")
+    val overlayAlphaDark: Float? = null,
+)
 
 @Serializable
 data class ColorSchemeEntry(
@@ -241,14 +381,35 @@ data class ColorSchemeEntry(
     val keyboardBgColor: Long? = null,
     @SerialName("key_bg_color")
     val keyBgColor: Long? = null,
+    @SerialName("key_bg_color_dark")
+    val keyBgColorDark: Long? = null,
     @SerialName("special_key_bg_color")
     val specialKeyBgColor: Long? = null,
+    @SerialName("special_key_bg_color_dark")
+    val specialKeyBgColorDark: Long? = null,
     @SerialName("candidate_bar_bg_color")
     val candidateBarBgColor: Long? = null,
     @SerialName("key_text_color")
     val keyTextColor: Long? = null,
+    @SerialName("key_text_color_dark")
+    val keyTextColorDark: Long? = null,
     @SerialName("candidate_text_color")
     val candidateTextColor: Long? = null,
+    @SerialName("candidate_text_color_dark")
+    val candidateTextColorDark: Long? = null,
+    @SerialName("candidate_selected_text_color")
+    val candidateSelectedTextColor: Long? = null,
+    @SerialName("candidate_selected_text_color_dark")
+    val candidateSelectedTextColorDark: Long? = null,
+    @SerialName("keyboard_background")
+    val keyboardBackground: BackgroundConfig? = null,
+    @SerialName("key_background")
+    val keyBackground: BackgroundConfig? = null,
+    @SerialName("candidate_bar_background")
+    val candidateBarBackground: BackgroundConfig? = null,
+    /** Material You 动态配色：忽略静态颜色字段，运行时从壁纸调色板取色（仅 Android 12+）。 */
+    @SerialName("dynamic_color")
+    val dynamicColor: Boolean = false,
 )
 
 @Serializable
@@ -268,9 +429,178 @@ data class MetadataConfig(
 )
 
 @Serializable
+data class ColorSchemeModeConfig(
+    @SerialName("light")
+    val light: String? = null,
+    @SerialName("dark")
+    val dark: String? = null,
+)
+
+/** 兼容 color_scheme 的两种写法：对象（{light, dark}）或标量字符串。 */
+@OptIn(ExperimentalSerializationApi::class)
+object ColorSchemeModeConfigSerializer :
+    YamlContentPolymorphicSerializer<ColorSchemeModeConfig>(ColorSchemeModeConfig::class) {
+
+    override fun selectDeserializer(node: YamlNode): DeserializationStrategy<ColorSchemeModeConfig> {
+        // 标量写法（config generator 输出）：color_scheme: mu_shan_zi → light 使用该值。
+        return if (node is YamlScalar) ScalarColorSchemeDeserializer else ColorSchemeModeConfig.serializer()
+    }
+
+    /** 把单个字符串的 color_scheme 反序列化为 light=该字符串。 */
+    private object ScalarColorSchemeDeserializer : KSerializer<ColorSchemeModeConfig> {
+        override val descriptor: SerialDescriptor =
+            PrimitiveSerialDescriptor("ScalarColorScheme", PrimitiveKind.STRING)
+
+        override fun deserialize(decoder: Decoder): ColorSchemeModeConfig =
+            ColorSchemeModeConfig(light = decoder.decodeString())
+
+        override fun serialize(encoder: Encoder, value: ColorSchemeModeConfig) {
+            encoder.encodeString(value.light ?: "")
+        }
+    }
+}
+
+/** 字体配置，从 xime.yaml style 节点加载。字体文件放在 rime/fonts/ 目录下。 */
+data class KeyboardFontConfig(
+    val keyFont: String = "",
+    val keyLabelFont: String = "",
+    val candidateFont: String = "",
+    val commentFont: String = "",
+)
+
+/**
+ * 九键（T9）布局配置，从 xime.yaml keyboard.t9.layout 加载。
+ *
+ * 九键为三列结构：左列（候选面板占位 + 键）、主区（按行的按键网格）、右列（功能键列）。
+ * 键 id 分三类：
+ * - 数字 "0"~"9"：九键输入键（点按固定为九键数字输入；键面字母 keys.<id>.tap.label、
+ *   长按候选 keys.<id>.long_press、手势 keys.<id> 均可配置）；
+ * - [KeysConfigHelper.T9_FUNCTION_KEY_IDS] 中的功能键：渲染内置组件，位置可任意安排；
+ * - 其余 id：自定义键，行为在 keys.<id> 定义（无配置时键面为键名、点按提交键名）。
+ */
+data class KeyboardT9LayoutConfig(
+    /** 左列（自上而下）。candidates = 拼音候选面板占位（候选态显示音节，空闲态显示 side_symbols）。 */
+    val left: List<String> = DEFAULT_T9_LEFT,
+    /** 主区行：每个子列表一行，从左到右。 */
+    val rows: List<List<String>> = DEFAULT_T9_ROWS,
+    /** 右列（自上而下）。 */
+    val right: List<String> = DEFAULT_T9_RIGHT,
+) {
+    companion object {
+        val DEFAULT_T9_LEFT: List<String> = listOf("candidates", "symbol")
+        val DEFAULT_T9_ROWS: List<List<String>> = listOf(
+            listOf("1", "2", "3"),
+            listOf("4", "5", "6"),
+            listOf("7", "8", "9"),
+            listOf("number", "space", "earth"),
+        )
+        val DEFAULT_T9_RIGHT: List<String> = listOf("delete", "clear", "enter")
+    }
+}
+
+/**
+ * 九键（T9）键盘配置，从 xime.yaml keyboard.t9 加载。
+ */
+data class KeyboardT9Config(
+    /** 左侧快捷符号栏（空闲态），列表长度不限，超过 4 个时键盘侧滚动显示。 */
+    val sideSymbols: List<String>? = null,
+    /** 布局（左列/主区行/右列）。 */
+    val layout: KeyboardT9LayoutConfig = KeyboardT9LayoutConfig(),
+)
+
+/**
+ * 笔画键盘配置，从 xime.yaml keyboard.stroke 加载。
+ */
+data class KeyboardStrokeConfig(
+    /** 左侧快捷符号列，列表长度不限，超过 3 个时键盘侧滚动显示。 */
+    val sideSymbols: List<String>? = null,
+)
+
+/**
+ * 部分配置：仅包含 YAML 中显式配置的字段，null = 未配置。
+ * 用于 custom → builtIn → 代码默认值的字段级一路 fallback 合并。
+ */
+internal data class KeyboardFontPartial(
+    val keyFont: String? = null,
+    val keyLabelFont: String? = null,
+    val candidateFont: String? = null,
+    val commentFont: String? = null,
+)
+
+internal data class KeyboardColorsPartial(
+    val keyBgColor: Long? = null,
+    val keyBgColorDark: Long? = null,
+    val specialKeyBgColor: Long? = null,
+    val specialKeyBgColorDark: Long? = null,
+    val keyTextColor: Long? = null,
+    val keyTextColorDark: Long? = null,
+    val candidateTextColor: Long? = null,
+    val candidateTextColorDark: Long? = null,
+    val candidateBarBgColor: Long? = null,
+    val candidateBarBgColorDark: Long? = null,
+)
+
+internal data class KeyboardShadowPartial(
+    val enabled: Boolean? = null,
+    val elevation: Int? = null,
+    val shapeRadius: Int? = null,
+)
+
+internal data class KeyboardKeyPartial(
+    val cornerRadius: Int? = null,
+    val spacingX: Float? = null,
+    val spacingY: Float? = null,
+    val spacingOverrides: Map<String, KeyboardSpacingConfig>? = null,
+)
+
+internal data class KeyboardT9Partial(
+    val sideSymbols: List<String>? = null,
+    val layout: KeyboardT9LayoutPartial? = null,
+)
+
+internal data class KeyboardT9LayoutPartial(
+    val left: List<String>? = null,
+    val rows: List<List<String>>? = null,
+    val right: List<String>? = null,
+)
+
+internal data class KeyboardStrokePartial(
+    val sideSymbols: List<String>? = null,
+)
+
+/** 字段级一路 fallback：custom → builtIn → 代码默认值。 */
+internal inline fun <T> tiered(custom: T?, builtIn: T?, default: T): T = custom ?: builtIn ?: default
+
+/** 字符串字段的 fallback：空白视为未配置，路由到下一级。 */
+internal fun tieredText(custom: String?, builtIn: String?, default: String): String =
+    custom?.takeIf { it.isNotBlank() }
+        ?: builtIn?.takeIf { it.isNotBlank() }
+        ?: default
+
+/**
+ * kaml 0.104 的 [YamlMap.get] 是 reified 泛型取值，值类型与期望类型不符时抛
+ * IncorrectTypeException（如 `fonts:` 段整体被注释时值为 YamlNull，`["fonts"] as? YamlMap`
+ * 会在 get 内部直接抛异常，`as?` 无机会返回 null）。
+ * 统一经 YamlNode 取值后再做真正的安全转换：段缺失/为 null/类型不符时返回 null 而非抛异常。
+ */
+private inline fun <reified T : YamlNode> YamlMap.opt(key: String): T? =
+    get<YamlNode>(key) as? T
+
+@Serializable
 data class StyleConfig(
     @SerialName("color_scheme")
-    val colorScheme: String? = null,
+    @Serializable(with = ColorSchemeModeConfigSerializer::class)
+    val colorScheme: ColorSchemeModeConfig? = null,
+    @SerialName("dark_mode")
+    val darkMode: Int? = null,
+    @SerialName("key_font")
+    val keyFont: String? = null,
+    @SerialName("key_label_font")
+    val keyLabelFont: String? = null,
+    @SerialName("candidate_font")
+    val candidateFont: String? = null,
+    @SerialName("comment_font")
+    val commentFont: String? = null,
 )
 
 @Serializable
@@ -293,31 +623,56 @@ data class XimeIndexConfig(
 
 data class KeysConfig(
     val swipeUp: Map<String, String> = emptyMap(),
-    val swipeDownEnglish: Map<String, String> = emptyMap(),
-    val shiftSwipeUp: Map<String, String> = emptyMap()
+    val shiftSwipeUp: Map<String, String> = emptyMap(),
+    val swipeDownEnglish: Map<String, String> = emptyMap()
 )
 
 object KeysConfigHelper {
     private const val TAG = "KeysConfigHelper"
     private const val XIME_CONFIG_FILE = "xime.yaml"
     private const val XIME_CUSTOM_CONFIG_FILE = "xime.custom.yaml"
+
+    /**
+     * 由 `layout.rows` 引用的功能键 id（行为在其对应 `keys.<id>` 配置）。
+     * 布局行里出现这些 id 时，渲染层按 id 选择功能键组件而非字母键。
+     */
+    val FUNCTION_KEY_IDS: Set<String> = setOf(
+        "shift", "delete", "enter", "space", "mode_change", "symbol", "emoji", "earth", "voice", "comma",
+        "tab", "escape", "ctrl", "win", "alt"
+    )
+
+    /**
+     * 九键布局的功能键 id（keyboard.t9.layout 可把任意 id 安排到任意位置）：
+     * candidates=拼音候选面板、symbol=符号、number=数字面板、space=空格、
+     * earth=中英切换、delete=退格、clear=重输、enter=回车。
+     * 组件与行为内置，不可经 keys.<id> 改绑；键在行/列中的相对宽度可用 keys.<id>.width 覆盖。
+     */
+    val T9_FUNCTION_KEY_IDS: Set<String> = setOf(
+        "candidates", "symbol", "number", "space", "earth", "delete", "clear", "enter"
+    )
+
+    /** 九键左侧快捷符号栏内置默认值（T9KeyboardLayout 硬编码的历史行为）。 */
+    val DEFAULT_T9_SIDE_SYMBOLS: List<String> = listOf("，", "。", "？", "！")
+
+    /** 笔画键盘左侧符号列内置默认（与历史硬编码一致）。 */
+    val DEFAULT_STROKE_SIDE_SYMBOLS: List<String> = listOf("。", "？", "！", "~")
     
     private val yaml = Yaml(configuration = YamlConfiguration(strictMode = false))
     
     private var config: KeysConfig = KeysConfig(
         swipeUp = getDefaultSwipeUp(),
-        swipeDownEnglish = getDefaultSwipeDownEnglish(),
-        shiftSwipeUp = getDefaultShiftSwipeUp()
+        shiftSwipeUp = getDefaultShiftSwipeUp(),
+        swipeDownEnglish = getDefaultSwipeDownEnglish()
     )
 
     // 手势配置缓存（mutableStateOf 让 Compose 直接观察变更）
     // 中文键盘（qwerty）手势配置缓存
-    private val _keyGestureConfig = mutableStateOf<Map<String, KeyGestureConfig>>(emptyMap())
-    val keyGestureConfig: Map<String, KeyGestureConfig> get() = _keyGestureConfig.value
+    private val _keyGestureConfig = mutableStateOf<Map<String, KeyBinding>>(emptyMap())
+    val keyGestureConfig: Map<String, KeyBinding> get() = _keyGestureConfig.value
     
     // 英文键盘（qwerty_en）手势配置缓存
-    private val _keyGestureConfigEn = mutableStateOf<Map<String, KeyGestureConfig>>(emptyMap())
-    val keyGestureConfigEn: Map<String, KeyGestureConfig> get() = _keyGestureConfigEn.value
+    private val _keyGestureConfigEn = mutableStateOf<Map<String, KeyBinding>>(emptyMap())
+    val keyGestureConfigEn: Map<String, KeyBinding> get() = _keyGestureConfigEn.value
     
     // 键盘颜色配置缓存
     private var keyboardColorsConfig: KeyboardColorsConfig = KeyboardColorsConfig()
@@ -327,6 +682,14 @@ object KeysConfigHelper {
 
     // 键盘按键配置缓存
     private var keyboardKeyConfig: KeyboardKeyConfig = KeyboardKeyConfig()
+
+    // 九键（T9）键盘配置缓存
+    private var keyboardT9Config: KeyboardT9Config = KeyboardT9Config(sideSymbols = DEFAULT_T9_SIDE_SYMBOLS)
+    private var keyboardStrokeConfig: KeyboardStrokeConfig = KeyboardStrokeConfig(sideSymbols = DEFAULT_STROKE_SIDE_SYMBOLS)
+
+    // 字体配置缓存
+    private var keyboardFontConfig: KeyboardFontConfig = KeyboardFontConfig()
+    fun getKeyboardFontConfig(): KeyboardFontConfig = keyboardFontConfig
     
     // 按键布局模式缓存（中文 qwerty / 英文 qwerty_en）
     private var _buttonLayoutZh: ButtonLayout = ButtonLayout.STANDARD
@@ -350,7 +713,73 @@ object KeysConfigHelper {
     private var _zhRows: List<List<String>> = DEFAULT_ZH_ROWS
     private var _enRows: List<List<String>> = DEFAULT_EN_ROWS
 
-    /** 获取键盘行布局，每个子 List 为一行的按键 ID 列表，索引 0=第一行 */
+    // 标准 26 键的基线缓存（合并键布局切换退出时恢复）
+    private var _zhRowsBase: List<List<String>> = DEFAULT_ZH_ROWS
+    private var _keyGestureConfigZhBase: Map<String, KeyBinding> = emptyMap()
+
+    // 合并键布局缓存：section（qwerty_14/17/18 及 custom 新增）→ 行布局 / 手势配置
+    private var _mergedRows: Map<String, List<List<String>>> = emptyMap()
+    private var _mergedGestureConfigs: Map<String, Map<String, KeyBinding>> = emptyMap()
+    private var _activeMergedSection: String? = null
+    private var _activeSchemaId: String = ""
+
+    // 合并键绑定缓存：schemaId → 键盘 section（xime.yaml keyboard.<section>.schemas 声明）
+    private var _schemaSectionBindings: Map<String, String> = emptyMap()
+
+    /**
+     * 代码布局 section：由专属组件渲染（T9KeyboardLayout / StrokeKeyboardLayout /
+     * HandwritingKeyboardLayout）。t9 有专属 layout{left,rows,right} 由 t9 配置解析器处理，
+     * 不走通用 layout.rows；stroke/handwriting 无行数据。schemas 绑定到这些 section 的方案
+     * 走 [codeLayoutForSchema] 查询，不进入合并键行布局缓存
+     * （[mergedSectionForSchema] 对其返回 null）。
+     */
+    internal val CODE_LAYOUT_SECTIONS = setOf("t9", "stroke", "handwriting")
+
+    // 九键/笔画手势配置缓存（keyboard.t9.keys / keyboard.stroke.keys，custom 键级覆盖）。
+    // 键 id 不做大小写归一：九键为数字字符串 "1"~"9"，笔画为键面标签（一/丨/丿/丶/乛 等）。
+    private var _t9GestureConfigs: Map<String, KeyBinding> = emptyMap()
+    private var _strokeGestureConfigs: Map<String, KeyBinding> = emptyMap()
+
+    /** 合并键方案（pinyin_14jian 等）对应的 xime.yaml 键盘 section，非合并键方案返回 null。 */
+    internal fun mergedSectionForSchema(schemaId: String): String? =
+        resolveMergedSection(schemaId, _schemaSectionBindings)
+
+    /**
+     * 绑定解析：仅认 schemas 声明（xime.yaml / xime.custom.yaml keyboard.<section>.schemas），
+     * 未声明的方案一律全键盘（26 键），不做 id 关键字猜测。
+     * 代码布局 section（t9/stroke）不是行数据布局，不作为合并键解析结果。
+     */
+    internal fun resolveMergedSection(schemaId: String, bindings: Map<String, String>): String? =
+        bindings[schemaId]?.takeIf { it !in CODE_LAYOUT_SECTIONS }
+
+    /** 查询方案声明的键盘 section（任意类型，含代码布局），未声明返回 null。 */
+    fun boundSectionForSchema(schemaId: String): String? = _schemaSectionBindings[schemaId]
+
+    /** 查询方案绑定的代码布局 section（t9 九键 / stroke 笔画），未绑定返回 null。 */
+    fun codeLayoutForSchema(schemaId: String): String? =
+        _schemaSectionBindings[schemaId]?.takeIf { it in CODE_LAYOUT_SECTIONS }
+
+    /**
+     * 按当前方案切换中文行布局与手势缓存（合并键布局 ↔ 标准 26 键）。
+     * 在 KeyboardViewModel.dispatch/resetKeyboard 收到 schemaId 时调用；
+     * 英文键盘不受影响（合并键布局仅中文拼音方案使用）。
+     */
+    fun setActiveKeyboardSchema(schemaId: String) {
+        _activeSchemaId = schemaId
+        val section = mergedSectionForSchema(schemaId)
+        if (section == _activeMergedSection) return
+        _activeMergedSection = section
+        if (section != null) {
+            _zhRows = _mergedRows[section] ?: DEFAULT_ZH_ROWS
+            _keyGestureConfig.value = _mergedGestureConfigs[section] ?: emptyMap()
+        } else {
+            _zhRows = _zhRowsBase
+            _keyGestureConfig.value = _keyGestureConfigZhBase
+        }
+    }
+
+    /** 获取键盘行布局，每个子 List 为一行的按键 ID 列表，索引 0=第一行。
+     *  合并键布局中合并键的 ID 为组内字母拼接（如 "qw"），渲染层按 ID 长度分配键宽。 */
     fun getKeyRows(isAsciiMode: Boolean): List<List<String>> =
         if (isAsciiMode) _enRows else _zhRows
     
@@ -365,17 +794,30 @@ object KeysConfigHelper {
         loadXimeConfig(context)
         config = config.copy(
             swipeUp = getDefaultSwipeUp(),
-            swipeDownEnglish = getDefaultSwipeDownEnglish(),
-            shiftSwipeUp = getDefaultShiftSwipeUp()
+            shiftSwipeUp = getDefaultShiftSwipeUp(),
+            swipeDownEnglish = getDefaultSwipeDownEnglish()
         )
         return config
     }
     
+    // 进程内配置缓存戳（xime.custom.yaml 的 mtime+size）：全量 YAML 解析真机实测可阻塞
+    // 主线程 ~1.8s，而输入法服务重建时配置通常未变。内置 xime.yaml 随 APK 更新（进程重启）
+    // 天然失效；外部改动 custom 文件经 mtime 感知穿透；解析失败不缓存下次重试。
+    private var _loadedCustomStamp: Pair<Long, Long>? = null
+
     private fun loadXimeConfig(context: Context) {
+        val customFile = File(context.filesDir, "rime/$XIME_CUSTOM_CONFIG_FILE")
+        val customStamp = if (customFile.exists()) {
+            customFile.lastModified() to customFile.length()
+        } else {
+            0L to 0L
+        }
+        if (_loadedCustomStamp == customStamp) return
+        _loadedCustomStamp = customStamp
         try {
             // 键盘手势（从原始 YAML 手动解析）
             val parsed = parseKeyboardFromAssets(context)
-            _keyGestureConfig.value = parsed?.first ?: emptyMap()
+            _keyGestureConfigZhBase = parsed?.first ?: emptyMap()
             _keyGestureConfigEn.value = parsed?.second ?: emptyMap()
             // 键盘颜色（从原始 YAML 手动解析）
             keyboardColorsConfig = parseKeyboardColorsFromAssets(context)
@@ -383,14 +825,49 @@ object KeysConfigHelper {
             keyboardShadowConfig = parseKeyboardShadowFromAssets(context)
             // 键盘按键（从原始 YAML 手动解析）
             keyboardKeyConfig = parseKeyboardKeyFromAssets(context)
+            // 九键键盘配置（从原始 YAML 手动解析）
+            keyboardT9Config = parseKeyboardT9FromAssets(context)
+            // 笔画键盘配置（从原始 YAML 手动解析）
+            keyboardStrokeConfig = parseKeyboardStrokeFromAssets(context)
+            // 字体配置（从原始 YAML 手动解析）
+            keyboardFontConfig = parseKeyboardFontsFromAssets(context)
+            com.kingzcheung.xime.ui.keyboard.AppFonts.loadCustomFonts(keyboardFontConfig)
             // 按键布局（从原始 YAML 手动解析，中英文分开）
             val parsedLayouts = parseButtonLayoutFromAssets(context)
             _buttonLayoutZh = parsedLayouts.first
             _buttonLayoutEn = parsedLayouts.second
             // 键盘行布局
             val parsedRows = parseKeyboardLayoutFromAssets(context)
-            _zhRows = parsedRows.first
+            _zhRowsBase = parsedRows.first
             _enRows = parsedRows.second
+            // 合并键绑定（keyboard.<section>.schemas，custom 覆盖 builtIn 同名方案的绑定）
+            val builtInBindings = readAssetText(context, XIME_CONFIG_FILE)
+                ?.let { parseSchemaBindingsYamlText(it) } ?: emptyMap()
+            val customBindings = readCustomText(context)
+                ?.let { parseSchemaBindingsYamlText(it) } ?: emptyMap()
+            _schemaSectionBindings = builtInBindings + customBindings
+            // 合并键布局 sections：由 schemas 绑定动态发现（内置 qwerty_14/17/18 + custom 新增）；
+            // 代码布局 section（t9/stroke）无行数据，走各自的专属配置解析，不在此加载
+            val mergedRowsMap = mutableMapOf<String, List<List<String>>>()
+            val mergedGesturesMap = mutableMapOf<String, Map<String, KeyBinding>>()
+            for (section in _schemaSectionBindings.values.filter { it !in CODE_LAYOUT_SECTIONS }.distinct()) {
+                parseLayoutSection(context, section)?.let { mergedRowsMap[section] = it }
+                mergedGesturesMap[section] = parseGesturesSection(context, section)
+            }
+            _mergedRows = mergedRowsMap
+            _mergedGestureConfigs = mergedGesturesMap
+            // 九键/笔画手势（keyboard.t9.keys / keyboard.stroke.keys，custom 键级覆盖）
+            _t9GestureConfigs = parseGesturesSection(context, "t9")
+            _strokeGestureConfigs = parseGesturesSection(context, "stroke")
+            // 基线缓存已刷新，先落标准 26 键的行布局/手势，合并键方案再由
+            // setActiveKeyboardSchema 覆盖。不能只依赖 setActiveKeyboardSchema：
+            // 非合并键方案 section 为 null，与刚重置的 _activeMergedSection(null) 相等
+            // 会被提前 return，导致 xime.custom.yaml 的行布局/手势不生效（重新部署也无效）。
+            _zhRows = _zhRowsBase
+            _keyGestureConfig.value = _keyGestureConfigZhBase
+            // 重新应用当前方案对应的合并键布局（上面重置了基线缓存）
+            _activeMergedSection = null
+            setActiveKeyboardSchema(_activeSchemaId)
             // 校验配置版本兼容性
             val merged = try { loadMergedConfig(context) } catch (_: YamlException) { null }
             val meta = merged?.metadata
@@ -400,8 +877,8 @@ object KeysConfigHelper {
                 }
             }
             _configVersion.value++
-            Log.d(TAG, "Loaded config: ${keyGestureConfig.size} keys (v${_configVersion.value})")
         } catch (e: Exception) {
+            _loadedCustomStamp = null
             Log.w(TAG, "Failed to load xime config", e)
         }
     }
@@ -443,164 +920,400 @@ object KeysConfigHelper {
     }
 
     /** 从 xime.yaml + xime.custom.yaml 合并解析键盘手势配置。 */
-    private fun parseKeyboardFromAssets(context: Context): Pair<Map<String, KeyGestureConfig>, Map<String, KeyGestureConfig>>? {
+    private fun parseKeyboardFromAssets(context: Context): Pair<Map<String, KeyBinding>, Map<String, KeyBinding>>? {
         val defaultText = readAssetText(context, XIME_CONFIG_FILE) ?: return null
-        val defaultZh = parseKeyboardYamlSection(defaultText, "qwerty") ?: return null
-        val defaultEn = parseKeyboardYamlSection(defaultText, "qwerty_en") ?: emptyMap()
+        val defaultPresets = parseKeyboardActionsYamlText(defaultText)
+        val defaultZh = parseKeyboardYamlSection(defaultText, "qwerty", defaultPresets) ?: return null
+        val defaultEn = parseKeyboardYamlSection(defaultText, "qwerty_en", defaultPresets) ?: emptyMap()
         // 支持两种来源：files/rime/（浏览器导入）或 assets/（内置），自动 fallback
         val userData = readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
-        val customZh: Map<String, KeyGestureConfig>?
-        val customEn: Map<String, KeyGestureConfig>?
-        if (userData != null) {
-            customZh = parseKeyboardYamlSection(userData, "qwerty")
-            customEn = parseKeyboardYamlSection(userData, "qwerty_en")
+        val customText = userData ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
+        val presets = defaultPresets + (customText?.let { parseKeyboardActionsYamlText(it) } ?: emptyMap())
+        val customZh: Map<String, KeyBinding>?
+        val customEn: Map<String, KeyBinding>?
+        if (customText != null) {
+            customZh = parseKeyboardYamlSection(customText, "qwerty", presets)
+            customEn = parseKeyboardYamlSection(customText, "qwerty_en", presets)
         } else {
-            val assetText = readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
-            customZh = assetText?.let { parseKeyboardYamlSection(it, "qwerty") }
-            customEn = assetText?.let { parseKeyboardYamlSection(it, "qwerty_en") }
+            customZh = null
+            customEn = null
         }
         val zh = if (customZh != null) defaultZh + customZh else defaultZh
         val en = if (customEn != null) defaultEn + customEn else defaultEn
-        Log.d(TAG, "parseKeyboardFromAssets: zh=${zh.size}keys, en=${en.size}keys")
         return Pair(zh, en)
     }
 
-    /** 从 xime.yaml + xime.custom.yaml 合并解析键盘颜色配置。 */
+    /** 从 xime.yaml + xime.custom.yaml 合并解析键盘颜色配置（字段级一路 fallback）。 */
     private fun parseKeyboardColorsFromAssets(context: Context): KeyboardColorsConfig {
-        val defaultText = readAssetText(context, XIME_CONFIG_FILE) ?: return KeyboardColorsConfig()
-        val default = parseKeyboardColorsYamlText(defaultText) ?: return KeyboardColorsConfig()
-        val custom = readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
+        val builtIn = readAssetText(context, XIME_CONFIG_FILE)
             ?.let { parseKeyboardColorsYamlText(it) }
-            ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
-                ?.let { parseKeyboardColorsYamlText(it) }
-        return custom ?: default
+        val custom = readCustomText(context)?.let { parseKeyboardColorsYamlText(it) }
+        return mergeColorsConfigs(custom, builtIn)
     }
 
-    /** 从 YAML 文本中提取 keyboard.colors 段。 */
-    private fun parseKeyboardColorsYamlText(yamlText: String): KeyboardColorsConfig? {
-        val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
-        val keyboardNode = root["keyboard"] as? YamlMap ?: return null
-        val colorsNode = keyboardNode["colors"] as? YamlMap ?: return null
-        var kbBg = 0xE3E4E8L
-        var kbBgDark = 0x202020L
-        var kBg = 0xFFFFFFL
-        var kBgDark = 0x4A4A4AL
-        var spKeyBg: Long? = null
-        var spKeyBgDark: Long? = null
-        var candBg = 0xE3E4E8L
-        var candBgDark = 0x202020L
-        var kTxt = 0x202124L
-        var kTxtDark = 0xE8EAEDL
-        var candTxt = 0x1A73E8L
-        var candTxtDark = 0x8AB4F8L
-        for ((kNode, vNode) in colorsNode.entries) {
-            val key = (kNode as? YamlScalar)?.content ?: continue
-            val value = (vNode as? YamlScalar)?.content ?: continue
-            val hex = value.removePrefix("0x").toLongOrNull(16) ?: continue
-            when (key) {
-                "keyboard_bg_color" -> kbBg = hex
-                "keyboard_bg_color_dark" -> kbBgDark = hex
-                "key_bg_color" -> kBg = hex
-                "key_bg_color_dark" -> kBgDark = hex
-                "special_key_bg_color" -> spKeyBg = hex
-                "special_key_bg_color_dark" -> spKeyBgDark = hex
-                "candidate_bar_bg_color" -> candBg = hex
-                "candidate_bar_bg_color_dark" -> candBgDark = hex
-                "key_text_color" -> kTxt = hex
-                "key_text_color_dark" -> kTxtDark = hex
-                "candidate_text_color" -> candTxt = hex
-                "candidate_text_color_dark" -> candTxtDark = hex
+    /** 字段级一路 fallback 合并颜色配置：custom → builtIn → 代码默认值。 */
+    internal fun mergeColorsConfigs(custom: KeyboardColorsPartial?, builtIn: KeyboardColorsPartial?): KeyboardColorsConfig =
+        KeyboardColorsConfig(
+            keyBgColor = tiered(custom?.keyBgColor, builtIn?.keyBgColor, 0xFFFFFF),
+            keyBgColorDark = tiered(custom?.keyBgColorDark, builtIn?.keyBgColorDark, 0x4A4A4A),
+            specialKeyBgColor = tiered(custom?.specialKeyBgColor, builtIn?.specialKeyBgColor, null),
+            specialKeyBgColorDark = tiered(custom?.specialKeyBgColorDark, builtIn?.specialKeyBgColorDark, null),
+            keyTextColor = tiered(custom?.keyTextColor, builtIn?.keyTextColor, 0x202124),
+            keyTextColorDark = tiered(custom?.keyTextColorDark, builtIn?.keyTextColorDark, 0xE8EAED),
+            candidateTextColor = tiered(custom?.candidateTextColor, builtIn?.candidateTextColor, 0x1A73E8),
+            candidateTextColorDark = tiered(custom?.candidateTextColorDark, builtIn?.candidateTextColorDark, 0x8AB4F8),
+            candidateBarBgColor = tiered(custom?.candidateBarBgColor, builtIn?.candidateBarBgColor, 0xE3E4E8),
+            candidateBarBgColorDark = tiered(custom?.candidateBarBgColorDark, builtIn?.candidateBarBgColorDark, 0x202020),
+        )
+
+    /** 从 YAML 文本中提取 keyboard.colors 段（仅显式字段非 null）。 */
+    internal fun parseKeyboardColorsYamlText(yamlText: String): KeyboardColorsPartial? {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            val colorsNode = keyboardNode.opt<YamlMap>("colors") ?: return null
+            var kBg: Long? = null
+            var kBgDark: Long? = null
+            var spKeyBg: Long? = null
+            var spKeyBgDark: Long? = null
+            var kTxt: Long? = null
+            var kTxtDark: Long? = null
+            var candTxt: Long? = null
+            var candTxtDark: Long? = null
+            var candBarBg: Long? = null
+            var candBarBgDark: Long? = null
+            for ((kNode, vNode) in colorsNode.entries) {
+                val key = (kNode as? YamlScalar)?.content ?: continue
+                val value = (vNode as? YamlScalar)?.content ?: continue
+                val hex = value.removePrefix("0x").toLongOrNull(16) ?: continue
+                when (key) {
+                    "key_bg_color" -> kBg = hex
+                    "key_bg_color_dark" -> kBgDark = hex
+                    "special_key_bg_color" -> spKeyBg = hex
+                    "special_key_bg_color_dark" -> spKeyBgDark = hex
+                    "key_text_color" -> kTxt = hex
+                    "key_text_color_dark" -> kTxtDark = hex
+                    "candidate_text_color" -> candTxt = hex
+                    "candidate_text_color_dark" -> candTxtDark = hex
+                    "candidate_bar_bg_color" -> candBarBg = hex
+                    "candidate_bar_bg_color_dark" -> candBarBgDark = hex
+                }
+            }
+            KeyboardColorsPartial(
+                keyBgColor = kBg,
+                keyBgColorDark = kBgDark,
+                specialKeyBgColor = spKeyBg,
+                specialKeyBgColorDark = spKeyBgDark,
+                keyTextColor = kTxt,
+                keyTextColorDark = kTxtDark,
+                candidateTextColor = candTxt,
+                candidateTextColorDark = candTxtDark,
+                candidateBarBgColor = candBarBg,
+                candidateBarBgColorDark = candBarBgDark,
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse keyboard colors config", e)
+            null
+        }
+    }
+
+    /** 从 xime.yaml + xime.custom.yaml 合并解析键盘阴影配置（字段级一路 fallback）。 */
+    private fun parseKeyboardShadowFromAssets(context: Context): KeyboardShadowConfig {
+        val builtIn = readAssetText(context, XIME_CONFIG_FILE)
+            ?.let { parseKeyboardShadowYamlText(it) }
+        val custom = readCustomText(context)?.let { parseKeyboardShadowYamlText(it) }
+        return mergeShadowConfigs(custom, builtIn)
+    }
+
+    /** 字段级一路 fallback 合并阴影配置：custom → builtIn → 代码默认值。 */
+    internal fun mergeShadowConfigs(custom: KeyboardShadowPartial?, builtIn: KeyboardShadowPartial?): KeyboardShadowConfig =
+        KeyboardShadowConfig(
+            enabled = tiered(custom?.enabled, builtIn?.enabled, true),
+            elevation = tiered(custom?.elevation, builtIn?.elevation, 1),
+            shapeRadius = tiered(custom?.shapeRadius, builtIn?.shapeRadius, 8),
+        )
+
+    /** 从 YAML 文本中提取 keyboard.shadow 段（仅显式字段非 null）。 */
+    internal fun parseKeyboardShadowYamlText(yamlText: String): KeyboardShadowPartial? {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            val shadowNode = keyboardNode.opt<YamlMap>("shadow") ?: return null
+            var enabled: Boolean? = null
+            var elevation: Int? = null
+            var shapeRadius: Int? = null
+            for ((kNode, vNode) in shadowNode.entries) {
+                val key = (kNode as? YamlScalar)?.content ?: continue
+                val value = (vNode as? YamlScalar)?.content ?: continue
+                when (key) {
+                    "enabled" -> enabled = value.toBooleanStrictOrNull() ?: continue
+                    "elevation" -> elevation = value.toIntOrNull() ?: continue
+                    "shape_radius" -> shapeRadius = value.toIntOrNull() ?: continue
+                }
+            }
+            KeyboardShadowPartial(enabled = enabled, elevation = elevation, shapeRadius = shapeRadius)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse keyboard shadow config", e)
+            null
+        }
+    }
+
+    /** 从 xime.yaml + xime.custom.yaml 合并解析键盘按键配置（字段级一路 fallback）。 */
+    private fun parseKeyboardKeyFromAssets(context: Context): KeyboardKeyConfig {
+        val builtIn = readAssetText(context, XIME_CONFIG_FILE)
+            ?.let { parseKeyboardKeyYamlPartial(it) }
+        val custom = readCustomText(context)?.let { parseKeyboardKeyYamlPartial(it) }
+        return mergeKeyConfigs(custom, builtIn)
+    }
+
+    /** 字段级一路 fallback 合并按键配置：custom → builtIn → 代码默认值。 */
+    internal fun mergeKeyConfigs(custom: KeyboardKeyPartial?, builtIn: KeyboardKeyPartial?): KeyboardKeyConfig =
+        KeyboardKeyConfig(
+            cornerRadius = tiered(custom?.cornerRadius, builtIn?.cornerRadius, 8),
+            spacingX = tiered(custom?.spacingX, builtIn?.spacingX, null),
+            spacingY = tiered(custom?.spacingY, builtIn?.spacingY, null),
+            spacingOverrides = mergeSpacingOverrides(custom?.spacingOverrides, builtIn?.spacingOverrides),
+        )
+
+    /** 按键盘名合并间距覆盖：同名项字段级 fallback（custom 非空字段覆盖 builtIn）。 */
+    internal fun mergeSpacingOverrides(
+        custom: Map<String, KeyboardSpacingConfig>?,
+        builtIn: Map<String, KeyboardSpacingConfig>?,
+    ): Map<String, KeyboardSpacingConfig> {
+        if (custom == null) return builtIn ?: emptyMap()
+        if (builtIn == null) return custom
+        val result = LinkedHashMap<String, KeyboardSpacingConfig>(custom)
+        for ((key, builtInValue) in builtIn) {
+            val customValue = result[key]
+            result[key] = if (customValue == null) {
+                builtInValue
+            } else {
+                KeyboardSpacingConfig(
+                    spacingX = customValue.spacingX ?: builtInValue.spacingX,
+                    spacingY = customValue.spacingY ?: builtInValue.spacingY,
+                )
             }
         }
-        return KeyboardColorsConfig(
-            keyboardBgColor = kbBg,
-            keyboardBgColorDark = kbBgDark,
-            keyBgColor = kBg,
-            keyBgColorDark = kBgDark,
-            specialKeyBgColor = spKeyBg,
-            specialKeyBgColorDark = spKeyBgDark,
-            candidateBarBgColor = candBg,
-            candidateBarBgColorDark = candBgDark,
-            keyTextColor = kTxt,
-            keyTextColorDark = kTxtDark,
-            candidateTextColor = candTxt,
-            candidateTextColorDark = candTxtDark,
+        return result
+    }
+
+    /**
+     * 兼容测试入口：从 YAML 文本中提取 keyboard.key 段并填充代码默认值。
+     * > 合并（custom → builtIn → 默认）请使用 [parseKeyboardKeyYamlPartial]。
+     */
+    internal fun parseKeyboardKeyYamlText(yamlText: String): KeyboardKeyConfig? {
+        val partial = parseKeyboardKeyYamlPartial(yamlText) ?: return null
+        return KeyboardKeyConfig(
+            cornerRadius = partial.cornerRadius ?: 8,
+            spacingX = partial.spacingX,
+            spacingY = partial.spacingY,
+            spacingOverrides = partial.spacingOverrides ?: emptyMap(),
         )
     }
 
-    /** 从 xime.yaml + xime.custom.yaml 合并解析键盘阴影配置。 */
-    private fun parseKeyboardShadowFromAssets(context: Context): KeyboardShadowConfig {
-        val defaultText = readAssetText(context, XIME_CONFIG_FILE) ?: return KeyboardShadowConfig()
-        val default = parseKeyboardShadowYamlText(defaultText) ?: return KeyboardShadowConfig()
-        val custom = readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
-            ?.let { parseKeyboardShadowYamlText(it) }
-            ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
-                ?.let { parseKeyboardShadowYamlText(it) }
-        return custom ?: default
-    }
-
-    /** 从 YAML 文本中提取 keyboard.shadow 段。 */
-    private fun parseKeyboardShadowYamlText(yamlText: String): KeyboardShadowConfig? {
-        val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
-        val keyboardNode = root["keyboard"] as? YamlMap ?: return null
-        val shadowNode = keyboardNode["shadow"] as? YamlMap ?: return null
-        var enabled = true
-        var elevation = 1
-        var shapeRadius = 8
-        for ((kNode, vNode) in shadowNode.entries) {
-            val key = (kNode as? YamlScalar)?.content ?: continue
-            val value = (vNode as? YamlScalar)?.content ?: continue
-            when (key) {
-                "enabled" -> enabled = value.toBooleanStrictOrNull() ?: true
-                "elevation" -> elevation = value.toIntOrNull() ?: 1
-                "shape_radius" -> shapeRadius = value.toIntOrNull() ?: 8
-            }
-        }
-        return KeyboardShadowConfig(enabled = enabled, elevation = elevation, shapeRadius = shapeRadius)
-    }
-
-    /** 从 xime.yaml + xime.custom.yaml 合并解析键盘按键配置。 */
-    private fun parseKeyboardKeyFromAssets(context: Context): KeyboardKeyConfig {
-        val defaultText = readAssetText(context, XIME_CONFIG_FILE) ?: return KeyboardKeyConfig()
-        val default = parseKeyboardKeyYamlText(defaultText) ?: return KeyboardKeyConfig()
-        val custom = readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
-            ?.let { parseKeyboardKeyYamlText(it) }
-            ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
-                ?.let { parseKeyboardKeyYamlText(it) }
-        return custom ?: default
-    }
-
-    /** 从 YAML 文本中提取 keyboard.key 段。
-     *  兼容旧版：若 key.corner_radius 未设置，回退读取 shadow.shape_radius。 */
-    private fun parseKeyboardKeyYamlText(yamlText: String): KeyboardKeyConfig? {
-        val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
-        val keyboardNode = root["keyboard"] as? YamlMap ?: return null
-        var cornerRadius = 8
-        // 优先读取 key.corner_radius
-        val keyNode = keyboardNode["key"] as? YamlMap
-        if (keyNode != null) {
-            for ((kNode, vNode) in keyNode.entries) {
-                val key = (kNode as? YamlScalar)?.content ?: continue
-                val value = (vNode as? YamlScalar)?.content ?: continue
-                if (key == "corner_radius") {
-                    cornerRadius = value.toIntOrNull() ?: 8
-                }
-            }
-        }
-        // 未设置 key.corner_radius 时，回退读取 shadow.shape_radius
-        if (cornerRadius == 8) {
-            val shadowNode = keyboardNode["shadow"] as? YamlMap
-            if (shadowNode != null) {
-                for ((kNode, vNode) in shadowNode.entries) {
+    /** 从 YAML 文本中提取 keyboard.key 段（仅显式字段非 null）。 */
+    private fun parseKeyboardKeyYamlPartial(yamlText: String): KeyboardKeyPartial? {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            var cornerRadius: Int? = null
+            var spacingX: Float? = null
+            var spacingY: Float? = null
+            val spacingOverrides = mutableMapOf<String, KeyboardSpacingConfig>()
+            // 优先读取 key.corner_radius
+            val keyNode = keyboardNode.opt<YamlMap>("key")
+            if (keyNode != null) {
+                for ((kNode, vNode) in keyNode.entries) {
                     val key = (kNode as? YamlScalar)?.content ?: continue
-                    val value = (vNode as? YamlScalar)?.content ?: continue
-                    if (key == "shape_radius") {
-                        cornerRadius = value.toIntOrNull() ?: 8
+                    if (key == "corner_radius") {
+                        val value = (vNode as? YamlScalar)?.content ?: continue
+                        cornerRadius = value.toIntOrNull()
+                    } else if (key == "spacing_x") {
+                        val value = (vNode as? YamlScalar)?.content ?: continue
+                        spacingX = value.toFloatOrNull()
+                    } else if (key == "spacing_y") {
+                        val value = (vNode as? YamlScalar)?.content ?: continue
+                        spacingY = value.toFloatOrNull()
+                    } else if (vNode is YamlMap) {
+                        // 键盘级间距覆盖：keyboard.key.<键盘名>.spacing_x/spacing_y
+                        var overrideX: Float? = null
+                        var overrideY: Float? = null
+                        for ((skNode, svNode) in vNode.entries) {
+                            val skey = (skNode as? YamlScalar)?.content ?: continue
+                            val svalue = (svNode as? YamlScalar)?.content ?: continue
+                            if (skey == "spacing_x") {
+                                overrideX = svalue.toFloatOrNull()
+                            } else if (skey == "spacing_y") {
+                                overrideY = svalue.toFloatOrNull()
+                            }
+                        }
+                        spacingOverrides[key] = KeyboardSpacingConfig(overrideX, overrideY)
                     }
                 }
             }
+            // 未设置 key.corner_radius 时，回退读取 shadow.shape_radius
+            if (cornerRadius == null) {
+                val shadowNode = keyboardNode.opt<YamlMap>("shadow")
+                if (shadowNode != null) {
+                    for ((kNode, vNode) in shadowNode.entries) {
+                        val key = (kNode as? YamlScalar)?.content ?: continue
+                        val value = (vNode as? YamlScalar)?.content ?: continue
+                        if (key == "shape_radius") {
+                            cornerRadius = value.toIntOrNull()
+                        }
+                    }
+                }
+            }
+            KeyboardKeyPartial(
+                cornerRadius = cornerRadius,
+                spacingX = spacingX,
+                spacingY = spacingY,
+                spacingOverrides = spacingOverrides.ifEmpty { null },
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse keyboard key config", e)
+            null
         }
-        return KeyboardKeyConfig(cornerRadius = cornerRadius)
+    }
+
+    /** 从 xime.yaml + xime.custom.yaml 合并解析九键键盘配置。 */
+    private fun parseKeyboardT9FromAssets(context: Context): KeyboardT9Config {
+        val builtIn = readAssetText(context, XIME_CONFIG_FILE)
+            ?.let { parseKeyboardT9YamlPartial(it) }
+        val custom = readCustomText(context)?.let { parseKeyboardT9YamlPartial(it) }
+        return mergeT9Configs(custom, builtIn)
+    }
+
+    /** 字段级一路 fallback 合并九键配置：custom → builtIn → 代码默认值。 */
+    internal fun mergeT9Configs(custom: KeyboardT9Partial?, builtIn: KeyboardT9Partial?): KeyboardT9Config =
+        KeyboardT9Config(
+            sideSymbols = tiered(custom?.sideSymbols?.takeIf { it.isNotEmpty() },
+                builtIn?.sideSymbols?.takeIf { it.isNotEmpty() }, DEFAULT_T9_SIDE_SYMBOLS),
+            layout = mergeT9Layouts(custom?.layout, builtIn?.layout),
+        )
+
+    /** 字段级一路 fallback 合并九键布局：custom → builtIn → 代码默认值（列表整段覆盖）。 */
+    internal fun mergeT9Layouts(custom: KeyboardT9LayoutPartial?, builtIn: KeyboardT9LayoutPartial?): KeyboardT9LayoutConfig =
+        KeyboardT9LayoutConfig(
+            left = tiered(custom?.left?.takeIf { it.isNotEmpty() },
+                builtIn?.left?.takeIf { it.isNotEmpty() }, KeyboardT9LayoutConfig.DEFAULT_T9_LEFT),
+            rows = tiered(custom?.rows?.takeIf { it.isNotEmpty() },
+                builtIn?.rows?.takeIf { it.isNotEmpty() }, KeyboardT9LayoutConfig.DEFAULT_T9_ROWS),
+            right = tiered(custom?.right?.takeIf { it.isNotEmpty() },
+                builtIn?.right?.takeIf { it.isNotEmpty() }, KeyboardT9LayoutConfig.DEFAULT_T9_RIGHT),
+        )
+
+    /** 从 YAML 文本中提取 keyboard.t9 段（仅显式字段非 null）。 */
+    internal fun parseKeyboardT9YamlPartial(yamlText: String): KeyboardT9Partial? {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            val t9Node = keyboardNode.opt<YamlMap>("t9") ?: return null
+            val sideSymbols = t9Node.opt<YamlList>("side_symbols")
+                ?.items?.mapNotNull { (it as? YamlScalar)?.content }
+            val layout = t9Node.opt<YamlMap>("layout")?.let { parseT9LayoutNode(it) }
+            KeyboardT9Partial(
+                sideSymbols = sideSymbols?.ifEmpty { null },
+                layout = layout,
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse keyboard t9 config", e)
+            null
+        }
+    }
+
+    /** 解析 keyboard.t9.layout 节点（left/rows/right；rows 支持合并键嵌套与标量行兜底）。 */
+    private fun parseT9LayoutNode(layoutNode: YamlMap): KeyboardT9LayoutPartial? {
+        val left = layoutNode.opt<YamlList>("left")
+            ?.items?.mapNotNull { (it as? YamlScalar)?.content }?.filter { it.isNotBlank() }
+        val right = layoutNode.opt<YamlList>("right")
+            ?.items?.mapNotNull { (it as? YamlScalar)?.content }?.filter { it.isNotBlank() }
+        val rows = layoutNode.opt<YamlList>("rows")?.let { parseLayoutRowsNode(it) }
+        if (left.isNullOrEmpty() && right.isNullOrEmpty() && rows.isNullOrEmpty()) return null
+        return KeyboardT9LayoutPartial(
+            left = left?.takeIf { it.isNotEmpty() },
+            rows = rows?.takeIf { it.isNotEmpty() },
+            right = right?.takeIf { it.isNotEmpty() },
+        )
+    }
+
+    /** 从 xime.yaml + xime.custom.yaml 合并解析笔画键盘配置。 */
+    private fun parseKeyboardStrokeFromAssets(context: Context): KeyboardStrokeConfig {
+        val builtIn = readAssetText(context, XIME_CONFIG_FILE)
+            ?.let { parseKeyboardStrokeYamlPartial(it) }
+        val custom = readCustomText(context)?.let { parseKeyboardStrokeYamlPartial(it) }
+        return mergeStrokeConfigs(custom, builtIn)
+    }
+
+    /** 字段级一路 fallback 合并笔画配置：custom → builtIn → 代码默认值。 */
+    internal fun mergeStrokeConfigs(custom: KeyboardStrokePartial?, builtIn: KeyboardStrokePartial?): KeyboardStrokeConfig =
+        KeyboardStrokeConfig(
+            sideSymbols = tiered(custom?.sideSymbols?.takeIf { it.isNotEmpty() },
+                builtIn?.sideSymbols?.takeIf { it.isNotEmpty() }, DEFAULT_STROKE_SIDE_SYMBOLS),
+        )
+
+    /** 从 YAML 文本中提取 keyboard.stroke 段（仅显式字段非 null）。 */
+    internal fun parseKeyboardStrokeYamlPartial(yamlText: String): KeyboardStrokePartial? {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            val strokeNode = keyboardNode.opt<YamlMap>("stroke") ?: return null
+            val sideSymbols = strokeNode.opt<YamlList>("side_symbols")
+                ?.items?.mapNotNull { (it as? YamlScalar)?.content }
+            KeyboardStrokePartial(sideSymbols = sideSymbols?.ifEmpty { null })
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse keyboard stroke config", e)
+            null
+        }
+    }
+
+    /** 从 xime.yaml + xime.custom.yaml 合并解析字体配置（字段级一路 fallback）。 */
+    private fun parseKeyboardFontsFromAssets(context: Context): KeyboardFontConfig {
+        val builtIn = readAssetText(context, XIME_CONFIG_FILE)
+            ?.let { parseKeyboardFontsYamlText(it) }
+        val custom = readCustomText(context)?.let { parseKeyboardFontsYamlText(it) }
+        return mergeFontConfigs(custom, builtIn)
+    }
+
+    /** 字段级一路 fallback 合并字体配置：custom → builtIn → 代码默认值（空字符串视为未配置）。 */
+    internal fun mergeFontConfigs(custom: KeyboardFontPartial?, builtIn: KeyboardFontPartial?): KeyboardFontConfig =
+        KeyboardFontConfig(
+            keyFont = tieredText(custom?.keyFont, builtIn?.keyFont, ""),
+            keyLabelFont = tieredText(custom?.keyLabelFont, builtIn?.keyLabelFont, ""),
+            candidateFont = tieredText(custom?.candidateFont, builtIn?.candidateFont, ""),
+            commentFont = tieredText(custom?.commentFont, builtIn?.commentFont, ""),
+        )
+
+    /** 从 YAML 文本中提取 keyboard.fonts 字体配置段（仅显式字段非 null）。 */
+    internal fun parseKeyboardFontsYamlText(yamlText: String): KeyboardFontPartial? {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            val fontsNode = keyboardNode.opt<YamlMap>("fonts") ?: return null
+            var keyFont: String? = null
+            var keyLabelFont: String? = null
+            var candidateFont: String? = null
+            var commentFont: String? = null
+            for ((kNode, vNode) in fontsNode.entries) {
+                val key = (kNode as? YamlScalar)?.content ?: continue
+                val value = (vNode as? YamlScalar)?.content ?: continue
+                when (key) {
+                    "key_font" -> keyFont = value
+                    "key_label_font" -> keyLabelFont = value
+                    "candidate_font" -> candidateFont = value
+                    "comment_font" -> commentFont = value
+                }
+            }
+            KeyboardFontPartial(
+                keyFont = keyFont,
+                keyLabelFont = keyLabelFont,
+                candidateFont = candidateFont,
+                commentFont = commentFont,
+            )
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse keyboard fonts config", e)
+            null
+        }
     }
 
     /** 从 xime.yaml + xime.custom.yaml 合并解析按键布局模式（中英文分开）。 */
@@ -608,18 +1321,14 @@ object KeysConfigHelper {
         val defaultText = readAssetText(context, XIME_CONFIG_FILE) ?: return Pair(ButtonLayout.STANDARD, ButtonLayout.STANDARD)
         val defaultZh = parseButtonLayoutYamlText(defaultText, "qwerty")
         val defaultEn = parseButtonLayoutYamlText(defaultText, "qwerty_en")
-        Log.d(TAG, "parseButtonLayout: defaultZh=$defaultZh, defaultEn=$defaultEn")
         val customText = readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
             ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
-        Log.d(TAG, "parseButtonLayout: customText exists=${customText != null}, length=${customText?.length ?: 0}")
         val customZh = customText?.let { parseButtonLayoutYamlText(it, "qwerty") }
         val customEn = customText?.let { parseButtonLayoutYamlText(it, "qwerty_en") }
-        Log.d(TAG, "parseButtonLayout: customZh=$customZh, customEn=$customEn")
         val result = Pair(
             customZh ?: defaultZh ?: ButtonLayout.STANDARD,
             customEn ?: defaultEn ?: ButtonLayout.STANDARD,
         )
-        Log.d(TAG, "parseButtonLayout: result zh=${result.first}, en=${result.second}")
         return result
     }
 
@@ -642,47 +1351,195 @@ object KeysConfigHelper {
         )
     }
 
-    /** 从 YAML 文本中提取 keyboard.<section>.layout.rows。 */
-    private fun parseKeyboardLayoutYamlText(yamlText: String, section: String): List<List<String>>? {
-        val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
-        val keyboardNode = root["keyboard"] as? YamlMap ?: return null
-        val sectionNode = keyboardNode[section] as? YamlMap ?: return null
-        val layoutNode = sectionNode["layout"] as? YamlMap ?: return null
-        val rowsNode = layoutNode["rows"] as? YamlList ?: return null
+    /** 从 xime.yaml + xime.custom.yaml 合并解析指定 section 的键盘行布局（custom 整段覆盖 built-in）。 */
+    private fun parseLayoutSection(context: Context, section: String): List<List<String>>? {
+        val defaultText = readAssetText(context, XIME_CONFIG_FILE)
+        val default = defaultText?.let { parseKeyboardLayoutYamlText(it, section) }
+        val customText = readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
+            ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
+        val custom = customText?.let { parseKeyboardLayoutYamlText(it, section) }
+        return custom ?: default
+    }
+
+    /** 从 xime.yaml + xime.custom.yaml 合并解析指定 section 的手势配置（custom 键级覆盖 built-in）。 */
+    private fun parseGesturesSection(context: Context, section: String): Map<String, KeyBinding> {
+        val defaultText = readAssetText(context, XIME_CONFIG_FILE)
+        val defaultPresets = defaultText?.let { parseKeyboardActionsYamlText(it) } ?: emptyMap()
+        val default = defaultText?.let { parseKeyboardYamlSection(it, section, defaultPresets) } ?: emptyMap()
+        val userData = readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
+        val customText = userData ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
+        val customPresets = customText?.let { parseKeyboardActionsYamlText(it) } ?: emptyMap()
+        val presets = defaultPresets + customPresets
+        val custom = customText?.let { parseKeyboardYamlSection(it, section, presets) }
+        return if (custom != null) default + custom else default
+    }
+
+    /**
+     * 从 YAML 文本提取合并键绑定：keyboard.<section>.schemas 列出的每个方案 id 映射到该 section。
+     * 无 schemas 声明的 section 忽略；同一方案 id 在多个 section 声明时以后出现的为准。
+     */
+    internal fun parseSchemaBindingsYamlText(yamlText: String): Map<String, String> {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return emptyMap()
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return emptyMap()
+            val bindings = mutableMapOf<String, String>()
+            for ((kNode, vNode) in keyboardNode.entries) {
+                val section = (kNode as? YamlScalar)?.content ?: continue
+                val schemas = (vNode as? YamlMap)?.opt<YamlList>("schemas") ?: continue
+                for (item in schemas.items) {
+                    val schemaId = (item as? YamlScalar)?.content?.trim().orEmpty()
+                    if (schemaId.isNotEmpty()) bindings[schemaId] = section
+                }
+            }
+            bindings
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse schema bindings", e)
+            emptyMap()
+        }
+    }
+
+    /**
+     * 从 YAML 文本中提取 keyboard.<section>.layout.rows。
+     * 行元素支持嵌套子数组表示合并键：[[q, w], [e, r], t] → ["qw", "er", "t"]，
+     * 合并键 ID 为组内字母拼接，渲染层按 ID 长度分配键宽。
+     */
+    internal fun parseKeyboardLayoutYamlText(yamlText: String, section: String): List<List<String>>? {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            val sectionNode = keyboardNode.opt<YamlMap>(section) ?: return null
+            val layoutNode = sectionNode.opt<YamlMap>("layout") ?: return null
+            val rowsNode = layoutNode.opt<YamlList>("rows") ?: return null
+            parseLayoutRowsNode(rowsNode).takeIf { it.isNotEmpty() }
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse keyboard layout config", e)
+            null
+        }
+    }
+
+    /** rows 节点 → 行列表：子数组为合并键（组内字母拼接为 ID），标量行手动拆分兜底。 */
+    private fun parseLayoutRowsNode(rowsNode: YamlList): List<List<String>> {
         val rows = mutableListOf<List<String>>()
         for (rowNode in rowsNode.items) {
-            val rowList = rowNode as? YamlList ?: continue
-            val row = rowList.items.mapNotNull { (it as? YamlScalar)?.content }
+            val row = when (rowNode) {
+                is YamlList -> rowListToKeyIds(rowNode)
+                is YamlScalar -> scalarRowToKeyIds(rowNode.content)
+                else -> emptyList()
+            }
             if (row.isNotEmpty()) {
                 rows.add(row)
             }
         }
-        return rows.takeIf { it.isNotEmpty() }
+        return rows
+    }
+
+    /** 行节点 → 按键 ID 列表：子数组为合并键（组内字母拼接为 ID），标量为单字母键。 */
+    private fun rowListToKeyIds(rowList: YamlList): List<String> =
+        rowList.items.mapNotNull { item ->
+            when (item) {
+                is YamlScalar -> item.content.takeIf { it.isNotBlank() }
+                is YamlList -> item.items
+                    .mapNotNull { (it as? YamlScalar)?.content }
+                    .filter { it.isNotBlank() }
+                    .joinToString("")
+                    .takeIf { it.isNotEmpty() }
+                else -> null
+            }
+        }
+
+    /**
+     * 标量行兜底：YAML 中以普通字母开头的行（如 "- z, [x, c], v"）不会成为 flow 序列，
+     * 而是整行解析为单个标量。此处手动拆分：逗号为键分隔，方括号内为合并键组。
+     */
+    private fun scalarRowToKeyIds(content: String): List<String> {
+        val text = content.trim()
+        if (text.isEmpty()) return emptyList()
+        if (!text.contains(',') && !text.contains('[')) return listOf(text)
+        val items = mutableListOf<String>()
+        val sb = StringBuilder()
+        var depth = 0
+        fun flushItem() {
+            val t = sb.toString().trim()
+            if (t.isNotEmpty()) items.add(t)
+            sb.clear()
+        }
+        for (ch in text) {
+            when {
+                ch == '[' -> { depth++; if (depth == 1) sb.clear() else sb.append(ch) }
+                ch == ']' -> {
+                    depth--
+                    if (depth == 0) {
+                        flushItem()
+                    } else if (depth < 0) {
+                        depth = 0
+                    } else {
+                        sb.append(ch)
+                    }
+                }
+                ch == ',' && depth == 0 -> flushItem()
+                ch == ',' && depth > 0 -> {} // 组内逗号仅分隔字母，拼接时丢弃
+                ch == ' ' && depth > 0 -> {} // 组内空格一并丢弃（[x, c] → xc）
+                else -> sb.append(ch)
+            }
+        }
+        flushItem()
+        return items
     }
 
     /** 从 YAML 文本中提取 keyboard.<section>.button_layout。 */
     private fun parseButtonLayoutYamlText(yamlText: String, section: String): ButtonLayout? {
-        val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
-        val keyboardNode = root["keyboard"] as? YamlMap ?: return null
-        val sectionNode = keyboardNode[section] as? YamlMap ?: return null
-        val layoutNode = sectionNode["button_layout"] as? YamlScalar ?: return null
-        return ButtonLayout.fromValue(layoutNode.content)
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            val sectionNode = keyboardNode.opt<YamlMap>(section) ?: return null
+            val layoutNode = sectionNode.opt<YamlScalar>("button_layout") ?: return null
+            ButtonLayout.fromValue(layoutNode.content)
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse button layout config", e)
+            null
+        }
+    }
+
+    /** 解析 `keyboard.actions` 可复用动作预设。 */
+    internal fun parseKeyboardActionsYamlText(yamlText: String): Map<String, KeyAction> {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return emptyMap()
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return emptyMap()
+            val actionsNode = keyboardNode.opt<YamlMap>("actions") ?: return emptyMap()
+            val result = mutableMapOf<String, KeyAction>()
+            for ((kNode, vNode) in actionsNode.entries) {
+                val name = (kNode as? YamlScalar)?.content ?: continue
+                result[name] = parseKeyAction(vNode, GestureAction.COMMIT, emptyMap())
+            }
+            result
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse keyboard actions presets", e)
+            emptyMap()
+        }
     }
 
     /** 从 YAML 文本中提取 keyboard.<section>.keys 段。 */
-    private fun parseKeyboardYamlSection(yamlText: String, section: String): Map<String, KeyGestureConfig>? {
-        val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
-        val keyboardNode = root["keyboard"] as? YamlMap ?: return null
-        val sectionNode = keyboardNode[section] as? YamlMap ?: return null
-        val keysNode = sectionNode["keys"] as? YamlMap ?: return null
-        val result = mutableMapOf<String, KeyGestureConfig>()
-        for ((kNode, vNode) in keysNode.entries) {
-            val key = (kNode as? YamlScalar)?.content ?: continue
-            val gestureMap = vNode as? YamlMap ?: continue
-            result[key] = parseKeyGestureConfig(gestureMap)
+    internal fun parseKeyboardYamlSection(
+        yamlText: String,
+        section: String,
+        presets: Map<String, KeyAction> = emptyMap(),
+    ): Map<String, KeyBinding>? {
+        return try {
+            val root = yaml.parseToYamlNode(yamlText) as? YamlMap ?: return null
+            val keyboardNode = root.opt<YamlMap>("keyboard") ?: return null
+            val sectionNode = keyboardNode.opt<YamlMap>(section) ?: return null
+            val keysNode = sectionNode.opt<YamlMap>("keys") ?: return null
+            val result = mutableMapOf<String, KeyBinding>()
+            for ((kNode, vNode) in keysNode.entries) {
+                val key = (kNode as? YamlScalar)?.content ?: continue
+                val gestureMap = vNode as? YamlMap ?: continue
+                result[key] = parseKeyBinding(gestureMap, presets)
+            }
+            result
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to parse keyboard gesture section", e)
+            null
         }
-        Log.d(TAG, "parseKeyboardYamlSection($section): keys=${result.size} [${result.keys.joinToString("")}]")
-        return result
     }
 
     private fun loadMergedConfig(context: Context): XimeConfig {
@@ -695,7 +1552,6 @@ object KeysConfigHelper {
             ?.let { parseConfig(it) }
             ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
                 ?.let { parseConfig(it) }
-        Log.d(TAG, "loadMergedConfig: custom=${custom != null}")
         val config = mergeConfig(default, custom)
         mergedConfigCache = config
         mergedConfigVersion = currentVersion
@@ -717,10 +1573,91 @@ object KeysConfigHelper {
         if (default == null) return custom
         return XimeConfig(
             ximeIndex = custom.ximeIndex ?: default.ximeIndex,
-            colorSchemes = custom.colorSchemes ?: default.colorSchemes,
-            style = custom.style ?: default.style,
+            // 合并而非替换：custom 覆盖同名字题，其余保留内置主题，
+            // 这样用户只需在 xime.custom.yaml 中添加自定义背景主题而不会丢失内置主题。
+            colorSchemes = mergeColorSchemes(default.colorSchemes, custom.colorSchemes),
+            style = mergeStyle(default.style, custom.style),
             metadata = custom.metadata ?: default.metadata,
         )
+    }
+
+    /** style 字段级深合并：custom 只覆盖显式配置的字段。 */
+    private fun mergeStyle(default: StyleConfig?, custom: StyleConfig?): StyleConfig? {
+        if (custom == null) return default
+        if (default == null) return custom
+        return StyleConfig(
+            colorScheme = mergeColorSchemeMode(default.colorScheme, custom.colorScheme),
+            darkMode = custom.darkMode ?: default.darkMode,
+        )
+    }
+
+    /** color_scheme 的 light/dark 字段级合并：custom 只覆盖显式配置的模式。 */
+    private fun mergeColorSchemeMode(
+        default: ColorSchemeModeConfig?,
+        custom: ColorSchemeModeConfig?,
+    ): ColorSchemeModeConfig? {
+        if (custom == null) return default
+        if (default == null) return custom
+        return ColorSchemeModeConfig(
+            light = custom.light ?: default.light,
+            dark = custom.dark ?: default.dark,
+        )
+    }
+
+    /** 仅供单元测试验证 style 合并逻辑。 */
+    internal fun mergeStyleForTest(default: StyleConfig?, custom: StyleConfig?): StyleConfig? =
+        mergeStyle(default, custom)
+
+    /** 仅供单元测试验证 color_schemes 合并逻辑。 */
+    internal fun mergeColorSchemesForTest(
+        default: Map<String, ColorSchemeEntry>?,
+        custom: Map<String, ColorSchemeEntry>?,
+    ): Map<String, ColorSchemeEntry>? = mergeColorSchemes(default, custom)
+
+    /** 仅供单元测试设置手势配置缓存（免加载真实 assets）。 */
+    internal fun setKeyGestureConfigForTest(
+        config: Map<String, KeyBinding>,
+        isAsciiMode: Boolean = false,
+    ) {
+        if (isAsciiMode) _keyGestureConfigEn.value = config else _keyGestureConfig.value = config
+    }
+
+    private fun mergeColorSchemes(
+        default: Map<String, ColorSchemeEntry>?,
+        custom: Map<String, ColorSchemeEntry>?,
+    ): Map<String, ColorSchemeEntry>? {
+        if (custom == null) return default
+        if (default == null) return custom
+        // 字段级深合并：custom 只覆盖显式配置的字段，同名主题其余字段保留内置值。
+        // 例如 custom 只写 primary_color 时，内置主题的 keyboard_background 不会被清掉。
+        val result = default.toMutableMap()
+        for ((id, customEntry) in custom) {
+            val base = default[id] ?: run {
+                result[id] = customEntry
+                continue
+            }
+            result[id] = base.copy(
+                name = customEntry.name.ifEmpty { base.name },
+                primaryColor = customEntry.primaryColor.takeIf { it != 0L } ?: base.primaryColor,
+                keyboardBgColor = customEntry.keyboardBgColor ?: base.keyboardBgColor,
+                keyBgColor = customEntry.keyBgColor ?: base.keyBgColor,
+                keyBgColorDark = customEntry.keyBgColorDark ?: base.keyBgColorDark,
+                specialKeyBgColor = customEntry.specialKeyBgColor ?: base.specialKeyBgColor,
+                specialKeyBgColorDark = customEntry.specialKeyBgColorDark ?: base.specialKeyBgColorDark,
+                candidateBarBgColor = customEntry.candidateBarBgColor ?: base.candidateBarBgColor,
+                keyTextColor = customEntry.keyTextColor ?: base.keyTextColor,
+                keyTextColorDark = customEntry.keyTextColorDark ?: base.keyTextColorDark,
+                candidateTextColor = customEntry.candidateTextColor ?: base.candidateTextColor,
+                candidateTextColorDark = customEntry.candidateTextColorDark ?: base.candidateTextColorDark,
+                candidateSelectedTextColor = customEntry.candidateSelectedTextColor ?: base.candidateSelectedTextColor,
+                candidateSelectedTextColorDark = customEntry.candidateSelectedTextColorDark ?: base.candidateSelectedTextColorDark,
+                keyboardBackground = customEntry.keyboardBackground ?: base.keyboardBackground,
+                keyBackground = customEntry.keyBackground ?: base.keyBackground,
+                candidateBarBackground = customEntry.candidateBarBackground ?: base.candidateBarBackground,
+                dynamicColor = customEntry.dynamicColor || base.dynamicColor,
+            )
+        }
+        return result
     }
 
     private fun readAssetText(context: Context, fileName: String): String? {
@@ -739,17 +1676,20 @@ object KeysConfigHelper {
     /** 从用户数据目录 (context.filesDir/rime/) 读取文件。 */
     private fun readUserDataText(context: Context, fileName: String): String? {
         val file = File(context.filesDir, "rime/$fileName")
-        Log.d(TAG, "readUserDataText: path=${file.absolutePath}, exists=${file.exists()}")
         if (!file.exists()) return null
         return try {
             val text = file.readText().trimStart('\uFEFF')
-            Log.d(TAG, "readUserDataText: read ${text.length} chars, first 80=${text.take(80)}")
             text
         } catch (e: Exception) {
             Log.w(TAG, "readUserDataText: failed", e)
             null
         }
     }
+
+    /** 读取自定义配置文本：优先用户数据目录（浏览器导入），回退 assets 内置。 */
+    private fun readCustomText(context: Context): String? =
+        readUserDataText(context, XIME_CUSTOM_CONFIG_FILE)
+            ?: readAssetText(context, XIME_CUSTOM_CONFIG_FILE)
 
     fun loadXimeIndexConfig(context: Context): XimeIndexConfig {
         val merged = loadMergedConfig(context)
@@ -762,10 +1702,24 @@ object KeysConfigHelper {
         return merged.colorSchemes ?: emptyMap()
     }
 
-    /** 从 xime.yaml 加载默认主题 ID（style.color_scheme）。 */
+    /** 从 xime.yaml 加载默认主题 ID（style.color_scheme 的 light 字段）。 */
     fun loadDefaultThemeId(context: Context): String {
         val merged = loadMergedConfig(context)
-        return merged.style?.colorScheme ?: "lavender_purple"
+        return merged.style?.colorScheme?.light ?: "lavender_purple"
+    }
+
+    /** 根据显示模式加载对应的默认主题 ID。 */
+    fun loadThemeIdForMode(context: Context, isDark: Boolean): String {
+        val merged = loadMergedConfig(context)
+        val cs = merged.style?.colorScheme ?: return "lavender_purple"
+        return if (isDark) (cs.dark ?: cs.light ?: "lavender_purple")
+               else cs.light ?: "lavender_purple"
+    }
+
+    /** 从 xime.yaml 加载默认显示模式（style.dark_mode）。 */
+    fun loadDefaultDarkMode(context: Context): Int {
+        val merged = loadMergedConfig(context)
+        return merged.style?.darkMode ?: 2
     }
 
     // ── 新公开 API ──
@@ -779,11 +1733,58 @@ object KeysConfigHelper {
     /** 获取键盘按键配置（从 xime.yaml keyboard.key 加载）。 */
     fun getKeyboardKeyConfig(): KeyboardKeyConfig = keyboardKeyConfig
 
+    /** 获取九键左侧快捷符号栏配置（xime.custom.yaml → xime.yaml → 内置默认值）。 */
+    fun getT9SideSymbols(): List<String> =
+        keyboardT9Config.sideSymbols ?: DEFAULT_T9_SIDE_SYMBOLS
+
+    /** 获取九键布局配置（keyboard.t9.layout，custom → builtIn → 内置默认，字段级 fallback）。 */
+    fun getT9Layout(): KeyboardT9LayoutConfig = keyboardT9Config.layout
+
+    /** 九键键面标签（keyboard.t9.keys.<id>.tap.label，未配置返回 null，由调用方回退内置默认）。 */
+    fun getT9KeyLabel(id: String): String? =
+        _t9GestureConfigs[id]?.tap?.label?.takeIf { it.isNotEmpty() }
+
+    /** 九键长按候选显示文本（keyboard.t9.keys.<id>.long_press.values 的 label，缺省 value；未配置返回 null）。 */
+    fun getT9KeyLongPressLabels(id: String): List<String>? =
+        longPressDisplayItems(_t9GestureConfigs[id]?.longPress)
+
+    /**
+     * 长按气泡的显示项文本：`label` 为空时回退 `value`；两者皆空的项无法展示，丢弃。
+     *
+     * 26 键字母区（标准/横屏紧凑）、逗号键、中英键、九键共用，保证各处 label 处理一致。
+     */
+    fun longPressDisplayItems(config: LongPressAction?): List<String>? =
+        config?.values
+            ?.map { longPressItemKey(it) }
+            ?.filter { it.isNotEmpty() }
+            ?.takeIf { it.isNotEmpty() }
+
+    /** 长按气泡的「显示项文本 → 动作」映射；键与 [longPressDisplayItems] 完全一致（不可展示的项不进入映射）。 */
+    fun longPressActionMap(config: LongPressAction?): Map<String, KeyAction>? =
+        config?.values
+            ?.filter { longPressItemKey(it).isNotEmpty() }
+            ?.associateBy { longPressItemKey(it) }
+
+    /** 长按气泡条目的显示文本与查找键（label 优先，缺省 value）。 */
+    private fun longPressItemKey(action: KeyAction): String = action.label.ifEmpty { action.value }
+
+    /** 获取九键数字键手势配置（xime.yaml keyboard.t9.keys，custom 键级覆盖）。
+     *  键 id 为数字字符串 "1"~"9"；无配置返回 null（布局不启用滑动）。 */
+    fun getT9KeyGesture(key: String): KeyBinding? = _t9GestureConfigs[key]
+
+    /** 获取笔画左侧快捷符号列（keyboard.stroke.side_symbols，可自定义）。 */
+    fun getStrokeSideSymbols(): List<String> =
+        keyboardStrokeConfig.sideSymbols ?: DEFAULT_STROKE_SIDE_SYMBOLS
+
+    /** 获取笔画键手势配置（xime.yaml keyboard.stroke.keys，custom 键级覆盖）。
+     *  键 id 为键面标签：一/丨/丿/丶/乛、*、分词、，、英。 */
+    fun getStrokeKeyGesture(key: String): KeyBinding? = _strokeGestureConfigs[key]
+
     /** 获取某个按键的手势配置。 */
-    fun getKeyGesture(key: String): KeyGestureConfig? = keyGestureConfig[key.lowercase()]
+    fun getKeyGesture(key: String): KeyBinding? = keyGestureConfig[key.lowercase()]
 
     /** 根据输入模式获取某个按键的手势配置。 */
-    fun getKeyGesture(key: String, isAsciiMode: Boolean): KeyGestureConfig? {
+    fun getKeyGesture(key: String, isAsciiMode: Boolean): KeyBinding? {
         val config = if (isAsciiMode) _keyGestureConfigEn.value else _keyGestureConfig.value
         return config[key.lowercase()]
     }
@@ -798,20 +1799,10 @@ object KeysConfigHelper {
     fun getKeyCommitValue(key: String, isAsciiMode: Boolean = false): String {
         val config = if (isAsciiMode) _keyGestureConfigEn.value else _keyGestureConfig.value
         val value = config[key.lowercase()]?.tap?.value
-        return value?.takeIf { it.isNotEmpty() } ?: key
-    }
-
-    /** 获取某个按键指定手势的显示标签。 */
-    fun getGestureLabel(key: String, gesture: String, isAsciiMode: Boolean = false): String? {
-        val config = if (isAsciiMode) _keyGestureConfigEn.value else _keyGestureConfig.value
-        val kc = config[key.lowercase()] ?: return null
-        return when (gesture) {
-            "tap" -> kc.tap?.label
-            "swipe_up" -> kc.swipeUp?.label
-            "swipe_down" -> kc.swipeDown?.label
-            "long_press" -> kc.longPress?.values?.firstOrNull()?.label
-            else -> null
-        }
+        return value?.takeIf { it.isNotEmpty() }
+            // 合并键 ID（如 "qw"）无手势配置时回退为代表字母（组内第一个字母）
+            ?: key.takeIf { it.length > 1 }?.first()?.toString()
+            ?: key
     }
 
     // ── 旧公开 API（兼容） ──
@@ -820,16 +1811,14 @@ object KeysConfigHelper {
     
     fun getSwipeUpText(key: String, isAsciiMode: Boolean = false, isShifted: Boolean = false): String? {
         val configMap = if (isAsciiMode) _keyGestureConfigEn.value else _keyGestureConfig.value
-        val gesture = if (isShifted) configMap[key.lowercase()]?.shiftSwipeUp
-            ?: configMap[key.lowercase()]?.swipeUp
-            else configMap[key.lowercase()]?.swipeUp
+        val binding = configMap[key.lowercase()]
+        val gesture = if (isShifted) binding?.shiftSwipeUp ?: binding?.swipeUp else binding?.swipeUp
         if (gesture != null) {
             if (gesture.value.isNotEmpty()) return gesture.value
             if (gesture.label.isNotEmpty()) return gesture.label
         }
-        return if (isShifted) config.shiftSwipeUp[key.lowercase()]
-            ?: config.swipeUp[key.lowercase()]
-            else config.swipeUp[key.lowercase()]
+        return if (isShifted) config.shiftSwipeUp[key.lowercase()] ?: config.swipeUp[key.lowercase()]
+        else config.swipeUp[key.lowercase()]
     }
 
     fun getSwipeUpAction(key: String, isAsciiMode: Boolean = false, isShifted: Boolean = false): GestureAction? {
@@ -837,7 +1826,7 @@ object KeysConfigHelper {
         if (isShifted) {
             // 显式配置了 shift_swipe_up → 用其 action
             configMap[key.lowercase()]?.shiftSwipeUp?.let { return it.action }
-            // 命中了默认 shift 映射（无显式配置）→ 动作默认 COMMIT
+            // 命中默认 shift 映射（无显式配置）→ 动作默认 COMMIT
             if (config.shiftSwipeUp.containsKey(key.lowercase())) return GestureAction.COMMIT
             // 未配置 shift 上滑 → 回退普通上滑
             return configMap[key.lowercase()]?.swipeUp?.action
@@ -845,13 +1834,15 @@ object KeysConfigHelper {
         return configMap[key.lowercase()]?.swipeUp?.action
     }
 
-    /** 获取上滑显示文本（优先 label，fallback value） */
+    /** 获取上滑显示文本（优先 label，fallback value；仅未配置 swipe_up 时用旧默认表） */
     fun getSwipeUpLabel(key: String, isAsciiMode: Boolean = false, isShifted: Boolean = false): String? {
         val configMap = if (isAsciiMode) _keyGestureConfigEn.value else _keyGestureConfig.value
         if (isShifted) {
             configMap[key.lowercase()]?.shiftSwipeUp?.let { g ->
                 if (g.label.isNotEmpty()) return g.label
                 if (g.value.isNotEmpty()) return g.value
+                // 显式配置了 shift_swipe_up（如只写 action）时不回退
+                return null
             }
             config.shiftSwipeUp[key.lowercase()]?.let { if (it.isNotEmpty()) return it }
         }
@@ -859,17 +1850,21 @@ object KeysConfigHelper {
         if (gesture != null) {
             if (gesture.label.isNotEmpty()) return gesture.label
             if (gesture.value.isNotEmpty()) return gesture.value
+            // 显式配置了 swipe_up（如只写了 action）时不再回退旧默认符号表，
+            // 否则键面/气泡会显示与该手势无关的默认符号（q→"1"）。
+            return null
         }
         return config.swipeUp[key.lowercase()]
     }
 
-    /** 获取上滑提交值（优先 value，fallback label） */
+    /** 获取上滑提交值（优先 value，fallback label；仅未配置 swipe_up 时用旧默认表） */
     fun getSwipeUpCommitValue(key: String, isAsciiMode: Boolean = false, isShifted: Boolean = false): String? {
         val configMap = if (isAsciiMode) _keyGestureConfigEn.value else _keyGestureConfig.value
         if (isShifted) {
             configMap[key.lowercase()]?.shiftSwipeUp?.let { g ->
                 if (g.value.isNotEmpty()) return g.value
                 if (g.label.isNotEmpty()) return g.label
+                return null
             }
             config.shiftSwipeUp[key.lowercase()]?.let { if (it.isNotEmpty()) return it }
         }
@@ -877,10 +1872,11 @@ object KeysConfigHelper {
         if (gesture != null) {
             if (gesture.value.isNotEmpty()) return gesture.value
             if (gesture.label.isNotEmpty()) return gesture.label
+            return null
         }
         return config.swipeUp[key.lowercase()]
     }
-
+    
     fun getSwipeDownEnglishText(key: String, isAsciiMode: Boolean = false): String? {
         val configMap = if (isAsciiMode) _keyGestureConfigEn.value else _keyGestureConfig.value
         val fromYaml = configMap[key.lowercase()]?.swipeDown?.label
@@ -909,6 +1905,21 @@ object KeysConfigHelper {
         return configMap[key.lowercase()]?.swipeUp?.display ?: DisplayMode.BOTH
     }
 
+    /** 上滑运行时是否弹出内容气泡（与 [getSwipeUpDisplay] 无关）。 */
+    fun getSwipeUpBubble(key: String, isAsciiMode: Boolean = false, isShifted: Boolean = false): Boolean {
+        val configMap = if (isAsciiMode) _keyGestureConfigEn.value else _keyGestureConfig.value
+        if (isShifted) {
+            return configMap[key.lowercase()]?.shiftSwipeUp?.bubble ?: true
+        }
+        return configMap[key.lowercase()]?.swipeUp?.bubble ?: true
+    }
+
+    /** 下滑运行时是否弹出内容气泡（与 [getSwipeDownDisplay] 无关）。 */
+    fun getSwipeDownBubble(key: String, isAsciiMode: Boolean = false): Boolean {
+        val configMap = if (isAsciiMode) _keyGestureConfigEn.value else _keyGestureConfig.value
+        return configMap[key.lowercase()]?.swipeDown?.bubble ?: true
+    }
+
     private fun getDefaultSwipeUp(): Map<String, String> = mapOf(
         "q" to "1", "w" to "2", "e" to "3", "r" to "4", "t" to "5",
         "y" to "6", "u" to "7", "i" to "8", "o" to "9", "p" to "0",
@@ -917,16 +1928,13 @@ object KeysConfigHelper {
         "z" to "|", "x" to "*", "c" to "\\", "v" to "?", "b" to "_",
         "n" to "-", "m" to "+"
     )
-
-    /** Shift 激活时的上滑默认映射（第二套字符），补充 []{} 等普通上滑缺失的符号 */
+    
+    /** Shift 激活时上滑的默认第二套字符（与本地历史行为一致）。 */
     private fun getDefaultShiftSwipeUp(): Map<String, String> = mapOf(
-        // 第一行：数字键 Shift+上滑 = 标准上档符号
         "q" to "!", "w" to "@", "e" to "#", "r" to "$", "t" to "%",
         "y" to "^", "u" to "&", "i" to "*", "o" to "(", "p" to ")",
-        // 第二行：补充 []{} | \ < > =
         "a" to "[", "s" to "]", "d" to "{", "f" to "}", "g" to "|",
         "h" to "\\", "j" to "<", "k" to ">", "l" to "=",
-        // 第三行：补充 _ + ; : ' " .
         "z" to "_", "x" to "+", "c" to ";", "v" to ":", "b" to "'",
         "n" to "\"", "m" to "."
     )

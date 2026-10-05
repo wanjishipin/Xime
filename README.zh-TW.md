@@ -8,7 +8,13 @@
   <a href="README.md">English</a> · <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-[Xime 輸入法 (Windows 版)](https://github.com/ximeiorg/winxime) | [Xime 輸入法 (Linux 版)](https://github.com/ximeiorg/xime-wayland) | [聯想詞預測模型](https://github.com/ximeiorg/predictive-text) | [手寫輸入法模型](https://github.com/ximeiorg/ochwpro)
+[<img src="https://f-droid.org/badge/get-it-on.png"
+    alt="Get it on F-Droid"
+    height="80">](https://f-droid.org/packages/com.kingzcheung.xime)
+
+
+[Xime 輸入法 (Windows 版)](https://github.com/ximeiorg/XimeYao) | [Xime 輸入法 (Linux 版)](https://github.com/ximeiorg/XimeChe) | [聯想詞預測模型](https://github.com/ximeiorg/predictive-text) | [手寫輸入法模型](https://github.com/ximeiorg/ochwpro)
+
 
 一款基於 <a href="https://rime.im/">Rime</a> 引擎構建的 Android 五筆/拼音輸入法，專注於簡潔高效的中文輸入體驗。
 
@@ -41,7 +47,7 @@
     <td><img src="docs/Screenshot/theme_light.jpg" width="180"><br><p align="center">主題設定（亮色）</p></td>
     <td><img src="docs/Screenshot/theme_dark.jpg" width="180"><br><p align="center">主題設定（暗色）</p></td>
     <td><img src="docs/Screenshot/plugin_light.jpg" width="180"><br><p align="center">外掛管理</p></td>
-    <td><img src="docs/Screenshot/方案市场.jpg" width="180"><br><p align="center">方案市場</p></td>
+    <td><img src="docs/Screenshot/扩展商店.png" width="180"><br><p align="center">擴充商店</p></td>
   </tr>
 </table>
 
@@ -51,19 +57,20 @@
 - **Rime 引擎** - 使用成熟穩定的 Rime 輸入法引擎，精準可靠的中文輸入體驗
 - **豐富鍵盤佈局** - QWERTY 全鍵盤、T9 九宮格拼音、九宮格筆畫、手寫、數字（含計算機）
 - **懸浮鍵盤** - 懸浮卡片樣式，支援拖拽移動、半透明圓角設計
-- **語音轉文字** - 支援阿里百煉 FunAsr（線上）和 sherpa-onnx（本機離線）雙引擎
-- **AI 智能增強** - 基於 Transformer 的聯想詞預測和標點預測，輸入更高效
+- **語音轉文字** - 本地離線語音辨識（內建串流 zipformer2 引擎），也支援線上 ASR 外掛（FunAsr、Volc 等）
+- **AI 智能增強** - 基於 Transformer 的聯想詞預測，輸入更高效
 - **簡潔介面** - Material Design 3 風格，支援淺色/深色主題及多種配色方案
 - **鍵盤調節** - 支援鍵盤高度調整和位置移動
 - **工具列定製** - 可自訂工具列按鈕佈局和功能
 - **按鍵反饋** - 可調節音效和振動強度
 - **滑動手勢** - 游標移動、刪除、符號輸入等滑動手勢操作
 - **剪貼簿管理** - 剪貼簿歷史記錄，支援快捷傳送和置頂
+- **剪貼簿同步** - 透過外掛與遠端裝置雙向同步剪貼簿（WebDAV、ximed 等）
 - **候選詞編碼提示** - 候選詞顯示五筆編碼，輔助學習
 - **字根顯示** - 下滑按鈕顯示五筆字根，方便健忘用戶
 - **實體鍵盤支援** - 連接實體/藍牙鍵盤時顯示浮動候選欄
 - **WebDAV 同步** - 透過 WebDAV 備份和還原方案與設定
-- **表情外掛** - 支援擴充套件表情外掛（顏文字、表情包等）
+- **外掛市場** - 透過內建擴充商店安裝可擴充 Lua 外掛（表情、剪貼簿同步、線上 ASR 等）
 
 ## 系統需求
 
@@ -81,9 +88,16 @@
 
 ### 外掛下載（選用）
 
-外掛為獨立 APK，安裝後可在主應用程式中啟用：
-- **meme-bunny**: 惡搞兔表情包外掛（提供8個表情）
+外掛為 Lua 指令碼外掛（.xipk 格式），可在主應用程式「設定 > 擴充商店」中安裝和啟用：
 - **kaomoji**: 顏文字外掛（提供精選顏文字）
+- **meme-bunny**: 惡搞兔表情包外掛（提供8個表情）
+- **xime-fluent-emoji**: Fluent UI 3D 風格表情外掛（222 個精選 3D 表情，9 大分類）
+- **funasr-asr**: 阿里百煉 FunAsr 線上語音辨識
+- **volc-asr**: 火山引擎線上語音辨識
+- **webdav-clipboard-sync**: 基於 WebDAV 的剪貼簿同步
+- **ximed-clipboard-sync**: 基於 ximed 服務的剪貼簿同步
+
+更多外掛請查看 [外掛中心列表](https://ime.ximei.me/plugin-list.html)，或直接到手機應用程式「設定 > 擴充商店」中瀏覽安裝。
 
 ### 從 Release 下載
 
@@ -107,6 +121,11 @@
 
 詳細使用說明請檢視 [使用文件](https://ime.ximei.me)。
 
+- [常見問題 FAQ](https://ime.ximei.me/faq.html)
+- [Rime 方案列表](https://ime.ximei.me/rime-list.html)
+- [外掛列表](https://ime.ximei.me/plugin-list.html)
+- [AI 模型列表](https://ime.ximei.me/model-list.html)
+
 ## 構建
 
 ```bash
@@ -119,44 +138,6 @@ git submodule update --init --recursive
 # 構建 Release APK
 ./gradlew assembleRelease
 ```
-
-### 本地語音辨識構建
-
-專案支援本地離線語音辨識（基於 sherpa-onnx）。首次構建時會自動下載並編譯 JNI 函式庫。
-
-如果自動構建失敗，可手動執行：
-
-```bash
-# 手動構建 sherpa-onnx JNI 函式庫
-./build-sherpa-onnx.sh
-```
-
-構建完成後，會在 `app/src/main/jniLibs/` 產生 `libsherpa-onnx-jni.so`。
-
-本地 ASR 模型可在應用程式內設定頁面下載。
-
-### AI 模型下載
-
-#### 智慧聯想詞模型
-
-- **專案地址**: https://github.com/ximeiorg/predictive-text
-- **模型下載**: https://www.modelscope.cn/models/bikeand/predictive-text-small
-- **模型檔案**: `model_int8_dynamic.onnx`（約 17MB）
-- **詞表檔案**: `vocab.json`
-- **存放位置**: `filesDir/` 目錄（即應用私有目錄根目錄）
-- **功能**: 基於 Transformer 的中文聯想詞預測，提供智慧候選詞推薦
-
-#### 標點預測模型
-
-- **專案地址**: https://github.com/ximeiorg/srf-punctuation
-- **線上演示**: https://srf-punctuation.ximei.me/
-- **模型下載**: https://www.modelscope.cn/models/bikeand/srf-punctuation
-- **模型檔案**: `punctuation_int8.onnx`（約 2.2MB）
-- **詞表檔案**: `vocab.json`
-- **存放位置**: `filesDir/punctuation_models/` 目錄
-- **功能**: 基於 Transformer 的中文標點預測，語音辨識後自動新增標點
-
-**注意**: 所有模型均可直接在應用程式內「設定 > 智慧聯想/語音辨識」頁面下載，無需手動放置。
 
 ## 技術棧
 
@@ -180,18 +161,12 @@ git submodule update --init --recursive
 - [Rime](https://rime.im/) - 中州韻輸入法引擎
 - [Trime](https://github.com/osfans/trime) - 同文輸入法，設定參考
 - [fcitx5-android](https://github.com/fcitx5-android/fcitx5-android) - 鍵盤佈局參考
-- [sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx) - 本地語音轉文字模型支援
-
-## Star History
-
-<a href="https://www.star-history.com/?repos=ximeiorg/Xime&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=ximeiorg/Xime&type=date&legend=top-left" />
- </picture>
-</a>
+- [onnxruntime](https://github.com/microsoft/onnxruntime) - 聯想詞預測與語音辨識的 ONNX 推論引擎
 
 ## 授權條款
 
 GPLv3 License
+
+Copyright © 2026 Kingz Cheung
+
+"Xime" 名稱、Logo 及其他品牌資產**不屬於** GPLv3 開源授權範圍，詳見 [TRADEMARKS.md](TRADEMARKS.md)。

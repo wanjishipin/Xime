@@ -5,7 +5,9 @@ import android.widget.Toast
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.kingzcheung.xime.association.AssociationManager
+import com.kingzcheung.xime.model.ModelManager
 import com.kingzcheung.xime.model.ModelRuntime
+import com.kingzcheung.xime.model.ModelStorage
 import com.kingzcheung.xime.settings.SettingsPreferences
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,11 +51,20 @@ class SmartPredictionSettingsViewModel(application: Application) : AndroidViewMo
         checkModelState()
         loadCacheSize()
         validateModelState()
+        loadRemoteModels()
+    }
+
+    private fun loadRemoteModels() {
+        viewModelScope.launch {
+            ModelManager.loadFromRemote(context)
+        }
     }
     
     private fun checkModelState() {
-        val vocabFile = context.filesDir.resolve("vocab.json")
-        val modelFile = context.filesDir.resolve("model_int8_dynamic.onnx")
+        val modelId = SettingsPreferences.getPredictionSelectedModel(context)
+        val modelDir = ModelStorage.getModelDir(context, modelId)
+        val vocabFile = modelDir.resolve("vocab.json")
+        val modelFile = modelDir.resolve("model_int8_dynamic.onnx")
         val hasModel = vocabFile.exists() && modelFile.exists()
         _uiState.update { it.copy(hasModel = hasModel) }
     }
@@ -155,10 +166,16 @@ class SmartPredictionSettingsViewModel(application: Application) : AndroidViewMo
             
             try {
                 val baseUrl = _uiState.value.modelRepo.trimEnd('/')
-                
+                val modelId = SettingsPreferences.getPredictionSelectedModel(context)
+
+                val modelDir = ModelStorage.getModelDir(context, modelId)
+                modelDir.mkdirs()
+                // 兼容旧版：下载前先把旧路径模型迁移到统一目录
+                ModelStorage.migrateLegacyForModel(context, modelId)
+
                 val filesToDownload = listOf(
-                    "vocab.json" to File(context.filesDir, "vocab.json"),
-                    "model_int8_dynamic.onnx" to File(context.filesDir, "model_int8_dynamic.onnx")
+                    "vocab.json" to File(modelDir, "vocab.json"),
+                    "model_int8_dynamic.onnx" to File(modelDir, "model_int8_dynamic.onnx")
                 )
                 
                 val totalFiles = filesToDownload.size
@@ -221,8 +238,10 @@ class SmartPredictionSettingsViewModel(application: Application) : AndroidViewMo
     }
     
     fun deleteModel() {
-        val vocabFile = context.filesDir.resolve("vocab.json")
-        val modelFile = context.filesDir.resolve("model_int8_dynamic.onnx")
+        val modelId = SettingsPreferences.getPredictionSelectedModel(context)
+        val modelDir = ModelStorage.getModelDir(context, modelId)
+        val vocabFile = modelDir.resolve("vocab.json")
+        val modelFile = modelDir.resolve("model_int8_dynamic.onnx")
         vocabFile.delete()
         modelFile.delete()
         

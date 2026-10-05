@@ -3,37 +3,13 @@ NOTICE for Xime Application
 This application uses third-party libraries and code:
 
 ================================================================================
-sherpa-onnx - Speech Recognition Engine
-================================================================================
-
-Source: https://github.com/k2-fsa/sherpa-onnx
-License: Apache License 2.0
-
-The following components are derived from sherpa-onnx:
-- Kotlin API files (app/src/main/java/com/k2fsa/sherpa/onnx/*.kt)
-  These are copied from sherpa-onnx/kotlin-api/ directory.
-- JNI library (libsherpa-onnx-jni.so)
-  Built from sherpa-onnx source using the project's existing onnxruntime.
-
-sherpa-onnx is developed by the k2-fsa team.
-GitHub: https://github.com/k2-fsa
-
-Apache License 2.0 Summary:
-- You may use, distribute, and modify this software
-- You must include this license notice
-- You must state changes if you modify the files
-
-Full license text available at:
-https://www.apache.org/licenses/LICENSE-2.0
-
-================================================================================
 ONNX Runtime
 ================================================================================
 
 Source: https://github.com/microsoft/onnxruntime
 License: MIT License
 
-Used for neural network inference in association prediction and speech recognition.
+Used for neural network inference in association prediction, punctuation and handwriting recognition.
 
 ================================================================================
 Librime

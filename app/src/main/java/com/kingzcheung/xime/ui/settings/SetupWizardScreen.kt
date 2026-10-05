@@ -9,8 +9,11 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,12 +21,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.rime.RimeConfigHelper
 import com.kingzcheung.xime.rime.RimeEngine
 import com.kingzcheung.xime.settings.SchemaManager
 import com.kingzcheung.xime.settings.SettingsPreferences
+import com.kingzcheung.xime.ui.ContentMaxWidth
+import com.kingzcheung.xime.ui.TwoPaneMinWidth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -34,6 +39,45 @@ enum class SetupStep {
     SelectSchemas,
     SwitchToIme
 }
+
+/** 步骤序号（0 基），用于判断完成/当前状态。 */
+private val SetupStep.stepIndex: Int get() = SetupStep.entries.indexOf(this)
+
+/** 横向指示器上的短标签。 */
+private val SetupStep.shortLabel: String
+    get() = when (this) {
+        SetupStep.EnableIme -> "启用"
+        SetupStep.SelectSchemas -> "选方案"
+        SetupStep.SwitchToIme -> "切换"
+    }
+
+/** 双栏导航项标题。 */
+private val SetupStep.navTitle: String
+    get() = when (this) {
+        SetupStep.EnableIme -> "启用输入法"
+        SetupStep.SelectSchemas -> "选择方案"
+        SetupStep.SwitchToIme -> "切换输入法"
+    }
+
+/** 双栏导航项说明。 */
+private val SetupStep.navDescription: String
+    get() = when (this) {
+        SetupStep.EnableIme -> "在系统设置中启用曦码输入法"
+        SetupStep.SelectSchemas -> "选择并部署输入方案"
+        SetupStep.SwitchToIme -> "切换到曦码输入法"
+    }
+
+/** 步骤正文标题。 */
+private val SetupStep.stepTitle: String
+    get() = when (this) {
+        SetupStep.EnableIme -> "步骤 1：启用输入法"
+        SetupStep.SelectSchemas -> "步骤 2：选择输入方案"
+        SetupStep.SwitchToIme -> "步骤 3：切换输入法"
+    }
+
+/** 向导内主操作按钮：限制最大宽度，避免平板上被拉伸得过宽。 */
+private fun Modifier.wizardButton(): Modifier =
+    this.widthIn(max = 360.dp).fillMaxWidth().padding(vertical = 10.dp)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,6 +91,7 @@ fun SetupWizardScreen(
     var deployReminder by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
     // 从设置页返回后检查已启用的方案（初始为空，用户必须主动选择）
     val enabledSchemas = remember { mutableStateOf(if (hasBeenToSettings) SchemaManager.getEnabledSchemas(context) else emptyList()) }
@@ -59,8 +104,62 @@ fun SetupWizardScreen(
     }
 
     if (visible) {
+        // 步骤正文：手机单栏与平板双栏共用同一份内容。
+        val stepContent: @Composable (SetupStep) -> Unit = { step ->
+            when (step) {
+                SetupStep.EnableIme -> EnableImeStep(
+                    onNext = { currentStep = SetupStep.SelectSchemas }
+                )
+                SetupStep.SelectSchemas -> SelectSchemasStep(
+                    enabledSchemas = enabledSchemas.value,
+                    deployReminder = deployReminder,
+                    onNavigateToSchemaSettings = {
+                        hasBeenToSettings = true
+                        deployReminder = null
+                        onNavigateToSchemaSettings()
+                    },
+                    onNext = {
+                        enabledSchemas.value = SchemaManager.getEnabledSchemas(context)
+                        if (enabledSchemas.value.isNotEmpty()) {
+                            // isDeploymentComplete 内部计算部署 hash（读取大词库文件），
+                            // 移到 IO 线程避免主线程卡顿
+                            scope.launch {
+                                val complete = withContext(Dispatchers.IO) {
+                                    RimeConfigHelper.isDeploymentComplete(context)
+                                }
+                                if (!complete) {
+                                    deployReminder = "方案已选择，但尚未部署。请前往设置点击「部署」按钮编译词库"
+                                } else {
+                                    deployReminder = null
+                                    currentStep = SetupStep.SwitchToIme
+                                }
+                            }
+                        } else {
+                            deployReminder = null
+                            currentStep = SetupStep.SwitchToIme
+                        }
+                    }
+                )
+                SetupStep.SwitchToIme -> SwitchToImeStep(
+                    onCompleted = {
+                        // 将当前方案设为第一个已启用的方案
+                        // 否则 currentSchema 保持默认值 "wubi86"，
+                        // 用户可能根本没启用 wubi86，导致键盘无法输入中文
+                        val enabled = SchemaManager.getEnabledSchemas(context)
+                        if (enabled.isNotEmpty()) {
+                            SettingsPreferences.setCurrentSchema(context, enabled.first())
+                        }
+                        SettingsPreferences.setSetupCompleted(context, true)
+                        SettingsPreferences.setDeploymentDone(context, true)
+                        RimeConfigHelper.storeDeploymentHash(context)
+                        onCompleted()
+                    }
+                )
+            }
+        }
+
         Scaffold(
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = MaterialTheme.colorScheme.surface,
             topBar = {
                 TopAppBar(
                     title = { Text("设置向导") },
@@ -71,73 +170,139 @@ fun SetupWizardScreen(
                 )
             }
         ) { padding ->
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                // Step indicator
-                StepIndicator(currentStep = currentStep)
-                Spacer(Modifier.height(32.dp))
-
-                AnimatedContent(
-                    targetState = currentStep,
-                    transitionSpec = { fadeIn() togetherWith fadeOut() },
-                    label = "step_content"
-                ) { step ->
-                    when (step) {
-                        SetupStep.EnableIme -> EnableImeStep(
-                            onNext = { currentStep = SetupStep.SelectSchemas }
-                        )
-                        SetupStep.SelectSchemas -> SelectSchemasStep(
-                        enabledSchemas = enabledSchemas.value,
-                        deployReminder = deployReminder,
-                        onNavigateToSchemaSettings = {
-                            hasBeenToSettings = true
-                            deployReminder = null
-                            onNavigateToSchemaSettings()
-                        },
-                        onNext = {
-                            enabledSchemas.value = SchemaManager.getEnabledSchemas(context)
-                            if (enabledSchemas.value.isNotEmpty() && !RimeConfigHelper.isDeploymentComplete(context)) {
-                                deployReminder = "方案已选择，但尚未部署。请前往设置点击「部署」按钮编译词库"
-                            } else {
-                                deployReminder = null
-                                currentStep = SetupStep.SwitchToIme
-                            }
-                        }
+            val contentModifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+            // 双栏分档按当前窗口实际宽度（BoxWithConstraints）：手机横屏（600dp+）
+            // 也得双栏（左导航 + 右内容），竖屏矮视口不再被横向指示器+居中内容挤压；
+            // 平板任何方向与此前一致。isTablet() 是设备分档（sw600dp，不随方向变），
+            // 无法覆盖手机横屏，故不再用。
+            BoxWithConstraints(modifier = contentModifier) {
+                if (maxWidth >= TwoPaneMinWidth) {
+                    TwoPaneWizardLayout(
+                        currentStep = currentStep,
+                        stepContent = stepContent
                     )
-                    SetupStep.SwitchToIme -> SwitchToImeStep(
-                        onCompleted = {
-                            // 将当前方案设为第一个已启用的方案
-                            // 否则 currentSchema 保持默认值 "wubi86"，
-                            // 用户可能根本没启用 wubi86，导致键盘无法输入中文
-                            val enabledSchemas = SchemaManager.getEnabledSchemas(context)
-                            if (enabledSchemas.isNotEmpty()) {
-                                SettingsPreferences.setCurrentSchema(context, enabledSchemas.first())
-                            }
-                            SettingsPreferences.setSetupCompleted(context, true)
-                            SettingsPreferences.setDeploymentDone(context, true)
-                            RimeConfigHelper.storeDeploymentHash(context)
-                            onCompleted()
-                        }
+                } else {
+                    SinglePaneWizardLayout(
+                        currentStep = currentStep,
+                        stepContent = stepContent
                     )
                 }
             }
         }
     }
+}
+
+/** 窄容器单栏：顶部横向步骤指示器 + 可滚动的步骤内容。 */
+@Composable
+private fun SinglePaneWizardLayout(
+    currentStep: SetupStep,
+    stepContent: @Composable (SetupStep) -> Unit
+) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        HorizontalStepIndicator(
+            currentStep = currentStep,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp, vertical = 20.dp)
+        )
+        WizardStepHost(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            currentStep = currentStep,
+            stepContent = stepContent
+        )
     }
 }
 
+/** 宽容器双栏：左侧竖向步骤导航 + 右侧可滚动的步骤内容。 */
 @Composable
-private fun StepIndicator(currentStep: SetupStep) {
+private fun TwoPaneWizardLayout(
+    currentStep: SetupStep,
+    stepContent: @Composable (SetupStep) -> Unit
+) {
+    Row(modifier = Modifier.fillMaxSize()) {
+        // 左栏在横屏矮视口下放不下全部步骤（标题区+3 步+连接线 ≈ 340dp），
+        // 与右侧内容一样允许滚动，避免被裁切
+        VerticalStepNavigation(
+            currentStep = currentStep,
+            modifier = Modifier
+                .width(260.dp)
+                .fillMaxHeight()
+                .verticalScroll(rememberScrollState())
+        )
+        VerticalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        WizardStepHost(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(1f),
+            currentStep = currentStep,
+            stepContent = stepContent
+        )
+    }
+}
+
+/** 步骤内容的淡入淡出切换宿主。 */
+@Composable
+private fun WizardStepHost(
+    modifier: Modifier,
+    currentStep: SetupStep,
+    stepContent: @Composable (SetupStep) -> Unit
+) {
+    AnimatedContent(
+        targetState = currentStep,
+        transitionSpec = { fadeIn() togetherWith fadeOut() },
+        label = "step_content",
+        modifier = modifier
+    ) { step ->
+        StepPane { stepContent(step) }
+    }
+}
+
+/**
+ * 步骤正文容器：内容限宽居中；空间不足时可滚动。
+ *
+ * 用 [BoxWithConstraints] 拿到视口高度，让内容至少铺满视口以保持垂直居中，
+ * 同时允许内容超出视口时滚动（横屏/小高度不再被裁切）。
+ */
+@Composable
+private fun StepPane(
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+        val viewportHeight = maxHeight
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .heightIn(min = viewportHeight)
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Column(
+                modifier = Modifier.widthIn(max = ContentMaxWidth),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                content = content
+            )
+        }
+    }
+}
+
+/** 手机端横向步骤指示器。 */
+@Composable
+private fun HorizontalStepIndicator(
+    currentStep: SetupStep,
+    modifier: Modifier = Modifier
+) {
     val steps = SetupStep.entries
-    val currentIndex = steps.indexOf(currentStep)
+    val currentIndex = currentStep.stepIndex
 
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier,
         horizontalArrangement = Arrangement.SpaceEvenly,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -146,34 +311,15 @@ private fun StepIndicator(currentStep: SetupStep) {
             val isCurrent = index == currentIndex
 
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Surface(
-                    shape = RoundedCornerShape(50),
-                    color = when {
-                        isCompleted -> MaterialTheme.colorScheme.primary
-                        isCurrent -> MaterialTheme.colorScheme.secondary
-                        else -> MaterialTheme.colorScheme.surfaceVariant
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "${index + 1}",
-                            color = if (isCompleted || isCurrent)
-                                MaterialTheme.colorScheme.onPrimary
-                            else
-                                MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
+                StepBadge(
+                    number = index + 1,
+                    isCompleted = isCompleted,
+                    isCurrent = isCurrent
+                )
                 Spacer(Modifier.height(4.dp))
                 Text(
-                    text = when (step) {
-                        SetupStep.EnableIme -> "启用"
-                        SetupStep.SelectSchemas -> "选方案"
-                        SetupStep.SwitchToIme -> "切换"
-                    },
-                    fontSize = 11.sp,
+                    text = step.shortLabel,
+                    style = MaterialTheme.typography.labelSmall,
                     color = if (isCurrent) MaterialTheme.colorScheme.primary
                     else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -192,94 +338,185 @@ private fun StepIndicator(currentStep: SetupStep) {
     }
 }
 
+/** 平板端竖向步骤导航。 */
+@Composable
+private fun VerticalStepNavigation(
+    currentStep: SetupStep,
+    modifier: Modifier = Modifier
+) {
+    val steps = SetupStep.entries
+    val currentIndex = currentStep.stepIndex
+
+    Column(modifier = modifier.padding(horizontal = 24.dp, vertical = 32.dp)) {
+        Text(
+            text = "曦码输入法",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text = "完成以下步骤即可开始使用",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(Modifier.height(28.dp))
+
+        steps.forEachIndexed { index, step ->
+            val isCompleted = index < currentIndex
+            val isCurrent = index == currentIndex
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                StepBadge(
+                    number = index + 1,
+                    isCompleted = isCompleted,
+                    isCurrent = isCurrent,
+                    size = 40.dp
+                )
+                Spacer(Modifier.width(16.dp))
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = step.navTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
+                        color = if (isCurrent) MaterialTheme.colorScheme.primary
+                        else MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = step.navDescription,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (index < steps.size - 1) {
+                // 竖向连接线，对齐到徽标圆心（徽标 40dp，线宽 2dp）
+                Box(
+                    modifier = Modifier
+                        .padding(start = 19.dp, top = 4.dp, bottom = 4.dp)
+                        .width(2.dp)
+                        .height(32.dp)
+                        .background(
+                            if (index < currentIndex) MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.outlineVariant
+                        )
+                )
+            }
+        }
+    }
+}
+
+/** 步骤序号徽标。 */
+@Composable
+private fun StepBadge(
+    number: Int,
+    isCompleted: Boolean,
+    isCurrent: Boolean,
+    size: Dp = 36.dp
+) {
+    Surface(
+        shape = CircleShape,
+        color = when {
+            isCompleted -> MaterialTheme.colorScheme.primary
+            isCurrent -> MaterialTheme.colorScheme.secondary
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        },
+        modifier = Modifier.size(size)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = "$number",
+                color = when {
+                    isCompleted -> MaterialTheme.colorScheme.onPrimary
+                    isCurrent -> MaterialTheme.colorScheme.onSecondary
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                fontWeight = FontWeight.Bold
+            )
+        }
+    }
+}
+
 @Composable
 private fun EnableImeStep(onNext: () -> Unit) {
     val context = LocalContext.current
     var isEnabled by remember { mutableStateOf(checkImeEnabled(context)) }
     val scope = rememberCoroutineScope()
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Text(
+        text = "曦码输入法",
+        style = MaterialTheme.typography.headlineMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary
+    )
+    Spacer(Modifier.height(8.dp))
+    Text(
+        text = "基于 Rime 引擎的 Android 输入法",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(Modifier.height(48.dp))
+
+    Text(
+        text = SetupStep.EnableIme.stepTitle,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold
+    )
+    Spacer(Modifier.height(12.dp))
+    Text(
+        text = "请在系统设置中启用「曦码输入法」",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
+    )
+    Spacer(Modifier.height(24.dp))
+
+    Button(
+        onClick = {
+            context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+        },
+        modifier = Modifier.wizardButton()
     ) {
-        Spacer(Modifier.weight(1f))
+        Text("去系统设置启用")
+    }
 
+    if (isEnabled) {
+        Spacer(Modifier.height(16.dp))
         Text(
-            text = "曦码输入法",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = "基于 Rime 引擎的 Android 输入法",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Spacer(Modifier.height(48.dp))
-
-        Text(
-            text = "步骤 1：启用输入法",
-            fontSize = 20.sp,
+            text = "✓ 曦码输入法已启用",
+            color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold
         )
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onNext,
+            modifier = Modifier.wizardButton()
+        ) {
+            Text("下一步")
+        }
+    } else {
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "请在系统设置中启用「曦码输入法」",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
+            text = "请先在系统设置中启用曦码输入法",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error
         )
-        Spacer(Modifier.height(24.dp))
-
-        Button(
+        Spacer(Modifier.height(12.dp))
+        OutlinedButton(
             onClick = {
-                context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+                scope.launch { isEnabled = checkImeEnabled(context) }
             },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
+            modifier = Modifier.wizardButton()
         ) {
-            Text("去系统设置启用")
+            Text("检查状态")
         }
-
-        if (isEnabled) {
-            Spacer(Modifier.height(16.dp))
-            Text(
-                text = "✓ 曦码输入法已启用",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = onNext,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
-            ) {
-                Text("下一步")
-            }
-        } else {
-            Spacer(Modifier.height(12.dp))
-            Text(
-                text = "请先在系统设置中启用曦码输入法",
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.error
-            )
-            Spacer(Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = {
-                    scope.launch { isEnabled = checkImeEnabled(context) }
-                },
-                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
-            ) {
-                Text("检查状态")
-            }
-        }
-
-        Spacer(Modifier.weight(1f))
     }
+
     LaunchedEffect(Unit) {
         while (!isEnabled) {
             delay(2000)
-            val enabled = checkImeEnabled(context)
-            if (enabled) {
+            if (checkImeEnabled(context)) {
                 isEnabled = true
                 break
             }
@@ -300,66 +537,57 @@ private fun SelectSchemasStep(
     onNavigateToSchemaSettings: () -> Unit,
     onNext: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(Modifier.weight(1f))
+    Text(
+        text = SetupStep.SelectSchemas.stepTitle,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold
+    )
+    Spacer(Modifier.height(12.dp))
+    Text(
+        text = "点击下方按钮前往设置，选择您需要的输入方案并点击「部署」",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
+    )
+    Spacer(Modifier.height(4.dp))
+    Text(
+        text = "请至少选择一个方案后才能继续",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
+    )
+    Spacer(Modifier.height(32.dp))
 
+    Button(
+        onClick = { onNavigateToSchemaSettings() },
+        modifier = Modifier.wizardButton()
+    ) {
+        Text("去设置选择方案")
+    }
+
+    if (enabledSchemas.isNotEmpty()) {
+        Spacer(Modifier.height(16.dp))
         Text(
-            text = "步骤 2：选择输入方案",
-            fontSize = 20.sp,
+            text = "✓ 已选择 ${enabledSchemas.size} 个方案",
+            color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold
         )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "点击下方按钮前往设置，选择您需要的输入方案并点击「部署」",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(4.dp))
-        Text(
-            text = "请至少选择一个方案后才能继续",
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(32.dp))
-
-        Button(
-            onClick = { onNavigateToSchemaSettings() },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
-        ) {
-            Text("去设置选择方案")
-        }
-
-        if (enabledSchemas.isNotEmpty()) {
-            Spacer(Modifier.height(16.dp))
+        if (deployReminder != null) {
+            Spacer(Modifier.height(8.dp))
             Text(
-                text = "✓ 已选择 ${enabledSchemas.size} 个方案",
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.SemiBold
+                text = deployReminder,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+                textAlign = TextAlign.Center
             )
-            if (deployReminder != null) {
-                Spacer(Modifier.height(8.dp))
-                Text(
-                    text = deployReminder,
-                    fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.error,
-                    textAlign = TextAlign.Center
-                )
-            }
-            Spacer(Modifier.height(16.dp))
-            Button(
-                onClick = onNext,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
-            ) {
-                Text("下一步")
-            }
         }
-
-        Spacer(Modifier.weight(1f))
+        Spacer(Modifier.height(16.dp))
+        Button(
+            onClick = onNext,
+            modifier = Modifier.wizardButton()
+        ) {
+            Text("下一步")
+        }
     }
 }
 
@@ -383,6 +611,8 @@ private suspend fun doCompile(
             // 2. 部署 = 编译词库 + 创建 session（一步完成）
             onProgress("正在编译词库...")
             engine.deploy()
+            RimeConfigHelper.storeDeploymentHash(context)
+            SettingsPreferences.setDeploymentDone(context, true)
 
             onDone()
         } catch (e: Exception) {
@@ -397,43 +627,36 @@ private suspend fun doCompile(
 private fun SwitchToImeStep(onCompleted: () -> Unit) {
     val context = LocalContext.current
 
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
+    Text(
+        text = SetupStep.SwitchToIme.stepTitle,
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold
+    )
+    Spacer(Modifier.height(12.dp))
+    Text(
+        text = "一切准备就绪！请切换到曦码输入法开始使用",
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center
+    )
+    Spacer(Modifier.height(24.dp))
+
+    Button(
+        onClick = {
+            val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
+            imm?.showInputMethodPicker()
+        },
+        modifier = Modifier.wizardButton()
     ) {
-        Spacer(Modifier.weight(1f))
+        Text("弹出输入法选择器")
+    }
 
-        Text(
-            text = "步骤 4：切换输入法",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(Modifier.height(12.dp))
-        Text(
-            text = "一切准备就绪！请切换到曦码输入法开始使用",
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            textAlign = TextAlign.Center
-        )
-        Spacer(Modifier.height(24.dp))
+    Spacer(Modifier.height(12.dp))
 
-        Button(
-            onClick = {
-                val imm = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager
-                imm?.showInputMethodPicker()
-            },
-            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
-        ) {
-            Text("弹出输入法选择器")
-        }
-
-        Spacer(Modifier.height(12.dp))
-
-        Button(
-            onClick = onCompleted,
-            modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp)
-        ) {
-            Text("完成设置")
-        }
+    Button(
+        onClick = onCompleted,
+        modifier = Modifier.wizardButton()
+    ) {
+        Text("完成设置")
     }
 }

@@ -2,6 +2,8 @@ package com.kingzcheung.xime.util
 
 import android.content.Context
 import android.util.Log
+import com.kingzcheung.xime.BuildConfig
+import com.kingzcheung.xime.settings.SettingsPreferences
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileWriter
@@ -20,10 +22,16 @@ object FileLogger {
     private var logFile: File? = null
     private var logsDir: File? = null
     private var isInitialized = false
+
+    /** 调试日志总开关：控制 v/d/i 级写文件（日志查看器）。
+     * 仅 Debug 构建生效；Release 构建 v/d/i 级完全不写文件，省磁盘 I/O。 */
+    @Volatile
+    private var verboseLoggingEnabled = true
     
     private val logQueue = LinkedBlockingQueue<String>(QUEUE_CAPACITY)
     private var writer: BufferedWriter? = null
     private var running = false
+    private val writeLock = Any()
     
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
     private val fileDateFormat = SimpleDateFormat("yyyyMMdd", Locale.getDefault())
@@ -35,6 +43,8 @@ object FileLogger {
             if (!logsDir!!.exists()) {
                 logsDir!!.mkdirs()
             }
+            
+            verboseLoggingEnabled = SettingsPreferences.isVerboseLoggingEnabled(context)
             
             openLogFile()
             cleanOldLogs()
@@ -73,12 +83,14 @@ object FileLogger {
                 batch.clear()
                 batch.add(logQueue.take())
                 logQueue.drainTo(batch, 99)
-                
+
                 val w = writer ?: continue
-                for (line in batch) {
-                    w.write(line)
+                synchronized(writeLock) {
+                    for (line in batch) {
+                        w.write(line)
+                    }
+                    w.flush()
                 }
-                w.flush()
             } catch (e: InterruptedException) {
                 Thread.currentThread().interrupt()
                 break
@@ -89,25 +101,35 @@ object FileLogger {
     }
     
     fun isInitialized(): Boolean = isInitialized
+
+    /** 运行时切换 verbose 文件日志（跨进程通过设置项/onStartInput 同步）。 */
+    fun setVerboseLoggingEnabled(enabled: Boolean) {
+        verboseLoggingEnabled = enabled
+    }
     
     fun v(tag: String, message: String) {
-        Log.v(tag, message)
-        writeToFile("V", tag, message)
+        if (BuildConfig.DEBUG) Log.v(tag, message)
+        if (BuildConfig.DEBUG && verboseLoggingEnabled) writeToFile("V", tag, message)
     }
     
     fun d(tag: String, message: String) {
-        Log.d(tag, message)
-        writeToFile("D", tag, message)
+        if (BuildConfig.DEBUG) Log.d(tag, message)
+        if (BuildConfig.DEBUG && verboseLoggingEnabled) writeToFile("D", tag, message)
     }
     
     fun i(tag: String, message: String) {
-        Log.i(tag, message)
-        writeToFile("I", tag, message)
+        if (BuildConfig.DEBUG) Log.i(tag, message)
+        if (BuildConfig.DEBUG && verboseLoggingEnabled) writeToFile("I", tag, message)
     }
     
-    fun w(tag: String, message: String) {
-        Log.w(tag, message)
-        writeToFile("W", tag, message)
+    fun w(tag: String, message: String, throwable: Throwable? = null) {
+        Log.w(tag, message, throwable)
+        val fullMessage = if (throwable != null) {
+            "$message\n${throwable.stackTraceToString()}"
+        } else {
+            message
+        }
+        writeToFile("W", tag, fullMessage)
     }
     
     fun e(tag: String, message: String, throwable: Throwable? = null) {
@@ -152,7 +174,6 @@ object FileLogger {
                 if (logFiles.size > MAX_LOG_FILES) {
                     logFiles.drop(MAX_LOG_FILES).forEach { oldFile ->
                         oldFile.delete()
-                        Log.d(TAG, "Deleted old log file: ${oldFile.name}")
                     }
                 }
             }
@@ -194,7 +215,6 @@ object FileLogger {
                     ?.forEach { file ->
                         if (file.length() > MAX_LOG_SIZE) {
                             file.delete()
-                            Log.d(TAG, "Deleted orphaned log: ${file.name}")
                         }
                     }
             }
@@ -213,13 +233,11 @@ object FileLogger {
                 ?.drop(MAX_LOG_FILES)
                 ?.forEach { file ->
                     file.delete()
-                    Log.d(TAG, "Deleted rime log: ${file.name}")
                 }
             rimeLogDir.listFiles()
                 ?.filter { it.isFile && it.name.endsWith(".log") && it.length() > MAX_LOG_SIZE }
                 ?.forEach { file ->
                     file.delete()
-                    Log.d(TAG, "Deleted oversized rime log: ${file.name}")
                 }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to clean rime logs", e)
@@ -232,5 +250,27 @@ object FileLogger {
 
     fun flush() {
         writer?.flush()
+    }
+
+    /**
+     * 同步把队列中尚未落盘的日志全部写出并 flush。
+     * 崩溃处理器必须用这个而不是 [flush]：[flush] 只刷 writer，
+     * 队列里的行仍依赖后台 flusher 线程，进程即将被杀时会丢失。
+     */
+    fun flushNow() {
+        if (!isInitialized) return
+        try {
+            val batch = ArrayList<String>(logQueue.size)
+            logQueue.drainTo(batch)
+            val w = writer ?: return
+            synchronized(writeLock) {
+                for (line in batch) {
+                    w.write(line)
+                }
+                w.flush()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "flushNow failed", e)
+        }
     }
 }

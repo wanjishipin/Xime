@@ -16,6 +16,5 @@ interface AsrBackend {
     fun stop()
     fun cancel()
     fun release()
-    fun getState(): RecognitionState
     fun isAvailable(): Boolean
 }

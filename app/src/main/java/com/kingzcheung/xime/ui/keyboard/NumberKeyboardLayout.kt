@@ -28,7 +28,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -36,6 +39,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -48,6 +52,10 @@ import com.kingzcheung.xime.util.SubcharHelper
  * 第2行：- | 4 | 5 | 6 | 符号切换
  * 第3行：* | 7 | 8 | 9 | 表情
  * 第4行：ABC | / | 0 | . | 确定
+ *
+ * [backKeyOnLeft] 为 true 时，左下角的「符号」键与数字区底行的「返回(ABC)」键互换位置：
+ * 从全键盘 ?123（位于左下角）进入数字键盘时，返回键保持在用户的进入位置；
+ * 默认 false 保持九键布局习惯（符号键在最左下角）。
  */
 @Composable
 fun NumberKeyboardLayout(
@@ -55,15 +63,19 @@ fun NumberKeyboardLayout(
     keyBackgroundColor: Color,
     keyTextColor: Color,
     specialKeyBackgroundColor: Color,
+    bubbleBackgroundColor: Color = keyBackgroundColor,
     keyboardBackgroundColor: Color = Color.Transparent,
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
     keyCornerRadius: Dp = 8.dp,
+    keySpacingX: Dp? = null,
+    keySpacingY: Dp? = null,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
     isFloatingMode: Boolean = false,
     specialKeyTextColor: Color = Color.White,
+    backKeyOnLeft: Boolean = false,
 ) {
 
     val configuration = LocalConfiguration.current
@@ -74,26 +86,39 @@ fun NumberKeyboardLayout(
         "\\", "|", ";", ":", "'", "\"", "<", ">"
     )
 
-    var swipeState by remember { mutableStateOf(SwipeState()) }
+    val swipeBubble = rememberSwipeBubbleController()
     var keyboardBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
-    var lastKeyBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
 
     val isDarkTheme = keyTextColor == Color(0xFFE8EAED)
 
     val bubbleData = rememberSwipeBubbleDrawData(
-        swipeState = swipeState,
-        keyBounds = lastKeyBounds,
-        keyBackgroundColor = keyBackgroundColor,
+        swipeState = swipeBubble.state,
+        keyBounds = swipeBubble.keyBounds,
+        keyBackgroundColor = bubbleBackgroundColor,
         keyTextColor = keyTextColor,
         accentColor = specialKeyTextColor,
-        keyWidth = if (swipeState.isSwiping || swipeState.isPressed) lastKeyBounds.width else 0f,
+        keyWidth = if (swipeBubble.state.isSwiping || swipeBubble.state.isPressed) swipeBubble.keyBounds.width else 0f,
         keyboardWidth = keyboardBounds.width
     )
+
+    fun processSwipeState(state: SwipeState, bounds: Rect) {
+        val newState = if (state.isSwipeDown && state.swipeText != null) {
+            state.copy(charInfos = SubcharHelper.parseSwipeDownText(state.swipeText))
+        } else state
+        swipeBubble.update(
+            newState,
+            Rect(
+                left = bounds.left - keyboardBounds.left,
+                top = bounds.top - keyboardBounds.top,
+                right = bounds.right - keyboardBounds.left,
+                bottom = bounds.bottom - keyboardBounds.top
+            )
+        )
+    }
 
     CompositionLocalProvider(LocalKeyCornerRadius provides keyCornerRadius) {
     Box(
         modifier = modifier
-            .background(keyboardBackgroundColor)
             .onGloballyPositioned { coordinates ->
                 keyboardBounds = coordinates.boundsInRoot()
             }
@@ -115,7 +140,10 @@ fun NumberKeyboardLayout(
                         .fillMaxHeight(),
                 ) {
                     CompositionLocalProvider(
-                        LocalKeyVisualPadding provides PaddingValues(horizontal = 1.dp, vertical = 2.dp)
+                        LocalKeyVisualPadding provides PaddingValues(
+                            horizontal = keySpacingX ?: 2.dp,
+                            vertical = keySpacingY ?: 2.dp,
+                        )
                     ) {
                     commonSymbols.chunked(6).forEach { rowSymbols ->
                         Row(
@@ -154,7 +182,10 @@ fun NumberKeyboardLayout(
                         .fillMaxHeight()
                 ) {
                     CompositionLocalProvider(
-                        LocalKeyVisualPadding provides PaddingValues(horizontal = 1.dp, vertical = 2.dp)
+                        LocalKeyVisualPadding provides PaddingValues(
+                            horizontal = keySpacingX ?: 2.dp,
+                            vertical = keySpacingY ?: 2.dp,
+                        )
                     ) {
                     NumberRows(
                         onKeyPress = onKeyPress,
@@ -167,18 +198,8 @@ fun NumberKeyboardLayout(
                         onKeyPressDown = onKeyPressDown,
                         compactMode = true,
                         specialKeyTextColor = specialKeyTextColor,
-                        onSwipeStateChange = { state, bounds ->
-                            val newState = if (state.isSwipeDown && state.swipeText != null) {
-                                state.copy(charInfos = SubcharHelper.parseSwipeDownText(state.swipeText))
-                            } else state
-                            swipeState = newState
-                            lastKeyBounds = Rect(
-                                left = bounds.left - keyboardBounds.left,
-                                top = bounds.top - keyboardBounds.top,
-                                right = bounds.right - keyboardBounds.left,
-                                bottom = bounds.bottom - keyboardBounds.top
-                            )
-                        }
+                        backKeyOnLeft = backKeyOnLeft,
+                        onSwipeStateChange = ::processSwipeState
                     )
                     }
                 }
@@ -186,13 +207,15 @@ fun NumberKeyboardLayout(
         } else {
             // 竖屏：原有布局
             CompositionLocalProvider(
-                LocalKeyVisualPadding provides PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                LocalKeyVisualPadding provides PaddingValues(
+                    horizontal = keySpacingX ?: 2.dp,
+                    vertical = keySpacingY ?: 2.dp,
+                )
             ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight()
-                    .background(keyboardBackgroundColor)
                     .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
             ) {
                 NumberRows(
@@ -205,18 +228,9 @@ fun NumberKeyboardLayout(
                     shadowShapeRadius = shadowShapeRadius,
                     onKeyPressDown = onKeyPressDown,
                     specialKeyTextColor = specialKeyTextColor,
-                    onSwipeStateChange = { state, bounds ->
-                        val newState = if (state.isSwipeDown && state.swipeText != null) {
-                            state.copy(charInfos = SubcharHelper.parseSwipeDownText(state.swipeText))
-                        } else state
-                        swipeState = newState
-                        lastKeyBounds = Rect(
-                            left = bounds.left - keyboardBounds.left,
-                            top = bounds.top - keyboardBounds.top,
-                            right = bounds.right - keyboardBounds.left,
-                            bottom = bounds.bottom - keyboardBounds.top
-                        )
-                    })
+                    backKeyOnLeft = backKeyOnLeft,
+                    onSwipeStateChange = ::processSwipeState
+                )
             }
             }
         }
@@ -238,6 +252,7 @@ private fun NumberRows(
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)? = null,
     compactMode: Boolean = false,
     specialKeyTextColor: Color = Color.White,
+    backKeyOnLeft: Boolean = false,
 ) {
     val symFontSize = if (compactMode) 14.sp else 18.sp
     val keyFontSize = if (compactMode) 16.sp else androidx.compose.ui.unit.TextUnit.Unspecified
@@ -246,33 +261,35 @@ private fun NumberRows(
     val symbols = listOf("+", "-", "*", "/")
     Row(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(start = if (compactMode) 0.dp else 4.dp, end = if (compactMode) 0.dp else 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(if (compactMode) 2.dp else 4.dp)
+            .fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.9f),
+                .fillMaxHeight()
+                .weight(0.8f),
             verticalArrangement = Arrangement.spacedBy(if (compactMode) 2.dp else 4.dp)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .fillMaxHeight()
                     .weight(3f),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
                 Column(
                     modifier = Modifier
 //                        .padding(vertical = 2.dp)
                         .fillMaxHeight()
-                        .weight(1f),
+                        .weight(0.8f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxHeight()
-                            .weight(3f),
+                            .weight(3f)
+                            .padding(LocalKeyVisualPadding.current),
                     ) {
                         symbols.forEach { symbol ->
                             NumberSymbolKey(
@@ -285,6 +302,9 @@ private fun NumberRows(
                                 isFirst = symbol == "+",
                                 isLast = symbol == "/",
                                 fontSize = symFontSize,
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
                             )
                         }
                     }
@@ -293,17 +313,33 @@ private fun NumberRows(
                             .fillMaxHeight()
                             .weight(1f),
                     ) {
-                        IconKeyButton(
-                            icon = rememberVectorPainter(Icons.AutoMirrored.Filled.ArrowBack),
-                            onClick = { onKeyPress("abc") },
-                            backgroundColor = specialKeyBackgroundColor,
-                            iconColor = specialKeyTextColor,
-                            modifier = Modifier.weight(1f),
-                            onPress = { onKeyPressDown?.invoke("abc") },
-                            shadowEnabled = shadowEnabled,
-                            shadowElevation = shadowElevation,
-                            shadowShapeRadius = shadowShapeRadius,
-                        )
+                        if (backKeyOnLeft) {
+                            IconKeyButton(
+                                icon = rememberVectorPainter(Icons.AutoMirrored.Filled.ArrowBack),
+                                onClick = { onKeyPress("abc") },
+                                backgroundColor = specialKeyBackgroundColor,
+                                iconColor = specialKeyTextColor,
+                                modifier = Modifier.weight(1f),
+                                a11yDescription = "返回字母键盘",
+                                onPress = { onKeyPressDown?.invoke("abc") },
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                            )
+                        } else {
+                            KeyButton(
+                                text = "符号",
+                                onClick = { onKeyPress("symbol") },
+                                backgroundColor = specialKeyBackgroundColor,
+                                textColor = specialKeyTextColor,
+                                modifier = Modifier.weight(1f),
+                                onPress = { onKeyPressDown?.invoke("symbol") },
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                                fontSize = ctrlFontSize,
+                            )
+                        }
                     }
 
                 }
@@ -311,7 +347,7 @@ private fun NumberRows(
                 Column(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .weight(3.2f),
+                        .weight(3.4f),
                 ) {
                     Row(
                         modifier = Modifier
@@ -389,18 +425,34 @@ private fun NumberRows(
                             .weight(1f),
                     ) {
 
-                        KeyButton(
-                            text = "符号",
-                            onClick = { onKeyPress("symbol") },
-                            backgroundColor = specialKeyBackgroundColor,
-                            textColor = specialKeyTextColor,
-                            modifier = Modifier.weight(1f),
-                            onPress = { onKeyPressDown?.invoke("symbol") },
-                            shadowEnabled = shadowEnabled,
-                            shadowElevation = shadowElevation,
-                            shadowShapeRadius = shadowShapeRadius,
-                            fontSize = ctrlFontSize,
-                        )
+
+                        if (backKeyOnLeft) {
+                            KeyButton(
+                                text = "符号",
+                                onClick = { onKeyPress("symbol") },
+                                backgroundColor = specialKeyBackgroundColor,
+                                textColor = specialKeyTextColor,
+                                modifier = Modifier.weight(1f),
+                                onPress = { onKeyPressDown?.invoke("symbol") },
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                                fontSize = ctrlFontSize,
+                            )
+                        } else {
+                            IconKeyButton(
+                                icon = rememberVectorPainter(Icons.AutoMirrored.Filled.ArrowBack),
+                                onClick = { onKeyPress("abc") },
+                                backgroundColor = specialKeyBackgroundColor,
+                                iconColor = specialKeyTextColor,
+                                modifier = Modifier.weight(1f),
+                                a11yDescription = "返回字母键盘",
+                                onPress = { onKeyPressDown?.invoke("abc") },
+                                shadowEnabled = shadowEnabled,
+                                shadowElevation = shadowElevation,
+                                shadowShapeRadius = shadowShapeRadius,
+                            )
+                        }
                         KeyButton(
                             text = "0",
                             onClick = { onKeyPress("0") },
@@ -432,7 +484,8 @@ private fun NumberRows(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .weight(0.9f),
+                        .fillMaxHeight()
+                        .weight(0.8f),
                 ) {
                     SwipeableIconKeyButton(
                         icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
@@ -440,6 +493,7 @@ private fun NumberRows(
                         backgroundColor = specialKeyBackgroundColor,
                         iconColor = specialKeyTextColor,
                         modifier = Modifier.weight(1f),
+                        a11yDescription = "退格",
                         swipeText = "清空",
                         onSwipe = { onKeyPress("clear_composition") },
                         onLongClick = { onKeyPress("delete") },
@@ -476,6 +530,7 @@ private fun NumberRows(
                         backgroundColor = specialKeyBackgroundColor,
                         iconColor = specialKeyTextColor,
                         modifier = Modifier.weight(1f),
+                        a11yDescription = "表情",
                         onPress = { onKeyPressDown?.invoke("emoji") },
                         shadowEnabled = shadowEnabled,
                         shadowElevation = shadowElevation,
@@ -510,6 +565,9 @@ private fun NumberSymbolKey(
     isFirst: Boolean = false,
     isLast: Boolean = false,
     fontSize: androidx.compose.ui.unit.TextUnit = 18.sp,
+    shadowEnabled: Boolean = true,
+    shadowElevation: Dp = 1.dp,
+    shadowShapeRadius: Dp = 8.dp,
 ) {
     var isPressed by remember { mutableStateOf(false) }
     val currentOnClick by rememberUpdatedState(onClick)
@@ -521,9 +579,26 @@ private fun NumberSymbolKey(
         bottomStart = if (isLast) cornerRadius else 0.dp,
         bottomEnd = if (isLast) cornerRadius else 0.dp
     )
+    val density = LocalDensity.current
+    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
+        if (shadowEnabled) {
+            val offsetPx = with(density) { shadowElevation.toPx() }
+            val cornerPx = with(density) { shadowShapeRadius.toPx() }
+            val color = crispShadowColor(backgroundColor)
+            Modifier.drawBehind {
+                drawRoundRect(
+                    color = color,
+                    topLeft = Offset(0f, offsetPx),
+                    size = size,
+                    cornerRadius = CornerRadius(cornerPx)
+                )
+            }
+        } else Modifier
+    }
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .then(shadowModifier)
             .clip(shape)
             .background(if (isPressed) backgroundColor.copy(alpha = 0.7f) else backgroundColor)
             .pointerInput(Unit) {
@@ -540,7 +615,8 @@ private fun NumberSymbolKey(
             color = textColor,
             fontSize = fontSize,
             fontWeight = FontWeight.Normal,
-            modifier = Modifier.padding(vertical = 2.dp)
+            modifier = Modifier.padding(vertical = 2.dp),
+            fontFamily = AppFonts.keyFontFamily
         )
     }
 }

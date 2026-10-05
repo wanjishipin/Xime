@@ -1,0 +1,44 @@
+// =============================================
+// ximed 剪贴板同步插件元数据（宿主用宽松 JSON 解析：支持 // 注释与尾逗号）
+// =============================================
+{
+  // 插件唯一标识
+  "id": "com.kingzcheung.xime.plugin.ximed_sync",
+
+  // 插件名称与描述
+  "name": "ximed 剪贴板同步",
+  "icon": "🔗",
+  "description": "对接 ximed HTTP 接口的双向剪贴板同步（文本），需要安装 ximed 服务器端和 ximed 客户端(https://github.com/kingzcheung/ximed)",
+
+  // 插件版本（字符串）
+  "version": "1.0.1",
+
+  // 插件分类：clipboard_sync 剪贴板同步（单选激活）
+  "type": "clipboard_sync",
+  "activation": "single",
+
+  // 入口脚本（TS 编译产物）
+  "entry": "main.js",
+
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": ["android"],
+
+  // 宿主最低版本要求
+  "minHostVersion": "3.0.0",
+
+  // 能力声明
+  "capabilities": {
+    "clipboard_sync": {
+      "protocols": [
+        "ximed" // ximed 私有协议：{server_url}/api/clipboard，Basic Auth + Profile JSON + ETag
+      ]
+    }
+  },
+
+  // 网络访问声明：服务器地址由用户配置，域名不固定。
+  // allowCustomHosts: 接受用户填写的服务器地址域名，经配置后自动授权联网
+  "network": {
+    "hosts": [],
+    "allowCustomHosts": true
+  }
+}

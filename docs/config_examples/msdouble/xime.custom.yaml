@@ -121,7 +121,8 @@ keyboard:
       rows:
         - [q, w, e, r, t, y, u, i, o, p]
         - [a, s, d, f, g, h, j, k, l,";"]
-        - [z, x, c, v, b, n, m]
+        - [shift, z, x, c, v, b, n, m, delete]
+        - [mode_change, comma, space, earth, enter]
     keys:
       # ── 第一行 ──
       # long_press 顺序：小写 → 大写 → 带变音符号的相似字母
@@ -157,9 +158,9 @@ keyboard:
       b: { tap: "b", swipe_up: { label: "！", value: "!" }, swipe_down: { label: "子耳了也阝卩㔾凵", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["b", "B"] } }
       n: { tap: "n", swipe_up: { label: "％", value: "%" }, swipe_down: { label: "已己巳心忄羽乙𠃜", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["n", "N", "ñ"] } }
       m: { tap: "m", swipe_up: { label: "＃", value: "#" }, swipe_down: { label: "山由贝冂冎几", action: "none", display: "bubble" }, long_press: { display: "bubble", values: ["m", "M"] } }
-      # ── 第四行: 暂时不受layout控制 ──
+      # ── 第四行（位置/是否出现由上方 layout.rows 第四行决定）──
       #  逗号键，label 为中文显示，value 为英文显示+提交值
-      "'": { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [ ",","."] }}
+      comma: { tap: { label: "，", value: "," }, swipe_up: { label: "。", value: "." } , long_press: { display: "bubble", values: [ ",","."] }}
       # 中/英切换键，label 为按键显示文字
       earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }
     
@@ -173,7 +174,8 @@ keyboard:
       rows:
         - [q, w, e, r, t, y, u, i, o, p]
         - [a, s, d, f, g, h, j, k, l,";"]
-        - [z, x, c, v, b, n, m]
+        - [shift, z, x, c, v, b, n, m, delete]
+        - [mode_change, comma, space, earth, enter]
     keys:
       # ── 第一行 ──
       q: { tap: "q", swipe_up: "1", long_press: { display: "bubble", values: ["q", "Q"] } }
@@ -207,6 +209,6 @@ keyboard:
       n: { tap: "n", swipe_up: "%", long_press: { display: "bubble", values: ["n", "N"] } }
       m: { tap: "m", swipe_up: "#", long_press: { display: "bubble", values: ["m", "M"] } }
       #  逗号键，label 为中文显示，value 为英文显示+提交值
-      "'": { tap: { label: ".", value: "." }, swipe_up: { label: ",", value: "," } }
+      comma: { tap: { label: ".", value: "." }, swipe_up: { label: ",", value: "," } }
       # 中/英切换键，label 为按键显示文字
       earth: { tap: { label: "@language", action: "toggle_ascii" }, long_press: { display: "bubble", values: [ { label: "选择输入法", action: "command", value: "show_ime_picker" } ] } }

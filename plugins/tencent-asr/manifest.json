@@ -1,0 +1,44 @@
+// =============================================
+// 腾讯云实时语音识别插件元数据（宿主用宽松 JSON 解析，支持注释）
+// =============================================
+
+{
+  // 插件唯一标识
+  "id": "com.kingzcheung.xime.plugin.tencent_asr",
+
+  // 插件名称与描述（语音转文本服务商列表展示）
+  "name": "腾讯云实时语音识别",
+  "icon": "🎙️",
+  "description": "腾讯云实时语音识别 V2（WebSocket），支持中英粤及 30 种方言、说话人分离。需在腾讯云控制台开通语音识别服务，并在 API 密钥管理页获取 AppID / SecretId / SecretKey。",
+
+  // 插件版本（字符串）
+  "version": "2.0.1",
+
+  // 插件分类：speech 语音识别（单选激活）
+  "type": "speech",
+  "activation": "single",
+
+  // 入口脚本（TS 源码由 xipm 编译为 IIFE 单文件）
+  "entry": "main.js",
+
+  // 目标平台（缺省视为 ["android"]；可选 android/ios/windows/macos/linux）
+  "platforms": ["android"],
+
+  // 宿主最低版本要求
+  "minHostVersion": "3.0.0",
+
+  // 能力声明
+  "capabilities": {
+    "speech": {
+      "inputMode": "streaming",        // 实时流式识别
+      "supportsPartialResults": true
+    }
+  },
+
+  // 网络访问声明：插件需要连接的域名（宿主据此校验白名单/用户授权）
+  "network": {
+    "hosts": [
+      "asr.cloud.tencent.com"
+    ]
+  }
+}

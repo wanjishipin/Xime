@@ -16,7 +16,6 @@ object SubcharHelper {
                 .filter { it.endsWith(".svg") }
                 .map { it.removeSuffix(".svg") }
                 .toSet()
-            Log.d(TAG, "Available SVGs: $availableSvgs")
         } catch (e: Exception) {
             Log.w(TAG, "Failed to list subchar directory: ${e.message}")
             availableSvgs = emptySet()

@@ -1,6 +1,5 @@
 package com.kingzcheung.xime.ui.settings
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -12,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.BlurOn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,10 +21,14 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.kingzcheung.xime.ui.theme.KeyboardColorScheme
 import com.kingzcheung.xime.viewmodel.ThemeSettingsViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -39,7 +41,7 @@ fun ThemeSettingsContent(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     
     Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = MaterialTheme.colorScheme.surface,
         topBar = {
             TopAppBar(
                 title = { Text("主题与定制") },
@@ -52,12 +54,14 @@ fun ThemeSettingsContent(
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = MaterialTheme.colorScheme.onBackground
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    titleContentColor = MaterialTheme.colorScheme.onSurface
                 )
             )
         }
     ) { paddingValues ->
+        var previewTheme by remember { mutableStateOf<KeyboardColorScheme?>(null) }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -75,25 +79,28 @@ fun ThemeSettingsContent(
             }
             
             item {
+                val currentTheme = uiState.colorThemes.firstOrNull { it.id == uiState.colorTheme }
+                    ?: uiState.colorThemes.first()
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    ThemeCard(
-                        title = "跟随系统",
+                    KeyboardThemeCard(
+                        theme = currentTheme,
                         isSelected = uiState.darkMode == 2,
-                        isDark = false,
-                        isSystem = true,
                         onClick = {
                             viewModel.setDarkMode(2)
                             onThemeChanged()
                         },
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        title = "跟随系统"
                     )
                     ThemeCard(
                         title = "浅色",
                         isSelected = uiState.darkMode == 0,
                         isDark = false,
+                        accentColor = currentTheme.accentLight,
+                        keyBgColor = currentTheme.keyBgLight,
                         onClick = {
                             viewModel.setDarkMode(0)
                             onThemeChanged()
@@ -104,6 +111,8 @@ fun ThemeSettingsContent(
                         title = "深色",
                         isSelected = uiState.darkMode == 1,
                         isDark = true,
+                        accentColor = currentTheme.accentDark,
+                        keyBgColor = currentTheme.keyBgDark,
                         onClick = {
                             viewModel.setDarkMode(1)
                             onThemeChanged()
@@ -119,20 +128,20 @@ fun ThemeSettingsContent(
                     text = "配色方案",
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
             }
             
             item {
                 Text(
-                    text = "选择特殊按键及设置页面的配色",
+                    text = "点击配色预览完整键盘效果",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 6.dp)
                 )
             }
             
-            uiState.colorThemes.chunked(4).forEach { rowThemes ->
+            uiState.colorThemes.chunked(3).forEach { rowThemes ->
                 item {
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -142,45 +151,23 @@ fun ThemeSettingsContent(
                             KeyboardThemeCard(
                                 theme = theme,
                                 isSelected = uiState.colorTheme == theme.id,
-                                isDark = uiState.darkMode == 1,
                                 onClick = {
-                                    viewModel.setColorTheme(theme.id)
-                                    onThemeChanged()
+                                    previewTheme = theme
                                 },
                                 modifier = Modifier.weight(1f)
                             )
                         }
-                        repeat(4 - rowThemes.size) {
+                        repeat(3 - rowThemes.size) {
                             Spacer(modifier = Modifier.weight(1f))
                         }
                     }
                 }
                 
                 item {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(1.dp))
                 }
             }
             
-            item {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = "玻璃效果",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            item {
-                SettingsToggleItem(
-                    icon = Icons.Filled.BlurOn,
-                    title = "琉璃质感",
-                    subtitle = "键盘背景叠加高光与折射渐变，模拟半透玻璃效果",
-                    checked = uiState.isGlassEffectEnabled,
-                    onCheckedChange = { viewModel.setGlassEffectEnabled(it) }
-                )
-            }
-
             item {
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
@@ -190,6 +177,18 @@ fun ThemeSettingsContent(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
+        }
+
+        previewTheme?.let { theme ->
+            ThemePreviewSheet(
+                theme = theme,
+                onApply = {
+                    viewModel.setColorTheme(theme.id)
+                    previewTheme = null
+                    onThemeChanged()
+                },
+                onDismiss = { previewTheme = null },
+            )
         }
     }
 }

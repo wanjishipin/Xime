@@ -156,7 +156,7 @@ object RimeDependencyResolver {
         val outcome = completeCore(
             topDeps = dependencies,
             resolveUrl = resolveUrl,
-            download = { url -> SchemaManager.importFromUrl(context, url) },
+            download = { url -> SchemaManager.importFromUrl(context, url).success },
             readPkgDeps = { id -> readSchemaDependencies(context, id) },
             // 本地优先：上游/app 已带（如 symbols、default）或先前已装的依赖不重复下载
             isLocallySatisfied = { id -> isDependencyLocallyPresent(rimeDir, id) },

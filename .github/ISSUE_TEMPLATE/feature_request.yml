@@ -1,0 +1,29 @@
+name: 功能建议
+description: 提出新功能想法（带 * 为必填项）
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢建议！请描述清楚功能与实际使用场景，便于评估优先级。
+  - type: textarea
+    id: description
+    attributes:
+      label: 功能描述
+      description: 想要什么功能？解决什么问题？
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景
+      description: 什么情况下会用到？最好举一个实际例子
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: 补充信息
+      description: 参考的其他输入法实现、草图、截图等
+    validations:
+      required: false

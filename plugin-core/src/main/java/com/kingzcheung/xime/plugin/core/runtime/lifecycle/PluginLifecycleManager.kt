@@ -1,17 +1,22 @@
 package com.kingzcheung.xime.plugin.core.runtime.lifecycle
 
 import android.app.Application
-import android.os.Build
 import android.util.Log
 import com.kingzcheung.xime.plugin.core.api.IPluginEntryClass
+import com.kingzcheung.xime.plugin.core.js.JsAsrPluginAdapter
+import com.kingzcheung.xime.plugin.core.js.JsBackupPluginAdapter
+import com.kingzcheung.xime.plugin.core.js.JsClipboardSyncPluginAdapter
+import com.kingzcheung.xime.plugin.core.js.JsEmojiPluginAdapter
+import com.kingzcheung.xime.plugin.core.js.JsPluginAdapter
+import com.kingzcheung.xime.plugin.core.js.JsScriptRuntime
+import com.kingzcheung.xime.plugin.core.js.JsToolPluginAdapter
+import com.kingzcheung.xime.plugin.core.model.PluginCategory
 import com.kingzcheung.xime.plugin.core.model.PluginContext
 import com.kingzcheung.xime.plugin.core.model.PluginInfo
+import com.kingzcheung.xime.plugin.core.runtime.PluginManager
 import com.kingzcheung.xime.plugin.core.runtime.installer.InstallerManager
-import com.kingzcheung.xime.plugin.core.runtime.installer.XmlManager
-import com.kingzcheung.xime.plugin.core.runtime.loader.DependencyManager
+import com.kingzcheung.xime.plugin.core.runtime.installer.PluginRegistry
 import com.kingzcheung.xime.plugin.core.runtime.loader.LoadedPluginInfo
-import com.kingzcheung.xime.plugin.core.runtime.loader.PluginClassLoader
-import com.kingzcheung.xime.plugin.core.runtime.proxy.ProxyManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -19,11 +24,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 class PluginLifecycleManager(
     private val application: Application,
-    private val xmlManager: XmlManager,
+    private val pluginRegistry: PluginRegistry,
     private val installerManager: InstallerManager,
-    private val dependencyManager: DependencyManager,
-    private val proxyManager: ProxyManager,
-    private val classIndex: ConcurrentHashMap<String, String>,
     private val loadedPlugins: ConcurrentHashMap<String, LoadedPluginInfo>,
     private val pluginInstances: ConcurrentHashMap<String, IPluginEntryClass>
 ) {
@@ -35,7 +37,7 @@ class PluginLifecycleManager(
     suspend fun launchPlugin(pluginId: String): Boolean = withContext(Dispatchers.IO) {
         try {
             if (loadedPlugins.containsKey(pluginId)) {
-                return@withContext reloadPluginWithDependents(pluginId)
+                return@withContext reloadPlugin(pluginId)
             }
             launchSinglePlugin(pluginId)
         } catch (e: Throwable) {
@@ -57,30 +59,38 @@ class PluginLifecycleManager(
             }
         }
 
-        proxyManager.unregisterProviders(pluginId)
-
         loadedPlugins.remove(pluginId)
         pluginInstances.remove(pluginId)
-        dependencyManager.clearDependenciesFor(pluginId)
-        removePluginFromIndex(pluginId)
     }
 
     suspend fun loadEnabledPlugins(): Int = withContext(Dispatchers.IO) {
         Log.d(TAG, "loadEnabledPlugins called")
-        val allPlugins = xmlManager.getAllPlugins()
-        Log.d(TAG, "All plugins from XmlManager: ${allPlugins.map { "${it.id}(enabled=${it.enabled})" }}")
-        
-        val enabledPlugins = allPlugins.filter { it.enabled && !loadedPlugins.containsKey(it.id) }
+        val allPlugins = pluginRegistry.getAllPlugins()
+        Log.d(TAG, "All plugins from registry: ${allPlugins.map { "${it.id}(enabled=${it.enabled})" }}")
+
+        val hostVersion = com.kingzcheung.xime.plugin.core.util.VersionUtil.getHostVersionName(application)
+        val enabledPlugins = allPlugins.filter { plugin ->
+            if (!plugin.enabled || loadedPlugins.containsKey(plugin.id)) return@filter false
+            if (!plugin.supportsPlatform(PluginInfo.PLATFORM_ANDROID)) {
+                Log.w(TAG, "Plugin ${plugin.id} 目标平台为 ${plugin.platforms}，非当前平台，跳过加载")
+                return@filter false
+            }
+            val compatible = com.kingzcheung.xime.plugin.core.util.VersionUtil.isHostSupported(
+                hostVersion ?: "", plugin.minHostVersion, plugin.maxHostVersion
+            )
+            if (!compatible) {
+                Log.w(TAG, "Plugin ${plugin.id} 不兼容当前主应用版本，跳过加载")
+            }
+            compatible
+        }
         Log.d(TAG, "Enabled plugins to load: ${enabledPlugins.map { it.id }}")
 
         if (enabledPlugins.isEmpty()) return@withContext 0
 
         var successCount = 0
         for (plugin in enabledPlugins) {
-            Log.d(TAG, "Attempting to load plugin: ${plugin.id}")
             if (launchSinglePlugin(plugin.id)) {
                 successCount++
-                Log.d(TAG, "Successfully loaded: ${plugin.id}")
             } else {
                 Log.w(TAG, "Failed to load: ${plugin.id}")
             }
@@ -90,26 +100,30 @@ class PluginLifecycleManager(
     }
 
     private suspend fun launchSinglePlugin(pluginId: String): Boolean {
-        Log.d(TAG, "launchSinglePlugin: $pluginId")
-        val pluginInfo = xmlManager.getPluginById(pluginId)
+        val pluginInfo = pluginRegistry.getPluginById(pluginId)
         if (pluginInfo == null) {
             Log.w(TAG, "Plugin info not found: $pluginId")
             return false
         }
-        Log.d(TAG, "Plugin info: path=${pluginInfo.path}, entryClass=${pluginInfo.entryClass}")
-        Log.d(TAG, "Plugin providers: ${pluginInfo.providers.map { it.className + ":" + it.authorities }}")
-
-        proxyManager.registerProviders(pluginId, pluginInfo.providers)
-        Log.d(TAG, "Providers registered for $pluginId")
+        val hostVersion = com.kingzcheung.xime.plugin.core.util.VersionUtil.getHostVersionName(application)
+        if (!com.kingzcheung.xime.plugin.core.util.VersionUtil.isHostSupported(
+                hostVersion ?: "", pluginInfo.minHostVersion, pluginInfo.maxHostVersion
+            )
+        ) {
+            Log.w(TAG, "Plugin $pluginId 不兼容当前主应用版本，拒绝加载")
+            return false
+        }
+        if (!pluginInfo.supportsPlatform(PluginInfo.PLATFORM_ANDROID)) {
+            Log.w(TAG, "Plugin $pluginId 目标平台为 ${pluginInfo.platforms}，拒绝加载")
+            return false
+        }
 
         val loadedPlugin = loadPlugin(pluginInfo)
         if (loadedPlugin == null) {
-            Log.w(TAG, "Failed to load plugin APK: $pluginId")
-            proxyManager.unregisterProviders(pluginId)
+            Log.w(TAG, "Failed to load plugin: $pluginId")
             return false
         }
         loadedPlugins[pluginId] = loadedPlugin
-        Log.d(TAG, "Plugin loaded into memory: $pluginId")
 
         val instance = instantiatePlugin(loadedPlugin)
         if (instance == null) {
@@ -118,130 +132,97 @@ class PluginLifecycleManager(
             return false
         }
         pluginInstances[pluginId] = instance
-        Log.d(TAG, "Plugin instance created: $pluginId, instance type: ${instance::class.simpleName}")
+        Log.d(TAG, "Loaded: $pluginId")
 
         return true
     }
 
-    private suspend fun reloadPluginWithDependents(pluginId: String): Boolean {
-        val dependents = dependencyManager.findDependentsRecursive(pluginId)
-        val pluginsToReloadIds = listOf(pluginId) + dependents
-
-        pluginsToReloadIds.reversed().forEach { id ->
-            if (loadedPlugins.containsKey(id)) {
-                unloadPlugin(id)
-            }
-        }
-
-        val pluginInfosToReload = pluginsToReloadIds.mapNotNull { xmlManager.getPluginById(it) }
-        if (pluginInfosToReload.size != pluginsToReloadIds.size) {
-            return false
-        }
-
-        var allSuccess = true
-        for (pluginInfo in pluginInfosToReload) {
-            if (!launchSinglePlugin(pluginInfo.id)) {
-                allSuccess = false
-                break
-            }
-        }
-        return allSuccess
+    private suspend fun reloadPlugin(pluginId: String): Boolean {
+        unloadPlugin(pluginId)
+        return launchSinglePlugin(pluginId)
     }
 
     private fun loadPlugin(plugin: PluginInfo): LoadedPluginInfo? {
         return try {
-            Log.d(TAG, "loadPlugin: ${plugin.id}, path=${plugin.path}")
-            val pluginApkFile = File(plugin.path)
-            if (!pluginApkFile.exists()) {
-                Log.w(TAG, "Plugin APK not found: ${plugin.path}")
+            val entryFile = File(plugin.path)
+            if (!entryFile.exists()) {
+                Log.w(TAG, "Plugin entry script not found: ${plugin.path}")
                 return null
             }
-            Log.d(TAG, "Plugin APK exists: ${pluginApkFile.absolutePath}")
-
-            loadClassIndexForPlugin(plugin)
-
-            val nativeLibPath = plugin.nativeLibPath ?: 
-                determineNativeLibPath(plugin.id)
-            val optimizedDirectory = installerManager.getOptimizedDirectory(plugin.id)?.absolutePath
-            
-            Log.d(TAG, "Creating ClassLoader for ${plugin.id}: nativeLibPath=$nativeLibPath")
-
-            val classLoader = PluginClassLoader(
+            val pluginDir = entryFile.parentFile ?: File(plugin.path).parentFile
+            val runtime = JsScriptRuntime(
                 pluginId = plugin.id,
-                pluginFile = pluginApkFile,
-                parent = application.classLoader,
-                optimizedDirectory = optimizedDirectory,
-                librarySearchPath = nativeLibPath,
-                pluginFinder = dependencyManager
+                pluginDir = pluginDir,
+                entryScript = plugin.entryScript ?: "main.js",
+                configStore = PluginManager.configStoreFactory.create(application, plugin.id),
+                wsHostApi = PluginManager.wsHostApiFactory?.invoke(plugin.id),
+                httpHostApi = PluginManager.httpHostApiFactory?.invoke(plugin.id),
+                cryptoHostApi = PluginManager.cryptoHostApiFactory?.invoke(),
+                sseHostApi = PluginManager.sseHostApiFactory?.invoke(plugin.id),
+                // 数据类 API 按 manifest 能力声明门禁注入：未声明连实例都不创建（host 表不挂）
+                quickSendHostApi = if (plugin.capabilities?.quickSendRead == true) {
+                    PluginManager.quickSendHostApiFactory?.invoke(plugin.id)
+                } else null,
+                clipboardHostApi = if (plugin.capabilities?.clipboardRead == true) {
+                    PluginManager.clipboardHostApiFactory?.invoke(plugin.id)
+                } else null,
+                // host.asr 上行表仅 speech 型插件注入
+                injectAsr = plugin.type == "speech"
             )
-            
-            Log.d(TAG, "ClassLoader created for ${plugin.id}")
-
-            LoadedPluginInfo(pluginInfo = plugin, classLoader = classLoader)
+            // 按能力声明启用下行事件通道：未声明 events 的插件零开销、零行为变化。
+            runtime.initEvents(plugin.capabilities?.events?.toSet() ?: emptySet())
+            LoadedPluginInfo(pluginInfo = plugin, script = runtime)
         } catch (e: Exception) {
             Log.e(TAG, "loadPlugin failed for ${plugin.id}", e)
             null
         }
     }
 
-    private fun determineNativeLibPath(pluginId: String): String? {
-        val pluginDir = installerManager.getPluginDirectory(pluginId)
-        val abi = Build.SUPPORTED_ABIS[0]
-        val nativeLibDir = File(pluginDir, "lib/$abi")
-        return if (nativeLibDir.exists()) nativeLibDir.absolutePath else null
-    }
-
     private fun instantiatePlugin(loadedPlugin: LoadedPluginInfo): IPluginEntryClass? {
         val plugin = loadedPlugin.pluginInfo
-        Log.d(TAG, "Instantiating plugin: ${plugin.id}, entryClass: ${plugin.entryClass}")
         return try {
-            val instance = loadedPlugin.classLoader.getInterface(
-                IPluginEntryClass::class.java,
-                plugin.entryClass
+            val pluginContext = PluginContext(
+                application = application,
+                pluginInfo = plugin,
+                configStore = PluginManager.configStoreFactory.create(application, plugin.id)
             )
-            Log.d(TAG, "Instance result: ${instance?.let { it::class.simpleName } ?: "null"}")
-            
-            if (instance != null) {
-                val pluginContext = PluginContext(
-                    application = application,
-                    pluginInfo = plugin
-                )
-                instance.onLoad(pluginContext)
-                Log.d(TAG, "Plugin ${plugin.id} onLoad called successfully")
-                instance
-            } else {
-                Log.w(TAG, "Failed to instantiate plugin ${plugin.id} - instance is null")
-                null
+            val adapter: JsPluginAdapter = when (plugin.category) {
+                PluginCategory.ASR ->
+                    JsAsrPluginAdapter(
+                        runtime = loadedPlugin.script ?: return null,
+                        pluginContext = pluginContext
+                    )
+                PluginCategory.EMOJI ->
+                    JsEmojiPluginAdapter(
+                        runtime = loadedPlugin.script ?: return null,
+                        pluginContext = pluginContext
+                    )
+                PluginCategory.CLIPBOARD_SYNC ->
+                    JsClipboardSyncPluginAdapter(
+                        runtime = loadedPlugin.script ?: return null,
+                        pluginContext = pluginContext
+                    )
+                PluginCategory.BACKUP ->
+                    JsBackupPluginAdapter(
+                        runtime = loadedPlugin.script ?: return null,
+                        pluginContext = pluginContext
+                    )
+                PluginCategory.TOOL ->
+                    JsToolPluginAdapter(
+                        runtime = loadedPlugin.script ?: return null,
+                        pluginContext = pluginContext
+                    )
+                else ->
+                    JsPluginAdapter(
+                        runtime = loadedPlugin.script ?: return null,
+                        pluginContext = pluginContext
+                    )
             }
+            adapter.onLoad(pluginContext)
+            adapter
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to instantiate plugin ${plugin.id}", e)
+            Log.e(TAG, "Failed to instantiate JS plugin ${plugin.id}", e)
             null
-        }
-    }
-
-    private fun loadClassIndexForPlugin(plugin: PluginInfo) {
-        val pluginDir = installerManager.getPluginDirectory(plugin.id)
-        val indexFile = File(pluginDir, "class_index")
-
-        if (!indexFile.exists()) return
-
-        try {
-            indexFile.forEachLine { className ->
-                if (className.isNotBlank()) {
-                    classIndex[className] = plugin.id
-                }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
-    }
-
-    private fun removePluginFromIndex(pluginId: String) {
-        val iterator = classIndex.entries.iterator()
-        while (iterator.hasNext()) {
-            if (iterator.next().value == pluginId) {
-                iterator.remove()
-            }
         }
     }
 }

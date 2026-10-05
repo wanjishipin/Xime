@@ -8,13 +8,11 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,9 +23,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
 import androidx.compose.material.icons.filled.Language
@@ -36,12 +32,18 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.State
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import com.kingzcheung.xime.keyboard.GestureAction
+import com.kingzcheung.xime.settings.DisplayMode
+import com.kingzcheung.xime.settings.KeysConfigHelper
+import com.kingzcheung.xime.settings.swipeHandlerFor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -68,6 +70,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.R
 import com.kingzcheung.xime.rime.T9InputController
+import com.kingzcheung.xime.service.CandidateState
 import com.kingzcheung.xime.ui.theme.KeyboardThemes
 import com.kingzcheung.xime.util.PermissionHelper
 import com.kingzcheung.xime.util.SubcharHelper
@@ -78,7 +81,8 @@ import kotlinx.coroutines.launch
 /**
  * 拼音九键（T9）键盘布局。
  *
- * 布局说明：
+ * 布局说明（三列结构，由 xime.yaml keyboard.t9.layout 的 left/rows/right 驱动，
+ * 未配置时为以下内置默认布局，与历史行为一致；键 id 分派见 KeysConfigHelper.T9_FUNCTION_KEY_IDS）：
  * - 左侧候选区：占用右侧第 1/4/7 三个数字键的垂直高度，显示当前音节候选拼音。
  * - 右侧主键区：
  *   第1行：分词(1) | ABC(2) | DEF(3) | 退格
@@ -95,32 +99,40 @@ fun T9KeyboardLayout(
     keyBackgroundColor: Color,
     keyTextColor: Color,
     specialKeyBackgroundColor: Color,
+    bubbleBackgroundColor: Color = keyBackgroundColor,
     accentColor: Color = Color(0xFF1A73E8),
     keyboardBackgroundColor: Color = Color.Transparent,
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
     keyCornerRadius: Dp = 8.dp,
+    keySpacingX: Dp? = null,
+    keySpacingY: Dp? = null,
     modifier: Modifier = Modifier,
     onKeyPressDown: ((String) -> Unit)? = null,
     isFloatingMode: Boolean = false,
     specialKeyTextColor: Color = Color.White,
+    candidateState: State<CandidateState> = remember { mutableStateOf(CandidateState()) },
+    onGestureAction: ((GestureAction, String) -> Unit)? = null,
 ) {
     val controller = t9Controller
     val configuration = LocalConfiguration.current
     val isLandscape = !isFloatingMode && configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     fun handleDelete() {
-        when (val result = controller.onDeleted()) {
-            T9InputController.DeleteResult.UNDO_COMMIT -> {
-                controller.clearRimeAndResend()
-            }
+        // onDeleted 在后台队列中处理（flush 不阻塞 UI），结果通过回调返回（Main 线程）。
+        controller.onDeleted { result ->
+            when (result) {
+                T9InputController.DeleteResult.UNDO_COMMIT -> {
+                    controller.clearRimeAndResend()
+                }
 
-            T9InputController.DeleteResult.NOT_CONSUMED -> {
-                onKeyPress("delete")
-            }
+                T9InputController.DeleteResult.NOT_CONSUMED -> {
+                    onKeyPress("delete")
+                }
 
-            T9InputController.DeleteResult.DELETED, T9InputController.DeleteResult.UNDO_CHOICE -> {
+                T9InputController.DeleteResult.DELETED, T9InputController.DeleteResult.UNDO_CHOICE -> {
+                }
             }
         }
     }
@@ -138,6 +150,7 @@ fun T9KeyboardLayout(
         controller = controller,
         keyBackgroundColor = keyBackgroundColor,
         specialKeyBackgroundColor = specialKeyBackgroundColor,
+        bubbleBackgroundColor = bubbleBackgroundColor,
         accentColor = accentColor,
         shadowEnabled = shadowEnabled,
         shadowElevation = shadowElevation,
@@ -145,6 +158,10 @@ fun T9KeyboardLayout(
         onKeyPressDown = onKeyPressDown,
         onDelete = ::handleDelete,
         specialKeyTextColor = specialKeyTextColor,
+        candidateState = candidateState,
+        keySpacingX = keySpacingX,
+        keySpacingY = keySpacingY,
+        onGestureAction = onGestureAction,
     )
 }
 
@@ -165,6 +182,7 @@ private fun T9KeyboardSwipeOverlay(
     controller: T9InputController,
     keyBackgroundColor: Color,
     specialKeyBackgroundColor: Color,
+    bubbleBackgroundColor: Color = keyBackgroundColor,
     accentColor: Color,
     shadowEnabled: Boolean,
     shadowElevation: Dp,
@@ -172,10 +190,13 @@ private fun T9KeyboardSwipeOverlay(
     onKeyPressDown: ((String) -> Unit)?,
     onDelete: () -> Unit,
     specialKeyTextColor: Color = Color.White,
+    candidateState: State<CandidateState> = remember { mutableStateOf(CandidateState()) },
+    keySpacingX: Dp? = null,
+    keySpacingY: Dp? = null,
+    onGestureAction: ((GestureAction, String) -> Unit)? = null,
 ) {
-    var swipeState by remember { mutableStateOf(SwipeState()) }
+    val swipeBubble = rememberSwipeBubbleController()
     var keyboardBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
-    var lastKeyBounds by remember { mutableStateOf(Rect(0f, 0f, 0f, 0f)) }
 
     fun processSwipeState(state: SwipeState, bounds: Rect) {
         val newState = if (state.isSwipeDown && state.swipeText != null) {
@@ -183,31 +204,32 @@ private fun T9KeyboardSwipeOverlay(
         } else {
             state
         }
-        swipeState = newState
-        lastKeyBounds = Rect(
-            left = bounds.left - keyboardBounds.left,
-            top = bounds.top - keyboardBounds.top,
-            right = bounds.right - keyboardBounds.left,
-            bottom = bounds.bottom - keyboardBounds.top
+        swipeBubble.update(
+            newState,
+            Rect(
+                left = bounds.left - keyboardBounds.left,
+                top = bounds.top - keyboardBounds.top,
+                right = bounds.right - keyboardBounds.left,
+                bottom = bounds.bottom - keyboardBounds.top
+            )
         )
     }
 
     val isDarkTheme = keyTextColor == Color(0xFFE8EAED)
 
     val bubbleData = rememberSwipeBubbleDrawData(
-        swipeState = swipeState,
-        keyBounds = lastKeyBounds,
-        keyBackgroundColor = keyBackgroundColor,
+        swipeState = swipeBubble.state,
+        keyBounds = swipeBubble.keyBounds,
+        keyBackgroundColor = bubbleBackgroundColor,
         keyTextColor = keyTextColor,
         accentColor = specialKeyTextColor,
-        keyWidth = if (swipeState.isSwiping || swipeState.isPressed) lastKeyBounds.width else 0f,
+        keyWidth = if (swipeBubble.state.isSwiping || swipeBubble.state.isPressed) swipeBubble.keyBounds.width else 0f,
         keyboardWidth = keyboardBounds.width
     )
 
     CompositionLocalProvider(LocalKeyCornerRadius provides keyCornerRadius) {
     Box(
         modifier = modifier
-            .background(keyboardBackgroundColor)
             .onGloballyPositioned { coordinates ->
                 keyboardBounds = coordinates.boundsInRoot()
             }
@@ -217,38 +239,20 @@ private fun T9KeyboardSwipeOverlay(
             }
             .padding(bottom = if (isFloatingMode || isLandscape) 0.dp else 0.dp)) {
         if (isLandscape) {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = 2.dp, horizontal = 50.dp),
+            // 横屏：去除原左侧候选大面板（候选已在顶部候选栏展示），
+            // 九键布局撑满键盘区域（与全键盘横屏同款 50dp 边距）
+            CompositionLocalProvider(
+                LocalKeyVisualPadding provides PaddingValues(
+                    horizontal = keySpacingX ?: 2.dp,
+                    vertical = keySpacingY ?: 2.dp,
+                )
             ) {
-                Column(
-                    modifier = Modifier
-                        .weight(0.42f)
-                        .fillMaxHeight(),
-                ) {
-                    T9LandscapeCandidatePanel(
-                        uiState = uiState,
-                        callbacks = callbacks,
-                        keyTextColor = keyTextColor,
-                        keyBackgroundColor = keyBackgroundColor,
-                        shadowEnabled = shadowEnabled,
-                        shadowElevation = shadowElevation,
-                        shadowShapeRadius = shadowShapeRadius,
-                    )
-                }
-
-                Spacer(modifier = Modifier.weight(0.16f))
-
                 Box(
                     modifier = Modifier
-                        .weight(0.42f)
-                        .fillMaxHeight()
+                        .fillMaxSize()
+                        .padding(vertical = 2.dp, horizontal = 50.dp),
                 ) {
-                    CompositionLocalProvider(
-                        LocalKeyVisualPadding provides PaddingValues(horizontal = 1.dp, vertical = 2.dp)
-                    ) {
-                        T9KeyboardContent(
+                    T9KeyboardContent(
                         onKeyPress = onKeyPress,
                         callbacks = callbacks,
                         uiState = uiState,
@@ -264,13 +268,17 @@ private fun T9KeyboardSwipeOverlay(
                         onSwipeStateChange = ::processSwipeState,
                         onDelete = onDelete,
                         compactMode = true,
+                        candidateState = candidateState,
+                        onGestureAction = onGestureAction,
                     )
-                    }
                 }
             }
         } else {
             CompositionLocalProvider(
-                LocalKeyVisualPadding provides PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                LocalKeyVisualPadding provides PaddingValues(
+                    horizontal = keySpacingX ?: 2.dp,
+                    vertical = keySpacingY ?: 2.dp,
+                )
             ) {
                 Column(
                     modifier = Modifier
@@ -294,136 +302,13 @@ private fun T9KeyboardSwipeOverlay(
                         onSwipeStateChange = ::processSwipeState,
                         onDelete = onDelete,
                         compactMode = false,
+                        candidateState = candidateState,
+                        onGestureAction = onGestureAction,
                     )
                 }
             }
         }
     }
-    }
-}
-
-// ─── 横屏候选面板 — 包装组件 ────────────────────────────────────────
-
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun T9LandscapeCandidatePanel(
-    uiState: KeyboardUiState,
-    callbacks: KeyboardCallbacks,
-    keyTextColor: Color,
-    keyBackgroundColor: Color,
-    shadowEnabled: Boolean,
-    shadowElevation: Dp,
-    shadowShapeRadius: Dp,
-) {
-    val density = LocalDensity.current
-    val shadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, keyBackgroundColor) {
-        if (shadowEnabled) {
-            val offsetPx = with(density) { shadowElevation.toPx() }
-            val cornerPx = with(density) { shadowShapeRadius.toPx() }
-            val color = crispShadowColor(keyBackgroundColor)
-            Modifier.drawBehind {
-                drawRoundRect(
-                    color = color,
-                    topLeft = Offset(0f, offsetPx),
-                    size = size,
-                    cornerRadius = CornerRadius(cornerPx)
-                )
-            }
-        } else Modifier
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .then(shadowModifier)
-            .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
-            .background(keyBackgroundColor)
-    ) {
-        val rimeCandidates = uiState.candidates
-        val rimeComments = uiState.candidateComments
-        if (rimeCandidates.isNotEmpty()) {
-            val scrollState = rememberScrollState()
-            Column(
-                modifier = Modifier.fillMaxSize().verticalScroll(scrollState),
-            ) {
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth().padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    rimeCandidates.forEachIndexed { index, candidate ->
-                        LandscapeCandidateItem(
-                            index = index + 1,
-                            text = candidate,
-                            comment = rimeComments.getOrElse(index) { "" },
-                            onClick = { callbacks.onCandidateSelect(index) },
-                            textColor = keyTextColor,
-                        )
-                    }
-                }
-            }
-        } else {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = if (uiState.isComposing) "..." else "",
-                    color = keyTextColor.copy(alpha = 0.3f),
-                    fontSize = 14.sp
-                )
-            }
-        }
-    }
-}
-
-// ─── 横屏候选面板 — 子项组件 ──────────────────────────────────────────
-
-@Composable
-private fun LandscapeCandidateItem(
-    index: Int,
-    text: String,
-    comment: String,
-    onClick: () -> Unit,
-    textColor: Color,
-) {
-    val currentOnClick by rememberUpdatedState(onClick)
-    Box(
-        modifier = Modifier
-            .clickable { currentOnClick() }
-            .padding(horizontal = 4.dp, vertical = 2.dp),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                text = "$index",
-                color = textColor.copy(alpha = 0.4f),
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Normal,
-                modifier = Modifier.padding(end = 2.dp)
-            )
-            Text(
-                text = text,
-                color = textColor,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-            if (comment.isNotEmpty()) {
-                Text(
-                    text = comment,
-                    color = textColor.copy(alpha = 0.5f),
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 2.dp)
-                )
-            }
-        }
     }
 }
 
@@ -447,12 +332,50 @@ private fun T9KeyboardContent(
     onSwipeStateChange: ((SwipeState, Rect) -> Unit)?,
     onDelete: () -> Unit,
     compactMode: Boolean = false,
+    candidateState: State<CandidateState> = remember { mutableStateOf(CandidateState()) },
+    onGestureAction: ((GestureAction, String) -> Unit)? = null,
 ) {
     val t9DigitFontSize = if (compactMode) 13.sp else 16.sp
     val ctrlFontSize = if (compactMode) 11.sp else androidx.compose.ui.unit.TextUnit.Unspecified
     val candidateFontSize = if (compactMode) 11.sp else 13.sp
-    val specialKeyTextColor = if (uiState.isDarkTheme) Color.White
-        else KeyboardThemes.getAccentColor(uiState.themeId, false)
+    val specialKeyTextColor = KeyboardThemes.getSpecialKeyTextColorForBackground(
+        specialKeyBackgroundColor, keyTextColor
+    )
+
+    // 数字键滑动手势（keyboard.t9.keys，热重载经 configVersion 感知）：
+    // 上滑默认直接上屏数字（T9 模式 onKeyPress(数字) 会进拼音数字码组合，须走 onCommitText），
+    // 下滑默认绑定快捷编辑动作。提示恒显，是否绘制由按键配置的 display/bubble 决定；
+    // 手势触发只看回调绑定，与提示无关。上滑键面提示尊重 display: bubble（仅气泡不印键面）。
+    val configVersion by KeysConfigHelper.configVersion.collectAsState()
+    val hintsActive = !compactMode
+    val commitDirect: (String) -> Unit =
+        { text -> callbacks.onCommitText?.invoke(text) ?: onKeyPress(text) }
+
+    fun swipesFor(id: String): T9KeySwipes {
+        val gesture = KeysConfigHelper.getT9KeyGesture(id) ?: return T9KeySwipes()
+        val upHint = gesture.swipeUp?.let { it.label.ifEmpty { it.value } }
+        val downHint = gesture.swipeDown?.let { it.label.ifEmpty { it.value } }
+        // display 只管静态键面提示位置（bubble 不画键面，用空串压制回退）；
+        // 运行时气泡由 bubble 独立控制。手势回调与二者无关。
+        val swipeUpKeyLabel = when {
+            !hintsActive -> null
+            gesture.swipeUp?.display == DisplayMode.BUBBLE -> ""
+            else -> upHint
+        }
+        val swipeDownKeyLabel = when {
+            !hintsActive -> null
+            gesture.swipeDown?.display == DisplayMode.BUBBLE -> ""
+            else -> downHint
+        }
+        return T9KeySwipes(
+            onSwipeUp = swipeHandlerFor(gesture.swipeUp, commitDirect, onGestureAction),
+            onSwipeDown = swipeHandlerFor(gesture.swipeDown, commitDirect, onGestureAction),
+            swipeUpText = if (hintsActive && (gesture.swipeUp?.bubble ?: true)) upHint else null,
+            swipeDownText = if (hintsActive && (gesture.swipeDown?.bubble ?: true)) downHint else null,
+            swipeUpKeyLabel = swipeUpKeyLabel,
+            swipeDownKeyLabel = swipeDownKeyLabel,
+        )
+    }
 
     val density = LocalDensity.current
     val candidateShadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, keyBackgroundColor) {
@@ -471,81 +394,99 @@ private fun T9KeyboardContent(
         } else Modifier
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(start = if (compactMode) 0.dp else 4.dp, end = if (compactMode) 0.dp else 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(if (compactMode) 2.dp else 4.dp)
-    ) {
-        // ── 第1列：左侧候选区（拼音候选项） ──
-        Column(
-            modifier = Modifier
+    // 布局由 xime.yaml keyboard.t9.layout 驱动（configVersion 感知热重载）；
+    // 未配置时为内置默认，与历史硬编码布局一致（三列：左列/主区/右列）。
+    val t9Layout = remember(configVersion) { KeysConfigHelper.getT9Layout() }
+
+    /** 布局项相对权重：keys.<id>.width 优先，否则功能键默认（候选面板 3、空格 1.8、回车 2，其余 1）。 */
+    fun keyWeight(id: String): Float {
+        KeysConfigHelper.getT9KeyGesture(id)?.width?.takeIf { it > 0f }?.let { return it }
+        return when (id) {
+            "candidates" -> 3f
+            "space" -> 1.8f
+            "enter" -> 2f
+            else -> 1f
+        }
+    }
+
+    /** 数字键键面字母：keys.<id>.tap.label 可覆盖，未配置回退内置默认（无默认时显示数字本身）。 */
+    fun digitLetters(id: String): String =
+        KeysConfigHelper.getT9KeyLabel(id) ?: DEFAULT_T9_DIGIT_LETTERS[id] ?: id
+
+    /** 数字键长按候选：keys.<id>.long_press 可覆盖（显示 label 缺省 value），未配置回退内置默认。 */
+    fun digitLongPress(id: String): List<String>? =
+        KeysConfigHelper.getT9KeyLongPressLabels(id) ?: DEFAULT_T9_DIGIT_LONG_PRESS[id]
+
+    /** 左侧拼音候选面板（candidates 占位）：候选态显示音节选择，空闲态显示 side_symbols。 */
+    @Composable
+    fun CandidatesPanel(modifier: Modifier) {
+        Box(
+            modifier = modifier
+                .fillMaxWidth()
                 .fillMaxHeight()
-                .weight(0.9f),
-            verticalArrangement = Arrangement.spacedBy(if (compactMode) 2.dp else 4.dp)
+                .padding(LocalKeyVisualPadding.current)
+                .then(candidateShadowModifier)
+                .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
+                .background(keyBackgroundColor)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxHeight()
-                    .weight(3f)
-                    .then(candidateShadowModifier)
-                    .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
-                    .background(keyBackgroundColor)
-            ) {
-                val showCandidates = controller.leftPanelState != T9InputController.LeftPanelState.IDLE
-                val currentFirstOptions = controller.firstOptions
-                val displayItems: List<String> = if (showCandidates) {
-                    currentFirstOptions.map { it.pinyin }
-                } else {
-                    listOf("，", "。", "？", "！")
-                }
-                if (displayItems.size <= 4) {
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(0.dp)
-                    ) {
-                        displayItems.forEachIndexed { index, item ->
-                            if (showCandidates) {
+            val showCandidates = controller.leftPanelState != T9InputController.LeftPanelState.IDLE
+            val currentFirstOptions = controller.firstOptions
+            // 空闲态符号列表来自 xime.yaml keyboard.t9.side_symbols（可自定义，>4 滚动）
+            val configVersion by KeysConfigHelper.configVersion.collectAsState()
+            val t9SideSymbols = remember(configVersion) { KeysConfigHelper.getT9SideSymbols() }
+            val displayItems: List<String> = if (showCandidates) {
+                currentFirstOptions.map { it.pinyin }
+            } else {
+                t9SideSymbols
+            }
+            if (displayItems.size <= 4) {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    displayItems.forEachIndexed { index, item ->
+                        if (showCandidates) {
                             val option = currentFirstOptions[index]
                             val isSelected = controller.leftPanelState == T9InputController.LeftPanelState.SELECTION &&
                                     controller.selectedOption == option &&
                                     controller.isSelectedOptionInCurrentCandidates()
-                                    CandidateItem(
-                                        text = option.pinyin,
-                                        onClick = { controller.onChoiceSelected(option) },
-                                        onPress = { onKeyPressDown?.invoke(option.pinyin) },
-                                        textColor = keyTextColor,
-                                        backgroundColor = keyBackgroundColor,
-                                        accentColor = accentColor,
-                                        fontSize = candidateFontSize,
-                                        isSelected = isSelected,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .weight(1f)
-                                    )
-                            } else {
-                                CandidateItem(
-                                    text = item,
-                                    onClick = { onKeyPress(item) },
-                                    onPress = { onKeyPressDown?.invoke(item) },
-                                    textColor = keyTextColor,
-                                    backgroundColor = keyBackgroundColor,
-                                    accentColor = accentColor,
-                                    fontSize = candidateFontSize,
-                                    isSelected = false,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f)
-                                )
-                            }
+                            CandidateItem(
+                                text = option.pinyin,
+                                onClick = { controller.onChoiceSelected(option) },
+                                onPress = { onKeyPressDown?.invoke(option.pinyin) },
+                                textColor = keyTextColor,
+                                backgroundColor = keyBackgroundColor,
+                                accentColor = accentColor,
+                                fontSize = candidateFontSize,
+                                isSelected = isSelected,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                            )
+                        } else {
+                            CandidateItem(
+                                text = item,
+                                onClick = { onKeyPress(item) },
+                                onPress = { onKeyPressDown?.invoke(item) },
+                                textColor = keyTextColor,
+                                backgroundColor = keyBackgroundColor,
+                                accentColor = accentColor,
+                                fontSize = candidateFontSize,
+                                isSelected = false,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                            )
                         }
                     }
-                } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(0.dp)
-                    ) {
-                        itemsIndexed(displayItems) { index, _ ->
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
+                ) {
+                    itemsIndexed(displayItems) { index, item ->
+                        if (showCandidates) {
                             val option = currentFirstOptions[index]
                             val isSelected = controller.leftPanelState == T9InputController.LeftPanelState.SELECTION &&
                                     controller.selectedOption == option &&
@@ -563,205 +504,214 @@ private fun T9KeyboardContent(
                                     .fillMaxWidth()
                                     .height(if (compactMode) 26.dp else 32.dp)
                             )
+                        } else {
+                            CandidateItem(
+                                text = item,
+                                onClick = { onKeyPress(item) },
+                                onPress = { onKeyPressDown?.invoke(item) },
+                                textColor = keyTextColor,
+                                backgroundColor = keyBackgroundColor,
+                                accentColor = accentColor,
+                                fontSize = candidateFontSize,
+                                isSelected = false,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(if (compactMode) 26.dp else 32.dp)
+                            )
                         }
                     }
                 }
             }
+        }
+    }
 
-            KeyButton(
+    /**
+     * 九键数字输入键：点按默认走九键数字输入（`keys.<id>.tap.action` 可改绑）；键面字母/长按候选/手势可配。
+     */
+    @Composable
+    fun DigitKey(digit: String, modifier: Modifier) {
+        val binding = KeysConfigHelper.getT9KeyGesture(digit)
+        val tap = binding?.tap
+        // 只有显式配置了动作才改绑点按，否则保持内置的九键数字输入（维护 T9 组合/候选语义）。
+        // 注意不能用 `tap.action != null` 判断：label-only 的内置配置会被解析器兜底为
+        // SEND_RIME（value 空），那种情况仍须走 onDigitPressed。
+        val tapRebinds = t9DigitTapRebinds(tap)
+        val onDigitClick: () -> Unit = {
+            if (tapRebinds) {
+                invokeKeyAction(tap, onKeyPress, callbacks.onCommitText, onGestureAction)
+            } else {
+                controller.onDigitPressed(digit)
+            }
+        }
+        val longPressConfig = binding?.longPress
+        val longPressActionMap = longPressConfig?.let { KeysConfigHelper.longPressActionMap(it) }
+        val longPress = longPressConfig?.let { KeysConfigHelper.longPressDisplayItems(it) }
+            ?: digitLongPress(digit)
+        if (longPress.isNullOrEmpty()) {
+            // 无长按候选（默认 "1" 分词键）：无长按弹出、按下态不进滑动气泡层（历史路径）
+            NineKeyButton(
+                digit = digit,
+                letters = digitLetters(digit),
+                onClick = onDigitClick,
+                backgroundColor = keyBackgroundColor, textColor = keyTextColor,
+                modifier = modifier,
+                onPress = { onKeyPressDown?.invoke(digit) },
+                shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
+                fontSize = t9DigitFontSize,
+                swipes = swipesFor(digit),
+            )
+        } else {
+            T9DigitKey(
+                swipes = swipesFor(digit),
+                digit = digit, letters = digitLetters(digit), longPressItems = longPress,
+                onClick = onDigitClick,
+                onLongPressSelect = { selected ->
+                    // 与 26 键同语义：配置了动作就按动作分派；未配置/无动作仍走内置「清空 + 上屏所选」
+                    val gesture = longPressActionMap?.get(selected)
+                    controller.clearAll()
+                    if (gesture != null && gesture.action != null) {
+                        invokeKeyAction(gesture, onKeyPress, callbacks.onCommitText, onGestureAction)
+                    } else {
+                        onKeyPress(gesture?.value?.takeIf { it.isNotEmpty() } ?: selected)
+                    }
+                },
+                onSwipeStateChange = { state, bounds ->
+                    if (!(state.isPressed && !state.isLongPress && state.pressedText != null))
+                        onSwipeStateChange?.invoke(state, bounds)
+                },
+                backgroundColor = keyBackgroundColor, textColor = keyTextColor,
+                modifier = modifier,
+                onPress = { onKeyPressDown?.invoke(digit) },
+                shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
+                fontSize = t9DigitFontSize,
+            )
+        }
+    }
+
+    /** 自定义键：数字 id 走九键输入键；其余按 keys.<id> 行为渲染（tap 定义键面与动作，手势可配；无配置提交键名本身）。 */
+    @Composable
+    fun CustomKey(id: String, modifier: Modifier) {
+        if (id.length == 1 && id[0] in '0'..'9') {
+            DigitKey(id, modifier)
+            return
+        }
+        val binding = KeysConfigHelper.getT9KeyGesture(id)
+        val tap = binding?.tap
+        val configLabel = tap?.label?.takeIf { it.isNotEmpty() }
+        // 键名兜底显示：含小写字母时显示大写键名（与全键盘键名兜底一致）
+        val label = configLabel ?: id.takeIf { it.any { ch -> ch in 'a'..'z' } }?.uppercase() ?: id
+        val swipes = swipesFor(id)
+        // 长按候选：与 26 键同一套解析（label 回退 value；非 commit 动作走统一分派）
+        val longPressConfig = binding?.longPress
+        val longPressItems = longPressConfig?.let { KeysConfigHelper.longPressDisplayItems(it) }
+        val longPressActionMap = longPressConfig?.let { KeysConfigHelper.longPressActionMap(it) }
+        // 左右滑与上滑共用 SwipeableKeyButton 的 onSwipe，必须按方向参数分派：
+        // 此前忽略方向（恒跑上滑处理器）→ 左/右滑会误触发上滑动作。
+        // 三者都没配置时仍传 null，保持「无手势绑定」的原判定（不影响点击/拖拽判定）。
+        val swipeLeftHandler = swipeHandlerFor(binding?.swipeLeft, commitDirect, onGestureAction)
+        val swipeRightHandler = swipeHandlerFor(binding?.swipeRight, commitDirect, onGestureAction)
+        SwipeableKeyButton(
+            text = label,
+            // tap.bubble: false → 不弹按压气泡（默认 true，行为与改动前一致）
+            pressText = label.takeIf { tap?.bubble ?: true },
+            onClick = {
+                if (tap != null && tap.action != null) {
+                    invokeKeyAction(tap, onKeyPress, callbacks.onCommitText, onGestureAction)
+                } else {
+                    onKeyPress(id)
+                }
+            },
+            backgroundColor = keyBackgroundColor,
+            textColor = keyTextColor,
+            modifier = modifier,
+            onPress = { onKeyPressDown?.invoke(id) },
+            swipeText = swipes.swipeUpText,
+            swipeDownText = swipes.swipeDownText,
+            swipeUpKeyLabel = swipes.swipeUpKeyLabel,
+            swipeDownKeyLabel = swipes.swipeDownKeyLabel,
+            onSwipe = if (swipes.onSwipeUp != null || swipeLeftHandler != null || swipeRightHandler != null) {
+                { dir ->
+                    when (dir) {
+                        "left" -> swipeLeftHandler?.invoke()
+                        "right" -> swipeRightHandler?.invoke()
+                        else -> swipes.onSwipeUp?.invoke()
+                    }
+                }
+            } else null,
+            onSwipeDown = swipes.onSwipeDown?.let { handler -> { _: String -> handler() } },
+            onLongPressSelect = { selected ->
+                dispatchLongPressSelection(selected, longPressActionMap, onKeyPress, callbacks.onCommitText, onGestureAction)
+            },
+            longPressItems = longPressItems,
+            shadowEnabled = shadowEnabled,
+            shadowElevation = shadowElevation,
+            shadowShapeRadius = shadowShapeRadius,
+        )
+    }
+
+    /** 布局键位渲染分发：功能键走内置组件（行为内置），数字走九键输入键，其余为自定义键。 */
+    @Composable
+    fun KeyCell(id: String, modifier: Modifier) {
+        when (id) {
+            "candidates" -> CandidatesPanel(modifier)
+            "symbol" -> KeyButton(
                 text = "符号",
                 onClick = { onKeyPress("symbol") },
                 backgroundColor = specialKeyBackgroundColor,
                 textColor = specialKeyTextColor,
-                modifier = Modifier.weight(1f),
+                modifier = modifier,
                 onPress = { onKeyPressDown?.invoke("symbol") },
                 shadowEnabled = shadowEnabled,
                 shadowElevation = shadowElevation,
                 shadowShapeRadius = shadowShapeRadius,
                 fontSize = ctrlFontSize,
             )
-        }
-
-        // ── 第2列：数字键区 ──
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(3.2f),
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-            ) {
-                NineKeyButton(
-                    digit = "1", letters = "分词",
-                    onClick = { controller.onDigitPressed("1") },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("1") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                    fontSize = t9DigitFontSize,
-                )
-                T9DigitKey(
-                    digit = "2", letters = "ABC", longPressItems = listOf("A", "B", "C"),
-                    onClick = { controller.onDigitPressed("2") },
-                    onLongPressSelect = { letter -> controller.clearAll(); onKeyPress(letter) },
-                    onSwipeStateChange = { state, bounds ->
-                        if (!(state.isPressed && !state.isLongPress && state.pressedText != null))
-                            onSwipeStateChange?.invoke(state, bounds)
-                    },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("2") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                    fontSize = t9DigitFontSize,
-                )
-                T9DigitKey(
-                    digit = "3", letters = "DEF", longPressItems = listOf("D", "E", "F"),
-                    onClick = { controller.onDigitPressed("3") },
-                    onLongPressSelect = { letter -> controller.clearAll(); onKeyPress(letter) },
-                    onSwipeStateChange = { state, bounds ->
-                        if (!(state.isPressed && !state.isLongPress && state.pressedText != null))
-                            onSwipeStateChange?.invoke(state, bounds)
-                    },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("3") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                    fontSize = t9DigitFontSize,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-            ) {
-                T9DigitKey(
-                    digit = "4", letters = "GHI", longPressItems = listOf("G", "H", "I"),
-                    onClick = { controller.onDigitPressed("4") },
-                    onLongPressSelect = { letter -> controller.clearAll(); onKeyPress(letter) },
-                    onSwipeStateChange = { state, bounds ->
-                        if (!(state.isPressed && !state.isLongPress && state.pressedText != null))
-                            onSwipeStateChange?.invoke(state, bounds)
-                    },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("4") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                    fontSize = t9DigitFontSize,
-                )
-                T9DigitKey(
-                    digit = "5", letters = "JKL", longPressItems = listOf("J", "K", "L"),
-                    onClick = { controller.onDigitPressed("5") },
-                    onLongPressSelect = { letter -> controller.clearAll(); onKeyPress(letter) },
-                    onSwipeStateChange = { state, bounds ->
-                        if (!(state.isPressed && !state.isLongPress && state.pressedText != null))
-                            onSwipeStateChange?.invoke(state, bounds)
-                    },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("5") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                    fontSize = t9DigitFontSize,
-                )
-                T9DigitKey(
-                    digit = "6", letters = "MNO", longPressItems = listOf("M", "N", "O"),
-                    onClick = { controller.onDigitPressed("6") },
-                    onLongPressSelect = { letter -> controller.clearAll(); onKeyPress(letter) },
-                    onSwipeStateChange = { state, bounds ->
-                        if (!(state.isPressed && !state.isLongPress && state.pressedText != null))
-                            onSwipeStateChange?.invoke(state, bounds)
-                    },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("6") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                    fontSize = t9DigitFontSize,
-                )
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth().weight(1f),
-            ) {
-                T9DigitKey(
-                    digit = "7", letters = "PQRS", longPressItems = listOf("P", "Q", "R", "S"),
-                    onClick = { controller.onDigitPressed("7") },
-                    onLongPressSelect = { letter -> controller.clearAll(); onKeyPress(letter) },
-                    onSwipeStateChange = { state, bounds ->
-                        if (!(state.isPressed && !state.isLongPress && state.pressedText != null))
-                            onSwipeStateChange?.invoke(state, bounds)
-                    },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("7") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                    fontSize = t9DigitFontSize,
-                )
-                T9DigitKey(
-                    digit = "8", letters = "TUV", longPressItems = listOf("T", "U", "V"),
-                    onClick = { controller.onDigitPressed("8") },
-                    onLongPressSelect = { letter -> controller.clearAll(); onKeyPress(letter) },
-                    onSwipeStateChange = { state, bounds ->
-                        if (!(state.isPressed && !state.isLongPress && state.pressedText != null))
-                            onSwipeStateChange?.invoke(state, bounds)
-                    },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("8") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                    fontSize = t9DigitFontSize,
-                )
-                T9DigitKey(
-                    digit = "9", letters = "WXYZ", longPressItems = listOf("P", "Q", "R", "S"),
-                    onClick = { controller.onDigitPressed("9") },
-                    onLongPressSelect = { letter -> controller.clearAll(); onKeyPress(letter) },
-                    onSwipeStateChange = { state, bounds ->
-                        if (!(state.isPressed && !state.isLongPress && state.pressedText != null))
-                            onSwipeStateChange?.invoke(state, bounds)
-                    },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("9") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                    fontSize = t9DigitFontSize,
-                )
-            }
-            Row(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                KeyButton(
-                    text = "123", onClick = { onKeyPress("number") },
-                    backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("mode_change") },
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                )
+            "number" -> KeyButton(
+                text = "123",
+                onClick = { onKeyPress("number") },
+                backgroundColor = keyBackgroundColor,
+                textColor = keyTextColor,
+                modifier = modifier,
+                onPress = { onKeyPressDown?.invoke("mode_change") },
+                shadowEnabled = shadowEnabled,
+                shadowElevation = shadowElevation,
+                shadowShapeRadius = shadowShapeRadius,
+            )
+            "space" -> {
+                // 空格上滑（keyboard.t9.keys.space.swipe_up，内置配置为直接输入 "0"）：
+                // commitDirect 直接上屏（与数字键上滑同路径，不经 T9 数字组合）
+                val spaceSwipe = KeysConfigHelper.getT9KeyGesture("space")?.swipeUp
                 T9SpaceKey(
                     schemaName = uiState.schemaName, isSttEnabled = uiState.isSttEnabled,
+                    voiceSticky = uiState.voiceSticky,
                     onKeyPress = onKeyPress, onKeyPressDown = onKeyPressDown,
                     onVoiceModeChange = callbacks.onVoiceModeChange,
                     backgroundColor = keyBackgroundColor, textColor = keyTextColor,
-                    modifier = Modifier.weight(1.8f),
+                    modifier = modifier,
                     shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
-                )
-                IconKeyButton(
-                    icon = rememberVectorPainter(Icons.Default.Language),
-                    onClick = { onKeyPress("ime_switch") },
-                    backgroundColor = keyBackgroundColor, iconColor = keyTextColor,
-                    modifier = Modifier.weight(1f),
-                    onPress = { onKeyPressDown?.invoke("ime_switch") },
-                    onLongClick = callbacks.onSwitchKeyboard,
-                    shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
+                    onSwipeUp = swipeHandlerFor(spaceSwipe, commitDirect, callbacks.onGestureAction),
+                    swipeUpBadge = if (hintsActive && spaceSwipe?.display != DisplayMode.BUBBLE)
+                        spaceSwipe?.label?.ifEmpty { spaceSwipe?.value } else null,
                 )
             }
-        }
-
-        // ── 第3列：功能键（退格 / 重输 / 确定） ──
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .weight(0.9f),
-        ) {
-            SwipeableIconKeyButton(
+            "earth" -> IconKeyButton(
+                icon = rememberVectorPainter(Icons.Default.Language),
+                onClick = { onKeyPress("ime_switch") },
+                backgroundColor = keyBackgroundColor, iconColor = keyTextColor,
+                modifier = modifier,
+                a11yDescription = "中英切换",
+                onPress = { onKeyPressDown?.invoke("ime_switch") },
+                onLongClick = callbacks.onSwitchKeyboard,
+                shadowEnabled = shadowEnabled, shadowElevation = shadowElevation, shadowShapeRadius = shadowShapeRadius,
+            )
+            "delete" -> SwipeableIconKeyButton(
                 icon = rememberVectorPainter(Icons.AutoMirrored.Filled.Backspace),
                 onClick = { onDelete() },
                 onLongClick = { onDelete() },
                 backgroundColor = specialKeyBackgroundColor,
                 iconColor = specialKeyTextColor,
-                modifier = Modifier.weight(1f),
+                modifier = modifier,
+                a11yDescription = "退格",
                 swipeText = if (compactMode) null else "清空",
                 onSwipe = { onKeyPress("clear_composition") },
                 onPress = { onKeyPressDown?.invoke("delete") },
@@ -780,38 +730,125 @@ private fun T9KeyboardContent(
                 shadowElevation = shadowElevation,
                 shadowShapeRadius = shadowShapeRadius,
             )
-            ResetKey(
-                onClick = { controller.clearAll() },
+            "clear" -> ResetKey(
+                onClick = {
+                    controller.clearAll()
+                    // 重输 = 只清输入态（预编辑/候选/左栏），不动已上屏文本（对标主流输入法 2026-08-11）：
+                    //   · 输入态点重输 → 清除输入态内容
+                    //   · 空闲态点重输 → 无反应（clear_composition 无可清内容）
+                    onKeyPress("clear_composition")
+                },
                 onPress = { onKeyPressDown?.invoke("clear") },
                 backgroundColor = specialKeyBackgroundColor,
                 textColor = specialKeyTextColor,
-                modifier = Modifier.weight(1f),
+                modifier = modifier,
                 shadowEnabled = shadowEnabled,
                 shadowElevation = shadowElevation,
                 shadowShapeRadius = shadowShapeRadius,
                 compactMode = compactMode,
             )
-            KeyButton(
+            "enter" -> KeyButton(
                 text = uiState.enterKeyText,
                 onClick = { onKeyPress("enter") },
                 backgroundColor = specialKeyBackgroundColor,
                 textColor = specialKeyTextColor,
-                modifier = Modifier.weight(2f),
+                modifier = modifier,
                 onPress = { onKeyPressDown?.invoke("enter") },
                 shadowEnabled = shadowEnabled,
                 shadowElevation = shadowElevation,
                 shadowShapeRadius = shadowShapeRadius,
             )
+            else -> CustomKey(id, modifier)
+        }
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        // ── 第1列：左列（keyboard.t9.layout.left，candidates 为拼音候选面板占位） ──
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.8f),
+            verticalArrangement = Arrangement.spacedBy(if (compactMode) 2.dp else 4.dp)
+        ) {
+            t9Layout.left.forEach { id ->
+                KeyCell(id, Modifier.weight(keyWeight(id)))
+            }
+        }
+
+        // ── 第2列：主区（keyboard.t9.layout.rows，每行一个键 id 列表） ──
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(3.4f),
+        ) {
+            t9Layout.rows.forEach { rowIds ->
+                Row(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                ) {
+                    rowIds.forEach { id ->
+                        KeyCell(id, Modifier.weight(keyWeight(id)))
+                    }
+                }
+            }
+        }
+
+        // ── 第3列：右列（keyboard.t9.layout.right，功能键列） ──
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
+                .weight(0.8f),
+        ) {
+            t9Layout.right.forEach { id ->
+                KeyCell(id, Modifier.weight(keyWeight(id)))
+            }
         }
     }
 }
 
+// ─── 九键数字键默认键面（keyboard.t9.keys.<id> 可覆盖） ─────────────────
+
+/** 九键数字键内置键面字母（与历史硬编码一致；keys.<id>.tap.label 可覆盖）。 */
+private val DEFAULT_T9_DIGIT_LETTERS: Map<String, String> = mapOf(
+    "1" to "分词", "2" to "ABC", "3" to "DEF",
+    "4" to "GHI", "5" to "JKL", "6" to "MNO",
+    "7" to "PQRS", "8" to "TUV", "9" to "WXYZ",
+)
+
+/** 九键数字键内置长按候选字母（keys.<id>.long_press 可覆盖；"1" 无长按为历史行为）。 */
+private val DEFAULT_T9_DIGIT_LONG_PRESS: Map<String, List<String>> = mapOf(
+    "2" to listOf("A", "B", "C"),
+    "3" to listOf("D", "E", "F"),
+    "4" to listOf("G", "H", "I"),
+    "5" to listOf("J", "K", "L"),
+    "6" to listOf("M", "N", "O"),
+    "7" to listOf("P", "Q", "R", "S"),
+    "8" to listOf("T", "U", "V"),
+    "9" to listOf("W", "X", "Y", "Z"),
+)
+
 // ─── 九键数字键（可长按） ──────────────────────────────────────────────
+
+/** 九键数字键的滑动配置：回调 + 提示文本（均受 keyboard.t9.keys 配置与提示开关控制）。 */
+private data class T9KeySwipes(
+    val onSwipeUp: (() -> Unit)? = null,
+    val onSwipeDown: (() -> Unit)? = null,
+    /** 上滑滑动气泡文本（display: key 时不传） */
+    val swipeUpText: String? = null,
+    /** 下滑滑动气泡文本（display: key 时不传） */
+    val swipeDownText: String? = null,
+    /** 上滑键面提示（空串 = 显式不印键面，bubble 模式用；null = 不显示） */
+    val swipeUpKeyLabel: String? = null,
+    val swipeDownKeyLabel: String? = null,
+)
 
 /**
  * 九键数字键，复用 [SwipeableKeyButton] 的长按弹出逻辑。
  * - 主体显示字母（ABC），右上角叠加数字浮标。
- * - 点按走 [onClick]，长按走 [onLongPressSelect]。
+ * - 点按走 [onClick]，长按走 [onLongPressSelect]，上/下滑走 [onSwipeUp]/[onSwipeDown]。
  */
 @Composable
 private fun T9DigitKey(
@@ -829,10 +866,12 @@ private fun T9DigitKey(
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
     fontSize: androidx.compose.ui.unit.TextUnit = 16.sp,
+    swipes: T9KeySwipes = T9KeySwipes(),
 ) {
     val currentOnClick by rememberUpdatedState(onClick)
     val currentOnLongPressSelect by rememberUpdatedState(onLongPressSelect)
     val currentOnPress by rememberUpdatedState(onPress)
+    val currentSwipes by rememberUpdatedState(swipes)
 
     SwipeableKeyButton(
         text = letters,
@@ -846,6 +885,16 @@ private fun T9DigitKey(
         onLongPressSelect = { letter -> currentOnLongPressSelect?.invoke(letter) },
         onSwipeStateChange = onSwipeStateChange,
         badgeText = digit,
+        a11yDescription = "数字$digit，字母$letters",
+        swipeText = currentSwipes.swipeUpText,
+        swipeDownText = currentSwipes.swipeDownText,
+        swipeUpKeyLabel = currentSwipes.swipeUpKeyLabel,
+        swipeDownKeyLabel = currentSwipes.swipeDownKeyLabel,
+        onSwipe = if (currentSwipes.onSwipeUp != null) {
+            // 横向滑动不得落到上滑处理器（此前忽略方向 → 左/右滑会误输入上滑内容）
+            { dir -> if (dir != "left" && dir != "right") currentSwipes.onSwipeUp?.invoke() }
+        } else null,
+        onSwipeDown = currentSwipes.onSwipeDown?.let { handler -> { _: String -> handler() } },
         shadowEnabled = shadowEnabled,
         shadowElevation = shadowElevation,
         shadowShapeRadius = shadowShapeRadius,
@@ -888,7 +937,7 @@ private fun CandidateItem(
                 modifier = Modifier
                     .clip(RoundedCornerShape(5.dp))
                     .background(accentColor.copy(alpha = 0.2f))
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+                    .padding(horizontal = 3.dp, vertical = 1.dp)
             ) {
                 Text(
                     text = text,
@@ -896,7 +945,8 @@ private fun CandidateItem(
                     fontSize = fontSize,
                     fontWeight = FontWeight.Medium,
                     textAlign = TextAlign.Center,
-                    maxLines = 1
+                    maxLines = 1,
+                    fontFamily = AppFonts.candidateFontFamily
                 )
             }
         } else {
@@ -906,7 +956,8 @@ private fun CandidateItem(
                 fontSize = fontSize,
                 fontWeight = FontWeight.Normal,
                 textAlign = TextAlign.Center,
-                maxLines = 1
+                maxLines = 1,
+                fontFamily = AppFonts.candidateFontFamily
             )
         }
     }
@@ -926,6 +977,7 @@ private fun NineKeyButton(
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
     fontSize: androidx.compose.ui.unit.TextUnit = androidx.compose.ui.unit.TextUnit.Unspecified,
+    swipes: T9KeySwipes = T9KeySwipes(),
 ) {
     SwipeableKeyButton(
         text = letters,
@@ -935,6 +987,16 @@ private fun NineKeyButton(
         modifier = modifier,
         onPress = onPress,
         badgeText = digit,
+        a11yDescription = "数字$digit，字母$letters",
+        swipeText = swipes.swipeUpText,
+        swipeDownText = swipes.swipeDownText,
+        swipeUpKeyLabel = swipes.swipeUpKeyLabel,
+        swipeDownKeyLabel = swipes.swipeDownKeyLabel,
+        onSwipe = if (swipes.onSwipeUp != null) {
+            // 横向滑动不得落到上滑处理器（此前忽略方向 → 左/右滑会误输入上滑内容）
+            { dir -> if (dir != "left" && dir != "right") swipes.onSwipeUp?.invoke() }
+        } else null,
+        onSwipeDown = swipes.onSwipeDown?.let { handler -> { _: String -> handler() } },
         shadowEnabled = shadowEnabled,
         shadowElevation = shadowElevation,
         shadowShapeRadius = shadowShapeRadius,
@@ -1018,6 +1080,7 @@ private fun ResetKey(
 private fun T9SpaceKey(
     schemaName: String,
     isSttEnabled: Boolean,
+    voiceSticky: Boolean = false,
     onKeyPress: (String) -> Unit,
     onKeyPressDown: ((String) -> Unit)?,
     onVoiceModeChange: ((Boolean) -> Unit)?,
@@ -1027,11 +1090,16 @@ private fun T9SpaceKey(
     shadowEnabled: Boolean = true,
     shadowElevation: Dp = 1.dp,
     shadowShapeRadius: Dp = 8.dp,
+    /** 上滑动作（keyboard.t9.keys.space.swipe_up，无配置为 null 不响应滑动）。 */
+    onSwipeUp: (() -> Unit)? = null,
+    /** 上滑键面角标（display: key 时显示，通常为滑动目标字符如 "0"）。 */
+    swipeUpBadge: String? = null,
 ) {
     val context = LocalContext.current
     val view = LocalView.current
     val currentOnKeyPress by rememberUpdatedState(onKeyPress)
     val currentOnVoiceModeChange by rememberUpdatedState(onVoiceModeChange)
+    val currentOnSwipeUp by rememberUpdatedState(onSwipeUp)
     val density = LocalDensity.current
     val spaceShadowModifier = remember(shadowEnabled, shadowElevation, shadowShapeRadius, density, backgroundColor) {
         if (shadowEnabled) {
@@ -1053,27 +1121,53 @@ private fun T9SpaceKey(
         modifier = modifier
             .fillMaxHeight()
             .padding(horizontal = 2.dp, vertical = 2.dp)
-            .pointerInput(Unit) {
+            .pointerInput(voiceSticky) {
                 detectTapGestures(
                     onPress = {
-                        onKeyPressDown?.invoke("space")
-                        tryAwaitRelease()
-                    },
-                    onTap = { currentOnKeyPress("space") },
-                    onLongPress = {
-                        view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
-                        if (isSttEnabled) {
-                            if (!PermissionHelper.hasRecordAudioPermission(context)) {
-                                Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
-                                PermissionHelper.requestRecordAudioPermission(context)
-                            } else {
-                                currentOnVoiceModeChange?.invoke(true)
-                            }
+                        if (voiceSticky) {
+                            tryAwaitRelease()
                         } else {
-                            // 连续空格：在主线程上快速发送多个 space
-                            repeat(5) { currentOnKeyPress("space") }
+                            onKeyPressDown?.invoke("space")
+                            tryAwaitRelease()
+                        }
+                    },
+                    onTap = {
+                        if (voiceSticky) {
+                            currentOnVoiceModeChange?.invoke(false)
+                        } else {
+                            currentOnKeyPress("space")
+                        }
+                    },
+                    onLongPress = {
+                        if (voiceSticky) return@detectTapGestures
+                        view.performHapticFeedback(android.view.HapticFeedbackConstants.LONG_PRESS)
+                        if (!PermissionHelper.hasRecordAudioPermission(context)) {
+                            Toast.makeText(context, "需要麦克风权限才能使用语音输入", Toast.LENGTH_SHORT).show()
+                            PermissionHelper.requestRecordAudioPermission(context)
+                        } else {
+                            currentOnVoiceModeChange?.invoke(true)
                         }
                     }
+                )
+            }
+            .pointerInput(voiceSticky, onSwipeUp) {
+                // 空格上滑（如直接输入数字 0）：纵向拖动超阈值触发一次。
+                // 与 detectTapGestures 共存：拖动时 tap 自动取消，点击/长按语音不受影响；
+                // 语音常驻态（轻触结束语音）不响应上滑。仅在已触发后消费事件，不干扰横向光标手势。
+                if (onSwipeUp == null || voiceSticky) return@pointerInput
+                var totalY = 0f
+                var triggered = false
+                val thresholdPx = 50.dp.toPx()
+                detectVerticalDragGestures(
+                    onDragStart = { totalY = 0f; triggered = false },
+                    onVerticalDrag = { change, dragAmount ->
+                        totalY += dragAmount
+                        if (!triggered && totalY < -thresholdPx) {
+                            triggered = true
+                            currentOnSwipeUp?.invoke()
+                        }
+                        if (triggered) change.consume()
+                    },
                 )
             }, contentAlignment = Alignment.Center
     ) {
@@ -1085,38 +1179,64 @@ private fun T9SpaceKey(
                 .clip(RoundedCornerShape(LocalKeyCornerRadius.current))
                 .background(backgroundColor)
         )
-        Text(
-            text = schemaName,
-            color = textColor,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Normal,
-            textAlign = TextAlign.Center,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
-        if (isSttEnabled) {
-            Icon(
-                painter = painterResource(R.drawable.voice),
-                contentDescription = "语音输入",
-                tint = textColor.copy(alpha = 0.3f),
-                modifier = Modifier
-                    .size(18.dp)
-                    .align(Alignment.BottomStart)
-                    .padding(start = 6.dp, bottom = 2.dp)
+        if (voiceSticky) {
+            Text(
+                text = "轻触结束语音",
+                color = textColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
         } else {
             Text(
-                text = "空格",
-                color = textColor.copy(alpha = 0.3f),
-                fontSize = 10.sp,
+                text = schemaName,
+                color = textColor,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.Normal,
-                textAlign = TextAlign.Start,
+                textAlign = TextAlign.Center,
                 maxLines = 1,
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(start = 6.dp, bottom = 2.dp)
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(horizontal = 8.dp)
             )
+            if (isSttEnabled) {
+                Icon(
+                    painter = painterResource(R.drawable.voice),
+                    contentDescription = "语音输入",
+                    tint = textColor.copy(alpha = 0.3f),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .align(Alignment.BottomStart)
+                        .padding(start = 6.dp, bottom = 2.dp)
+                )
+            } else {
+                Text(
+                    text = "空格",
+                    color = textColor.copy(alpha = 0.3f),
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Normal,
+                    textAlign = TextAlign.Start,
+                    maxLines = 1,
+                    modifier = Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 6.dp, bottom = 2.dp)
+                )
+            }
+            // 上滑手势键面角标（如 "0"）：与数字键上滑数字提示（swipeUpKeyLabel）同位同样式
+            if (swipeUpBadge != null) {
+                Text(
+                    text = swipeUpBadge,
+                    color = textColor.copy(alpha = 0.6f),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    lineHeight = 1.sp,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = 4.dp, end = 4.dp)
+                )
+            }
         }
     }
 }

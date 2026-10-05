@@ -1,11 +1,16 @@
 package com.kingzcheung.xime.ui.keyboard
 
+import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.Typeface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
@@ -13,14 +18,17 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kingzcheung.xime.keyboard.KeyboardDimensions
-import com.kingzcheung.xime.settings.SettingsPreferences
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val BubbleBodyHeight = KeyboardDimensions.BubbleHeightDown
-private val BubblePointerHeight = KeyboardDimensions.BubblePointerHeight
 private val BubbleCornerRadius = KeyboardDimensions.BubbleCornerRadius
 private val BubbleScreenMargin = 4.dp
 
@@ -29,7 +37,7 @@ private val bubbleFillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 private val bubbleTextPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 private val bubbleBgPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 private val bubbleLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-private val SHADOW_COLOR = android.graphics.Color.argb(0x44, 0, 0, 0)
+private val SHADOW_COLOR = android.graphics.Color.argb(0x26, 0, 0, 0)
 
 data class BubbleDrawData(
     val boxLeft: Float,
@@ -51,7 +59,7 @@ data class BubbleDrawData(
     val selectedLongPressIndex: Int,
     val bodyWidth: Float,
     val textStartX: Float,
-    val chaiTypeface: Typeface,
+    val keyLabelTypeface: Typeface,
     val shadowRadiusPx: Float,
     val textSizePx: Float,
     val selectedFontSizePx: Float,
@@ -60,6 +68,52 @@ data class BubbleDrawData(
     val longPressIconBitmaps: List<Bitmap> = emptyList(),
     val accentArgb: Int = 0xFF8F73E2.toInt(),
 )
+
+/** 按压气泡抬起后的滞留时长：随抬起瞬间消失看不清键位提示（主流输入法约 50~80ms），取中值。 */
+private const val PRESS_BUBBLE_RELEASE_DELAY_MS = 60L
+
+/**
+ * 各布局共享的气泡状态持有器。
+ *
+ * 封装"按压气泡抬起后短暂滞留"逻辑：抬起瞬间不清空状态，而是保留气泡内容与位置
+ * [PRESS_BUBBLE_RELEASE_DELAY_MS] 毫秒再消失；期间任意新手势（新键按压/滑动/长按）
+ * 会立即取消滞留并切换为新气泡，快速连打无延迟感。
+ * 仅对按压气泡滞留——滑动选择与长按选择的气泡在松手时语义上已结束（候选已提交），立即消失。
+ */
+class SwipeBubbleController(private val scope: CoroutineScope) {
+    var state by mutableStateOf(SwipeState())
+        private set
+    var keyBounds by mutableStateOf(Rect(0f, 0f, 0f, 0f))
+        private set
+    private var releaseJob: Job? = null
+
+    fun update(newState: SwipeState, bounds: Rect) {
+        releaseJob?.cancel()
+        releaseJob = null
+        val prev = state
+        val gestureActive = newState.isSwiping || newState.isPressed || newState.isLongPress
+        if (!gestureActive &&
+            prev.isPressed && prev.pressedText != null &&
+            !prev.isSwiping && !prev.isLongPress
+        ) {
+            state = prev
+            keyBounds = bounds
+            releaseJob = scope.launch {
+                delay(PRESS_BUBBLE_RELEASE_DELAY_MS)
+                state = SwipeState()
+            }
+            return
+        }
+        state = newState
+        keyBounds = bounds
+    }
+}
+
+@Composable
+fun rememberSwipeBubbleController(): SwipeBubbleController {
+    val scope = rememberCoroutineScope()
+    return remember { SwipeBubbleController(scope) }
+}
 
 @Composable
 fun rememberSwipeBubbleDrawData(
@@ -72,8 +126,8 @@ fun rememberSwipeBubbleDrawData(
     keyboardWidth: Float,
 ): BubbleDrawData? {
     val context = LocalContext.current
-    val showPressBubble = SettingsPreferences.shouldShowPressBubble(context)
-    if (!swipeState.isSwiping && !(showPressBubble && swipeState.isPressed) && !swipeState.isLongPress) return null
+    // 点按气泡恒开：非滑动、非点按、非长按时不绘制
+    if (!swipeState.isSwiping && !swipeState.isPressed && !swipeState.isLongPress) return null
 
     val isLongPressMode = swipeState.isLongPress && swipeState.longPressItems.isNotEmpty()
     val displayText = if (isLongPressMode) null
@@ -82,14 +136,23 @@ fun rememberSwipeBubbleDrawData(
     if (!isLongPressMode && displayText.isNullOrEmpty()) return null
 
     val density = LocalDensity.current
-    val bodyHeightPx = with(density) { BubbleBodyHeight.toPx() }
-    val pointerHeightPx = with(density) { (BubblePointerHeight + 5.dp).toPx() }
-    val cornerRadiusPx = with(density) { BubbleCornerRadius.toPx() }
+    val referenceHeightDp =
+        if (LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE) 44f else 56f
+    val contentScale = adaptiveKeyContentScale(
+        keyHeightDp = keyBounds.height / density.density,
+        referenceHeightDp = referenceHeightDp,
+    )
+    val bubbleScale = adaptiveBubbleScale(contentScale)
+    val bodyHeightPx = with(density) { BubbleBodyHeight.toPx() } * bubbleScale
+    // 尖端完整覆盖按下的按键（与按键同高），宽体锚定按键顶部悬在上方（见 boxTop）。
+    // 全部基于真实按键 bounds 计算，不再用 KeyHeight 估算值——
+    // 键盘高度被调大时估算失准，宽体会下沉进按键被手指挡住。
+    val pointerHeightPx = keyBounds.height
+    val cornerRadiusPx = with(density) { BubbleCornerRadius.toPx() } * bubbleScale
     val screenMarginPx = with(density) { BubbleScreenMargin.toPx() }
     val keyWidthPx = keyWidth
     val minBodyWidthPx = keyWidthPx * 1.8f
-    val totalHeightPx = bodyHeightPx + pointerHeightPx
-    val shadowRadiusPx = with(density) { 4.dp.toPx() }
+    val shadowRadiusPx = with(density) { 4.dp.toPx() } * bubbleScale
 
     val accentArgb = accentColor.toArgb()
     val isDarkTheme = keyTextColor == Color(0xFFE8EAED)
@@ -98,11 +161,11 @@ fun rememberSwipeBubbleDrawData(
     } else keyBackgroundColor).toArgb()
     val textColor = (if (swipeState.isDanger) Color.White else keyTextColor).toArgb()
 
-    val chaiTypeface = AppFonts.chaiPuaTypeface
+    val keyLabelTypeface = AppFonts.keyLabelTypeface
 
-    val textPaint = remember {
+    val textPaint = remember(bubbleScale) {
         Paint().apply {
-            textSize = with(density) { 14.sp.toPx() }
+            textSize = with(density) { 16.sp.toPx() } * bubbleScale
             isAntiAlias = true
         }
     }
@@ -114,13 +177,13 @@ fun rememberSwipeBubbleDrawData(
             maxOf(swipeState.longPressItems.size, 3)
         cellMin * keyWidthPx
     } else {
-        maxOf(textPaint.measureText(displayText!!) + with(density) { 20.dp.toPx() }, minBodyWidthPx)
+        maxOf(textPaint.measureText(displayText!!) + with(density) { 20.dp.toPx() } * bubbleScale, minBodyWidthPx)
     }
 
-    val textSizePx = with(density) { 14.sp.toPx() }
-    val selectedFontSizePx = with(density) { 18.sp.toPx() }
-    val normalFontSizePx = with(density) { 14.sp.toPx() }
-    val selectedBgRadiusPx = with(density) { 6.dp.toPx() }
+    val textSizePx = with(density) { 16.sp.toPx() } * bubbleScale
+    val selectedFontSizePx = with(density) { 20.sp.toPx() } * bubbleScale
+    val normalFontSizePx = with(density) { 16.sp.toPx() } * bubbleScale
+    val selectedBgRadiusPx = with(density) { 6.dp.toPx() } * bubbleScale
 
     val pointerCenterX = keyBounds.left + keyBounds.width / 2f
     val bodyLeft = (pointerCenterX - bodyWidth / 2f).coerceIn(
@@ -131,7 +194,9 @@ fun rememberSwipeBubbleDrawData(
     val pointerLeft = pointerCenterX - keyWidthPx / 2f
     val pointerRight = pointerLeft + keyWidthPx
     val boxLeft = minOf(bodyLeft, pointerLeft)
-    val boxTop = keyBounds.top + keyBounds.height - totalHeightPx
+    // 宽体（显示文字的主体）底部对齐按键顶部，悬在按键正上方不被手指遮挡；
+    // 尖端从宽体底部向下延伸 pointerHeightPx（≈按键上半部）指示归属键。
+    val boxTop = keyBounds.top - bodyHeightPx
     val boxRight = maxOf(bodyRight, pointerRight)
 
     val rightRoom = bodyRight - pointerRight
@@ -145,7 +210,7 @@ fun rememberSwipeBubbleDrawData(
     val pathBodyLeft = if (isLeftFlush && leftRoom <= cornerRadiusPx) pointerLeftInBox else bodyLeftInBox
     val pathBodyWidth = (if (isRightFlush && rightRoom <= cornerRadiusPx) pointerRightInBox else (bodyLeftInBox + bodyWidth)) - pathBodyLeft
 
-    val paddingPx = with(density) { 10.dp.toPx() }
+    val paddingPx = with(density) { 10.dp.toPx() } * bubbleScale
 
     val longPressIconBitmaps = remember(swipeState.longPressDrawableIds, textColor) {
         swipeState.longPressDrawableIds.mapNotNull { id ->
@@ -181,7 +246,7 @@ fun rememberSwipeBubbleDrawData(
         selectedLongPressIndex = swipeState.selectedLongPressIndex,
         bodyWidth = bodyWidth,
         textStartX = bodyLeftInBox + paddingPx,
-        chaiTypeface = chaiTypeface,
+        keyLabelTypeface = keyLabelTypeface,
         shadowRadiusPx = shadowRadiusPx,
         textSizePx = textSizePx,
         selectedFontSizePx = selectedFontSizePx,
@@ -295,6 +360,8 @@ fun DrawScope.drawSwipeBubble(data: BubbleDrawData) {
                     bubbleLabelPaint.color = if (index == data.selectedLongPressIndex) accentColor else data.textColor
                     bubbleLabelPaint.textSize = fontSize
                     bubbleLabelPaint.textAlign = Paint.Align.CENTER
+                    bubbleLabelPaint.isFakeBoldText = true
+                    bubbleLabelPaint.typeface = data.keyLabelTypeface
                     val textY = data.bodyHeightPx / 2f - (bubbleLabelPaint.fontMetrics.ascent + bubbleLabelPaint.fontMetrics.descent) / 2f
                     canvas.drawText(item, itemLeft + cellWidth / 2f, textY, bubbleLabelPaint)
                 }
@@ -306,7 +373,8 @@ fun DrawScope.drawSwipeBubble(data: BubbleDrawData) {
             bubbleTextPaint.color = data.textColor
             bubbleTextPaint.textSize = data.textSizePx
             bubbleTextPaint.textAlign = Paint.Align.CENTER
-            bubbleTextPaint.typeface = data.chaiTypeface
+            bubbleTextPaint.typeface = data.keyLabelTypeface
+            bubbleTextPaint.isFakeBoldText = true
             val textCenterX = data.pathBodyLeft + data.pathBodyWidth / 2f
             val textY = data.bodyHeightPx / 2f - (bubbleTextPaint.fontMetrics.ascent + bubbleTextPaint.fontMetrics.descent) / 2f
             canvas.drawText(data.displayText, textCenterX, textY, bubbleTextPaint)
