@@ -154,6 +154,11 @@ fun KeyboardView(
     val winSticky by viewModel.winSticky.collectAsStateWithLifecycle()
     val isClipboardSearching by viewModel.isClipboardSearching.collectAsStateWithLifecycle()
     val clipboardSearchQuery by viewModel.clipboardSearchQuery.collectAsStateWithLifecycle()
+    // 剪贴板搜索过滤结果（悬浮覆盖层的数据源，渲染处见 Box 覆盖层分支）
+    val clipboardSearchResults = remember(state.clipboardItems, clipboardSearchQuery) {
+        if (clipboardSearchQuery.isEmpty()) state.clipboardItems
+        else state.clipboardItems.filter { it.text.contains(clipboardSearchQuery, ignoreCase = true) }
+    }
     val isKeyboardPinned by viewModel.isKeyboardPinned.collectAsStateWithLifecycle()
     val isLandscape = if (state.isFloatingMode) false
         else LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -453,12 +458,11 @@ fun KeyboardView(
             }
 
             if (isClipboardSearching) {
-                // ── 搜索模式：搜索框 + 剪贴板列表 ──
+                // ── 搜索模式：搜索框 + 结果列表渲染在候选栏上方（进入搜索即显示全部
+                // 剪贴板内容，输入时按查询过滤）；窗口总高由服务层同步增高（见
+                // clipboardSearchExtra，须与下方 CLIPBOARD_SEARCH_* 常量一致），
+                // 键盘保持原高度不被挤压 ──
                 val focusRequester = remember { FocusRequester() }
-                val filteredItems = remember(state.clipboardItems, clipboardSearchQuery) {
-                    if (clipboardSearchQuery.isEmpty()) state.clipboardItems
-                    else state.clipboardItems.filter { it.text.contains(clipboardSearchQuery, ignoreCase = true) }
-                }
                 LaunchedEffect(Unit) { focusRequester.requestFocus() }
                 Row(
                     modifier = Modifier
@@ -506,9 +510,9 @@ fun KeyboardView(
                         }
                     }
                 }
-                if (filteredItems.isEmpty()) {
+                if (clipboardSearchResults.isEmpty()) {
                     Box(
-                        modifier = Modifier.fillMaxWidth().height(28.dp),
+                        modifier = Modifier.fillMaxWidth().height(CLIPBOARD_SEARCH_LIST_HEIGHT_DP.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -518,38 +522,42 @@ fun KeyboardView(
                         )
                     }
                 } else {
-                        LazyColumn(
-                            modifier = Modifier.fillMaxWidth().heightIn(max = 56.dp),
-                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            items(filteredItems, key = { it.id }) { item ->
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(24.dp)
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(candidateBarBg)
-                                        .clickable {
-                                            callbacks.onClipboardSelect?.invoke(item.text)
-                                            viewModel.exitClipboardSearch()
-                                        }
-                                        .padding(horizontal = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = item.text,
-                                        color = candidateTextColor,
-                                        fontSize = 12.sp,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(CLIPBOARD_SEARCH_LIST_HEIGHT_DP.dp)
+                            .padding(horizontal = 8.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(candidateBarBg),
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        items(clipboardSearchResults, key = { it.id }) { item ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(30.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .clickable {
+                                        callbacks.onClipboardSelect?.invoke(item.text)
+                                        viewModel.exitClipboardSearch()
+                                    }
+                                    .padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = item.text,
+                                    color = candidateTextColor,
+                                    fontSize = 13.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
                             }
                         }
                     }
                 }
+            }
 
             CandidateBar(
                 state = candidateBarState,
@@ -1776,6 +1784,11 @@ private fun buildStickySendExpr(
 }
 
 /** 长按删除待确认项：词文本 + 用户确认后执行的删除动作（候选栏/展开页共用）。 */
+// 剪贴板搜索面板高度（服务层据此同步增高 IME 窗口，需与渲染高度保持一致）
+internal const val CLIPBOARD_SEARCH_BOX_HEIGHT_DP = 42
+// 结果列表固定显示 10 行：10×30 行高 + 9×2 行距 + 4 上下 contentPadding
+internal const val CLIPBOARD_SEARCH_LIST_HEIGHT_DP = 322
+
 private data class DeletePendingWord(
     val word: String,
     val onConfirm: () -> Unit,

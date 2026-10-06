@@ -41,6 +41,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
+import android.view.WindowManager
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -1502,7 +1503,16 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                         hasControls = !state.toolPanelUiNodes.isNullOrEmpty(),
                     )
                 } else 0
-                val overlayPanelExtra = quickSendFormExtra + toolPanelExtra
+                // 剪贴板搜索：搜索框/结果面板内联在候选栏上方，同步把 IME 窗口增高同样的
+                // 高度（与快捷发送表单同机制），键盘保持原高度、搜索 UI 显示在键盘上方，
+                // 不再挤压键盘。高度须与 KeyboardView 渲染一致：搜索框 + 固定 10 行结果列表
+                //（进入搜索即显示，查询为空展示全部剪贴板内容）。
+                val clipboardSearchActive by keyboardViewModel.isClipboardSearching.collectAsState()
+                val clipboardSearchExtra = if (clipboardSearchActive && !isOverlayPage) {
+                    com.kingzcheung.xime.ui.keyboard.CLIPBOARD_SEARCH_BOX_HEIGHT_DP +
+                        com.kingzcheung.xime.ui.keyboard.CLIPBOARD_SEARCH_LIST_HEIGHT_DP
+                } else 0
+                val overlayPanelExtra = quickSendFormExtra + toolPanelExtra + clipboardSearchExtra
 
                 XimeTheme(darkTheme = isDarkTheme, themeId = state.themeId) {
                     Box(modifier = Modifier.fillMaxSize()) {
@@ -1524,6 +1534,20 @@ class XimeInputMethodService : InputMethodService(), LifecycleOwner, SavedStateR
                             currentEffectiveKeyboardHeight = if (state.isFloatingMode) keyboardHeight + floatingDragBarHeight + 50 + state.keyboardBottomPaddingDp
                                 else if (state.isCompact) HARDWARE_CANDIDATE_BAR_HEIGHT
                                 else effectiveKeyboardHeight
+                        }
+                        // 剪贴板搜索：搜索框需要真实输入焦点，解除 IME 窗口的不可聚焦标志
+                        //（ALT_FOCUSABLE_IM）；退出搜索时恢复，焦点自动回到应用输入框。
+                        SideEffect {
+                            window?.window?.apply {
+                                if (clipboardSearchActive) {
+                                    clearFlags(WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM)
+                                } else {
+                                    setFlags(
+                                        WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
+                                        WindowManager.LayoutParams.FLAG_ALT_FOCUSABLE_IM,
+                                    )
+                                }
+                            }
                         }
                         val kbColors = KeysConfigHelper.getKeyboardColors()
                         val longToColor: (Long) -> androidx.compose.ui.graphics.Color = { if (it == 0L)  { androidx.compose.ui.graphics.Color(0xE61E1E1E) } else if (it > 0xFFFFFF) { androidx.compose.ui.graphics.Color(it) } else { androidx.compose.ui.graphics.Color(0xFF000000 or it) } }

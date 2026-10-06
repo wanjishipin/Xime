@@ -48,6 +48,21 @@ internal class ImeKeyRouter(private val service: XimeInputMethodService) {
         // 空键无任何按键语义，且下游 Rime 路由按 key[0] 取码（key.lowercase()[0]），
         // 空串会越界崩溃（2026-09-14 真机实证：滑动手势 commit 值为空时触发）。
         if (key.isEmpty()) return
+        // 剪贴板搜索：无 Rime 组合时，退格删除搜索词最后一个字符。
+        // 主键盘退格键走手势 DELETE 路径直接调 callbacks.onKeyPress("delete")，
+        // 绕过 KeyboardView 内的搜索拦截，故在按键路由入口统一拦截；
+        // 有组合时仍优先由 Rime 删除组合（下方原有路由）。
+        if (service.keyboardViewModel.isClipboardSearching.value &&
+            (key == "delete" || key == "BackSpace" || key == "Delete")
+        ) {
+            val candState = service.candidateState.value
+            val hasComposing = candState.isComposing || candState.inputText.isNotEmpty()
+            val query = service.keyboardViewModel.clipboardSearchQuery.value
+            if (!hasComposing && query.isNotEmpty()) {
+                service.keyboardViewModel.updateClipboardSearchQuery(query.dropLast(1))
+                return
+            }
+        }
         if (service.uiState.value.toolPanelInputFocused) {
             val candState = service.candidateState.value
             val hasComposing = candState.isComposing || candState.inputText.isNotEmpty()
